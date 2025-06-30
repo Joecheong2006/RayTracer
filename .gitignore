@@ -1,0 +1,11 @@
+.DS_Store
+
+build/
+
+*.o
+*.d
+*.gch
+*.exe
+imgui.ini
+.vscode
+.cache
