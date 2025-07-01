@@ -2,6 +2,8 @@
 
 build/
 
+compile_commands.json
+
 *.o
 *.d
 *.gch
