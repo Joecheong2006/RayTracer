@@ -4,9 +4,14 @@ project(raytracer)
 set(CMAKE_CXX_STANDARD 11)
 
 include_directories(${CMAKE_SOURCE_DIR}/lib/glad/include)
+include_directories(${CMAKE_SOURCE_DIR}/lib/glm)
 include_directories(${CMAKE_SOURCE_DIR}/lib)
 
-add_executable(raytracer src/main.cpp lib/glad/src/glad.c)
+add_executable(raytracer 
+    src/main.cpp
+    lib/glad/src/glad.c
+    lib/stb_image/stb_image.cpp
+)
 
 if (WIN32)
     target_link_directories(raytracer PRIVATE ${CMAKE_SOURCE_DIR}/lib/glfw)
