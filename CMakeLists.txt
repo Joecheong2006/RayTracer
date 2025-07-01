@@ -8,7 +8,7 @@ include_directories(${CMAKE_SOURCE_DIR}/lib)
 
 add_executable(raytracer src/main.cpp lib/glad/src/glad.c)
 
-if (WINDOWS)
+if (WIN32)
     target_link_directories(raytracer PRIVATE ${CMAKE_SOURCE_DIR}/lib/glfw)
     target_link_libraries(raytracer PRIVATE glfw3 opengl32)
 elseif (APPLE)
