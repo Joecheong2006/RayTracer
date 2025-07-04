@@ -7,11 +7,17 @@ include_directories(${CMAKE_SOURCE_DIR}/lib/glad/include)
 include_directories(${CMAKE_SOURCE_DIR}/lib/glm)
 include_directories(${CMAKE_SOURCE_DIR}/lib)
 
+file(GLOB SOURCES_LEVEL0 "src/*.cpp")
+file(GLOB SOURCES_LEVEL1 "src/**/*.cpp")
+
 add_executable(raytracer 
-    src/main.cpp
+    ${SOURCES_LEVEL0}
+    ${SOURCES_LEVEL1}
     lib/glad/src/glad.c
     lib/stb_image/stb_image.cpp
 )
+
+target_include_directories(raytracer PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 if (WIN32)
     target_link_directories(raytracer PRIVATE ${CMAKE_SOURCE_DIR}/lib/glfw)
