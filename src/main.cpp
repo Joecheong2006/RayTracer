@@ -72,36 +72,38 @@ int main() {
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    gl::VertexArray vao;
+    {
+        gl::VertexArray vao;
 
-    gl::ShaderProgram shader;
-    shader.attachShaderCode(GL_VERTEX_SHADER, vertexShaderSource);
-    shader.attachShaderCode(GL_FRAGMENT_SHADER, fragmentShaderSource);
-    shader.link();
-    shader.bind();
-
-    gl::VertexBuffer vbo(vertices, 12 * 4, GL_STATIC_DRAW);
-
-    gl::IndexBuffer ibo(indices, sizeof(indices) / sizeof(u32), GL_STATIC_DRAW);
-
-    gl::VertexBufferLayout layout;
-    layout.add<f32>(3);
-    vao.applyBufferLayout(layout);
-
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
-    while (!glfwWindowShouldClose(window)) {
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetWindowShouldClose(window, true);
-
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        vao.bind();
+        gl::ShaderProgram shader;
+        shader.attachShaderCode(GL_VERTEX_SHADER, vertexShaderSource);
+        shader.attachShaderCode(GL_FRAGMENT_SHADER, fragmentShaderSource);
+        shader.link();
         shader.bind();
-        glDrawElements(GL_TRIANGLES, ibo.count(), GL_UNSIGNED_INT, 0);
 
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+        gl::VertexBuffer vbo(vertices, 12 * 4, GL_STATIC_DRAW);
+
+        gl::IndexBuffer ibo(indices, sizeof(indices) / sizeof(u32), GL_STATIC_DRAW);
+
+        gl::VertexBufferLayout layout;
+        layout.add<f32>(3);
+        vao.applyBufferLayout(layout);
+
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+
+        while (!glfwWindowShouldClose(window)) {
+            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+                glfwSetWindowShouldClose(window, true);
+
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            vao.bind();
+            shader.bind();
+            glDrawElements(GL_TRIANGLES, ibo.count(), GL_UNSIGNED_INT, 0);
+
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+        }
     }
 
     glfwDestroyWindow(window);
