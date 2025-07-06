@@ -5,14 +5,14 @@
 
 namespace gl {
     class Texture2D;
-    class FrameBuffer {
+    class Framebuffer {
     private:
         u32 m_id, m_rbo;
         i32 m_width, m_height;
 
     public:
-        FrameBuffer(int width, int height);
-        ~FrameBuffer();
+        Framebuffer(int width, int height);
+        ~Framebuffer();
 
         bool isCompleted() const;
 

@@ -5,9 +5,9 @@
 #include "glad/glad.h"
 
 namespace gl {
-    class FrameBuffer;
+    class Framebuffer;
     class Texture2D {
-        friend FrameBuffer;
+        friend Framebuffer;
     public:
         struct Construct {
             i32 width = 0, height = 0, style = 0, format = GL_RGBA, wrapStyle = GL_CLAMP_TO_EDGE, internal = 0, type = GL_UNSIGNED_BYTE, bpp = 0;
