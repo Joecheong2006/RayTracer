@@ -39,7 +39,7 @@ uniform sampler2D screenTexture;
 
 void main() {
     vec3 color = texture(screenTexture, uv).rgb;
-    color = pow(color, vec3(1.0 / 2.6));
+    color = pow(color, vec3(1.0 / 2.2));
     fragColor = vec4(color, 1.0);
 }
 )";
