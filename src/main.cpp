@@ -74,8 +74,12 @@ void main() {
 }
 )";
 
+static int width = 800, height = 600;
+
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
+    ::width = width;
+    ::height = height;
 }
 
 int main() {
@@ -91,8 +95,6 @@ int main() {
     glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-
-    const int width = 800, height = 600;
 
     GLFWwindow* window = glfwCreateWindow(width, height, "FrameBuffer Demo", NULL, NULL);
     if (!window) {
