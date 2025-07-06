@@ -65,65 +65,65 @@ namespace gl {
         }
     }
 
-    void ShaderProgram::set_4f(const std::string &name, f32 v0, f32 v1, f32 v2, f32 v3) {
+    void ShaderProgram::setUniform4f(const std::string &name, f32 v0, f32 v1, f32 v2, f32 v3) {
         int id = uniform_location(name);
         if (id != -1) {
             GLCALL(glUniform4f(id, v0, v1, v2, v3));
         }
     }
 
-    void ShaderProgram::set_3f(const std::string &name, const glm::vec3 &v) {
-        set_3f(name, v[0], v[1], v[2]);
+    void ShaderProgram::setUniform3f(const std::string &name, const glm::vec3 &v) {
+        setUniform3f(name, v[0], v[1], v[2]);
     }
 
-    void ShaderProgram::set_3f(const std::string &name, f32 v0, f32 v1, f32 v2) {
+    void ShaderProgram::setUniform3f(const std::string &name, f32 v0, f32 v1, f32 v2) {
         int id = uniform_location(name);
         if (id != -1) {
             GLCALL(glUniform3f(id, v0, v1, v2));
         }
     }
 
-    void ShaderProgram::set_3f(const std::string &name, f32* v) {
-        set_3f(name, v[0], v[1], v[2]);
+    void ShaderProgram::setUniform3f(const std::string &name, f32* v) {
+        setUniform3f(name, v[0], v[1], v[2]);
     }
 
-    void ShaderProgram::set_2f(const std::string &name, const glm::vec2 &v) {
-        set_2f(name, v[0], v[1]);
+    void ShaderProgram::setUniform2f(const std::string &name, const glm::vec2 &v) {
+        setUniform2f(name, v[0], v[1]);
     }
 
-    void ShaderProgram::set_2f(const std::string &name, f32* v) {
-        set_2f(name, v[0], v[1]);
+    void ShaderProgram::setUniform2f(const std::string &name, f32* v) {
+        setUniform2f(name, v[0], v[1]);
     }
 
-    void ShaderProgram::set_2f(const std::string &name, f32 v0, f32 v1) {
+    void ShaderProgram::setUniform2f(const std::string &name, f32 v0, f32 v1) {
         int id = uniform_location(name);
         if (id != -1) {
             GLCALL(glUniform2f(id, v0, v1));
         }
     }
 
-    void ShaderProgram::set_1u(const std::string &name, u32 v0) {
+    void ShaderProgram::setUniform1u(const std::string &name, u32 v0) {
         int id = uniform_location(name);
         if (id != -1) {
             GLCALL(glUniform1ui(id, v0));
         }
     }
 
-    void ShaderProgram::set_1i(const std::string &name, i32 v0) {
+    void ShaderProgram::setUniform1i(const std::string &name, i32 v0) {
         int id = uniform_location(name);
         if (id != -1) {
             GLCALL(glUniform1i(id, v0));
         }
     }
 
-    void ShaderProgram::set_1f(const std::string &name, f32 v0) {
+    void ShaderProgram::setUniform1f(const std::string &name, f32 v0) {
         int id = uniform_location(name);
         if (id != -1) {
             GLCALL(glUniform1f(id, v0));
         }
     }
 
-    void ShaderProgram::set_m4(const std::string &name, const glm::mat4 &m) {
+    void ShaderProgram::setUniformMat4(const std::string &name, const glm::mat4 &m) {
         int id = uniform_location(name);
         if (id != -1) {
             GLCALL(glUniformMatrix4fv(id, 1, GL_FALSE, glm::value_ptr(m)));
