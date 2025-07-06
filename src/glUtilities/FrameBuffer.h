@@ -23,6 +23,9 @@ namespace gl {
         void bind() const;
         void unbind() const;
 
+        inline i32 getWidth() const { return m_width; }
+        inline i32 getHeight() const { return m_height; }
+
     };
 
 }
