@@ -4,9 +4,7 @@
 #include "util.h"
 
 namespace gl {
-    Framebuffer::Framebuffer(int width, int height)
-        : m_width(width), m_height(height)
-    {
+    Framebuffer::Framebuffer() {
         glGenFramebuffers(1, &m_id);
         bind();
     }
@@ -19,10 +17,10 @@ namespace gl {
         return glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
     }
 
-    void Framebuffer::genRenderBuffer(i32 internalFormat) {
+    void Framebuffer::genRenderBuffer(i32 width, i32 height, i32 internalFormat) {
         glGenRenderbuffers(1, &m_rbo);
         glBindRenderbuffer(GL_RENDERBUFFER, m_rbo); 
-        glRenderbufferStorage(GL_RENDERBUFFER, internalFormat, m_width, m_height);
+        glRenderbufferStorage(GL_RENDERBUFFER, internalFormat, width, height);
     }
 
     void Framebuffer::attachRenderBuffer(i32 attachment) const {
