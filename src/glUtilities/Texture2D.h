@@ -27,9 +27,9 @@ namespace gl {
         void bind(u32 slot) const;
         void unbind() const;
 
-        inline i32 width() { return con.width; }
-        inline i32 height() { return con.height; }
-        inline i32 bpp() { return con.bpp; }
+        inline i32 getWidth() { return con.width; }
+        inline i32 getHeight() { return con.height; }
+        inline i32 getBpp() { return con.bpp; }
 
     };
 
