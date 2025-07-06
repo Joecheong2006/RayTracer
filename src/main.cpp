@@ -129,10 +129,7 @@ int main() {
         }
 
         // Initialize Framebuffer
-        gl::Framebuffer screenFB = gl::Framebuffer(width, height);
-        screenFB.bind();
-        screenFB.genRenderBuffer(GL_DEPTH24_STENCIL8);
-        screenFB.attachRenderBuffer(GL_DEPTH_STENCIL_ATTACHMENT);
+        gl::Framebuffer screenFB;
 
         gl::Texture2D::Construct con;
         con.width = width;
