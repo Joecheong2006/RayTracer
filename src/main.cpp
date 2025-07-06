@@ -60,8 +60,11 @@ const char *vertexShaderSource = R"(
 #version 330 core
 layout (location = 0) in vec2 aPos;
 
+out vec2 uv;
+
 void main() {
     gl_Position = vec4(aPos, 0, 1.0);
+    uv = aPos + vec2(0.5);
 }
 )";
 
@@ -69,8 +72,10 @@ const char *fragmentShaderSource = R"(
 #version 330 core
 out vec4 fragColor;
 
+in vec2 uv;
+
 void main() {
-    fragColor = vec4(1.0, 0.5, 0.2, 1.0);
+    fragColor = vec4(uv, 1.0, 1.0);
 }
 )";
 
@@ -134,8 +139,8 @@ int main() {
         gl::Framebuffer screenFB;
 
         gl::Texture2D::Construct con;
-        con.width = width;
-        con.height = height;
+        con.width = 80;
+        con.height = 60;
         con.style = GL_NEAREST;
         con.format = GL_RGBA;
         con.internal = GL_RGBA16F;
