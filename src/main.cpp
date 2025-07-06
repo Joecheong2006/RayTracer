@@ -175,7 +175,7 @@ int main() {
 
             // Bind screen framebuffer
             screenFB.bind();
-            glViewport(0, 0, width, height);
+            glViewport(0, 0, screenTexture.getWidth(), screenTexture.getHeight());
             glClear(GL_COLOR_BUFFER_BIT);
 
             // Render scene
