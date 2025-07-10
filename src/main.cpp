@@ -9,6 +9,9 @@
 #include "glUtilities/IndexBuffer.h"
 #include "glUtilities/Texture2D.h"
 #include "glUtilities/Framebuffer.h"
+#include "glUtilities/TextureBuffer.h"
+
+#include <cmath> // for std:floor and std::sin
 
 static f32 quadVertices[] = {
      1.0f,  1.0f,
@@ -36,9 +39,12 @@ out vec4 fragColor;
 in vec2 uv;
 
 uniform sampler2D screenTexture;
+uniform samplerBuffer buf;
 
 void main() {
     vec3 color = texture(screenTexture, uv).rgb;
+    vec4 bufColor = vec4(texelFetch(buf, 0).r, texelFetch(buf, 1).r, texelFetch(buf, 2).r, texelFetch(buf, 3).r);
+    color *= bufColor.rgb;
     color = pow(color, vec3(1.0 / 2.2));
     fragColor = vec4(color, 1.0);
 }
@@ -101,7 +107,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    GLFWwindow* window = glfwCreateWindow(width, height, "FrameBuffer Demo", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(width, height, "TBO Demo", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -117,6 +123,10 @@ int main() {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     {
+        // Initialize TBO
+        f32 data[] = { 1.0f, 0.0f, 1.0f, 1.0f };
+        gl::TextureBuffer tbo(data, sizeof(data), GL_STATIC_DRAW, GL_R32F);
+
         // Initialize Ractangle
         gl::VertexArray vao;
 
@@ -197,7 +207,20 @@ int main() {
             quadShader.bind();
             screenTexture.bind(0);
             quadShader.setUniform1i("screenTexture", 0);
+            tbo.bind(1);
+            quadShader.setUniform1i("buf", 1);
             glDrawElements(GL_TRIANGLES, quadIbo.count(), GL_UNSIGNED_INT, 0);
+
+            // Update Data
+            [&data](float t) {
+                t = t * 0.5 + 0.5 - std::floor(t * 0.5 + 0.5);
+                data[0] = 0.5f + 0.5f * std::sin(2.0f * 3.14159265f * (t + 0.0f));
+                data[1] = 0.5f + 0.5f * std::sin(2.0f * 3.14159265f * (t + 0.33f));
+                data[2] = 0.5f + 0.5f * std::sin(2.0f * 3.14159265f * (t + 0.66f));
+            }(std::sin(glfwGetTime() * 0.3));
+
+            // Update TBO data
+            tbo.updateBuffer(data, 0, 3 * sizeof(f32));
 
             glfwSwapBuffers(window);
             glfwPollEvents();
