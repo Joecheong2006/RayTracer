@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <glad/glad.h>
 #include <glfw/glfw3.h>
 #include <iostream>
@@ -85,7 +86,13 @@ void main() {
 }
 )";
 
-static int width = 800, height = 600;
+static int width = 1640, height = 1280;
+
+static void getRetinaScaler(f32* xScale, f32* yScale) {
+    GLFWwindow* temp = glfwCreateWindow(1, 1, "", NULL, NULL);
+    glfwGetWindowContentScale(temp, xScale, yScale);
+    glfwDestroyWindow(temp);
+}
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
@@ -103,11 +110,15 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
-    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    GLFWwindow* window = glfwCreateWindow(width, height, "TBO Demo", NULL, NULL);
+    f32 xScale, yScale;
+    getRetinaScaler(&xScale, &yScale);
+
+    std::printf("Retina Sacler [%.2g, %.2g]", xScale, yScale);
+
+    GLFWwindow* window = glfwCreateWindow(width / xScale, height / yScale, "TBO Demo", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
