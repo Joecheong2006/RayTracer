@@ -88,7 +88,7 @@ void main() {
 
 static int width = 1640, height = 1280;
 
-static void getRetinaScaler(f32* xScale, f32* yScale) {
+static void getDPIScaler(f32* xScale, f32* yScale) {
     GLFWwindow* temp = glfwCreateWindow(1, 1, "", NULL, NULL);
     glfwGetWindowContentScale(temp, xScale, yScale);
     glfwDestroyWindow(temp);
@@ -116,7 +116,7 @@ int main() {
 #endif
 
     f32 xScale, yScale;
-    getRetinaScaler(&xScale, &yScale);
+    getDPIScaler(&xScale, &yScale);
 
     std::printf("Retina Sacler [%.2g, %.2g]", xScale, yScale);
 
