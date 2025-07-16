@@ -3,6 +3,9 @@ project(raytracer)
 
 set(CMAKE_CXX_STANDARD 11)
 
+# === Optional ===
+# set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 include_directories(${CMAKE_SOURCE_DIR}/lib/glad/include)
 include_directories(${CMAKE_SOURCE_DIR}/lib/glm)
 include_directories(${CMAKE_SOURCE_DIR}/lib)
