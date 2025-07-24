@@ -40,12 +40,9 @@ out vec4 fragColor;
 in vec2 uv;
 
 uniform sampler2D screenTexture;
-uniform samplerBuffer buf;
 
 void main() {
     vec3 color = texture(screenTexture, uv).rgb;
-    vec4 bufColor = vec4(texelFetch(buf, 0).r, texelFetch(buf, 1).r, texelFetch(buf, 2).r, texelFetch(buf, 3).r);
-    color *= bufColor.rgb;
     color = pow(color, vec3(1.0 / 2.2));
     fragColor = vec4(color, 1.0);
 }
@@ -80,9 +77,12 @@ const char *fragmentShaderSource = R"(
 out vec4 fragColor;
 
 in vec2 uv;
+uniform samplerBuffer buf;
 
 void main() {
-    fragColor = vec4(uv, 1.0, 1.0);
+    vec4 bufColor = texelFetch(buf, 0);
+    vec3 color = vec3(uv, 1.0) * bufColor.rgb;
+    fragColor = vec4(color, 1.0);
 }
 )";
 
@@ -138,7 +138,7 @@ int main() {
     {
         // Initialize TBO
         f32 data[] = { 1.0f, 0.0f, 1.0f, 1.0f };
-        gl::TextureBuffer tbo(data, sizeof(data), GL_STATIC_DRAW, GL_R32F);
+        gl::TextureBuffer tbo(data, sizeof(data), GL_STATIC_DRAW, GL_RGB32F);
 
         // Initialize Ractangle
         gl::VertexArray vao;
@@ -162,8 +162,8 @@ int main() {
         gl::Framebuffer screenFB;
 
         gl::Texture2D::Construct con;
-        con.width = 80;
-        con.height = 60;
+        con.width = 25;
+        con.height = 20;
         con.style = GL_NEAREST;
         con.format = GL_RGBA;
         con.internal = GL_RGBA16F;
@@ -209,6 +209,7 @@ int main() {
             // Render scene
             vao.bind();
             shader.bind();
+            shader.setUniform1i("buf", 0);
             glDrawElements(GL_TRIANGLES, ibo.count(), GL_UNSIGNED_INT, 0);
 
             screenFB.unbind();
@@ -221,7 +222,6 @@ int main() {
             screenTexture.bind(0);
             quadShader.setUniform1i("screenTexture", 0);
             tbo.bind(1);
-            quadShader.setUniform1i("buf", 1);
             glDrawElements(GL_TRIANGLES, quadIbo.count(), GL_UNSIGNED_INT, 0);
 
             // Update Data
