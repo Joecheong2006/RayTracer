@@ -1,6 +1,6 @@
 # RayTracer
-This is a upgrade for my another project [raytracing](https://github.com/Joecheong2006/raytracing)
+This project is a upgrade for my honor project [raytracing](https://github.com/Joecheong2006/raytracing)
 
 ## Upgrade
-* Support OpenGL 3.3 using TBO
+* Support OpenGL 3.3 using TBO since the original only support OpenGL Version >= 4.3
 * Switch to CMake with support for windows, Mac, and Linux
