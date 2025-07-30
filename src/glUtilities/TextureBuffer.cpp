@@ -16,13 +16,24 @@ namespace gl {
     }
 
     TextureBuffer::~TextureBuffer() {
-        GLCALL(glGenBuffers(1, &m_tbo));
-        GLCALL(glGenTextures(1, &m_tboTexture));
+        GLCALL(glDeleteBuffers(1, &m_tbo));
+        GLCALL(glDeleteTextures(1, &m_tboTexture));
     }
 
-    void TextureBuffer::setBuffer(const void *data, i32 size) {
+    void TextureBuffer::setBuffer(const void *data, i32 size, i32 usage, i32 internalFormat) {
         GLCALL(glBindBuffer(GL_TEXTURE_BUFFER, m_tbo));
+
+        if (usage) {
+            m_usage = usage;
+        }
+
         GLCALL(glBufferData(GL_TEXTURE_BUFFER, size, data, m_usage));
+
+        if (internalFormat) {
+            m_internalFormat = internalFormat;
+        }
+
+        GLCALL(glTexBuffer(GL_TEXTURE_BUFFER, m_internalFormat, m_tbo););
         m_size = size;
     }
 
