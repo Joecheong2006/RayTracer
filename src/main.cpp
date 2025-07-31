@@ -3,6 +3,10 @@
 #include <glfw/glfw3.h>
 #include <iostream>
 
+#include "RayScene.h"
+#include "RayTracer.h"
+#include "TraceableObject.h"
+
 #include "glUtilities/ShaderProgram.h"
 #include "glUtilities/VertexArray.h"
 #include "glUtilities/VertexBufferLayout.h"
@@ -10,15 +14,17 @@
 #include "glUtilities/IndexBuffer.h"
 #include "glUtilities/Texture2D.h"
 #include "glUtilities/Framebuffer.h"
-#include "glUtilities/TextureBuffer.h"
-
-#include <cmath> // for std:floor and std::sin
 
 static f32 quadVertices[] = {
      1.0f,  1.0f,
     -1.0f,  1.0f,
     -1.0f, -1.0f,
      1.0f, -1.0f,
+};
+
+static u32 indices[] = {
+    0, 1, 2,
+    0, 3, 2,
 };
 
 const char *quadVertexShaderSource = R"(
@@ -43,50 +49,18 @@ uniform sampler2D screenTexture;
 
 void main() {
     vec3 color = texture(screenTexture, uv).rgb;
+
+    if (any(isnan(color)) || any(isinf(color)) || any(lessThan(color, vec3(0.0)))) {
+        fragColor = vec4(0.0, 2.0, 0.0, 1.0);
+        return;
+    }
+
     color = pow(color, vec3(1.0 / 2.2));
     fragColor = vec4(color, 1.0);
 }
 )";
 
-static f32 vertices[] = {
-     0.5f,  0.5f,
-    -0.5f,  0.5f,
-    -0.5f, -0.5f,
-     0.5f, -0.5f,
-};
-
-static u32 indices[] = {
-    0, 1, 2,
-    0, 3, 2,
-};
-
-const char *vertexShaderSource = R"(
-#version 330 core
-layout (location = 0) in vec2 aPos;
-
-out vec2 uv;
-
-void main() {
-    gl_Position = vec4(aPos, 0, 1.0);
-    uv = aPos + vec2(0.5);
-}
-)";
-
-const char *fragmentShaderSource = R"(
-#version 330 core
-out vec4 fragColor;
-
-in vec2 uv;
-uniform samplerBuffer buf;
-
-void main() {
-    vec4 bufColor = texelFetch(buf, 0);
-    vec3 color = vec3(uv, 1.0) * bufColor.rgb;
-    fragColor = vec4(color, 1.0);
-}
-)";
-
-static int width = 1640, height = 1280;
+static int width = 2560, height = 1640;
 
 static void getDPIScaler(f32* xScale, f32* yScale) {
     GLFWwindow* temp = glfwCreateWindow(1, 1, "", NULL, NULL);
@@ -94,7 +68,7 @@ static void getDPIScaler(f32* xScale, f32* yScale) {
     glfwDestroyWindow(temp);
 }
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+static void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
     ::width = width;
     ::height = height;
@@ -118,9 +92,9 @@ int main() {
     f32 xScale, yScale;
     getDPIScaler(&xScale, &yScale);
 
-    std::printf("Retina Sacler [%.2g, %.2g]", xScale, yScale);
+    std::printf("Retina Sacler [%.2g, %.2g]\n", xScale, yScale);
 
-    GLFWwindow* window = glfwCreateWindow(width / xScale, height / yScale, "TBO Demo", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(width / xScale, height / yScale, "Ray Tracer Demo - Spheres", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -136,38 +110,52 @@ int main() {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     {
-        // Initialize TBO
-        f32 data[] = { 1.0f, 0.0f, 1.0f, 1.0f };
-        gl::TextureBuffer tbo(data, sizeof(data), GL_STATIC_DRAW, GL_RGB32F);
+        // Initialize RayTracer
+        Camera camera;
+        camera.rayPerPixel = 9;
+        camera.bounces = 8;
+        camera.fov = 60;
+        camera.resolution = { width * 0.5, height * 0.5 };
+        camera.pitch = -25;
+        camera.position = { 0, 0.35, 0.13 };
+        camera.updateDirection();
 
-        // Initialize Ractangle
-        gl::VertexArray vao;
+        RayTracer raytracer;
+        raytracer.initialize(camera);
 
-        gl::ShaderProgram shader;
-        shader.attachShaderCode(GL_VERTEX_SHADER, vertexShaderSource);
-        shader.attachShaderCode(GL_FRAGMENT_SHADER, fragmentShaderSource);
-        shader.link();
-        shader.bind();
+        // Initialize RayScene
+        RayScene scene;
+        scene.initialize(camera);
 
-        gl::VertexBuffer vbo(vertices, sizeof(vertices), GL_STATIC_DRAW);
-        gl::IndexBuffer ibo(indices, sizeof(indices) / sizeof(u32), GL_STATIC_DRAW);
-
+        // Set up Scene
         {
-            gl::VertexBufferLayout layout;
-            layout.add<f32>(2);
-            vao.applyBufferLayout(layout);
+            Material m;
+            scene.addObject<Sphere>(m, glm::vec3{ 0, 0, 1 }, 0.12);
+
+            scene.addObject<Sphere>(m, glm::vec3{ 0, -400 - 0.2, 1 }, 400);
+
+            float l = 0.3;
+
+            m.emissionColor = { 1, 0.2, 0.2 };
+            m.emissionStrength = 140;
+            scene.addObject<Sphere>(m, glm::vec3{ l, 0.5, 1.0 - l }, 0.03);
+
+            m.emissionColor = { 0.2, 0.2, 1 };
+            scene.addObject<Sphere>(m, glm::vec3{ -l, 0.5, 1.0 - l }, 0.03);
+
+            m.emissionColor = { 0.2, 1.0, 0.2 };
+            scene.addObject<Sphere>(m, glm::vec3{ 0, 0.5, 1 + l * sqrt(2) - 0.1 }, 0.03);
+
+            m.emissionColor = { 1, 1, 1 };
+            m.emissionStrength = 1;
+            // scene.addObject<Sphere>(m, glm::vec3{ 0, 6, 30 }, 10);
         }
 
-        // Initialize Framebuffer
-        gl::Framebuffer screenFB;
+        scene.submit(); // submit scene to GPU
 
-        gl::Texture2D::Construct con;
-        con.width = 25;
-        con.height = 20;
-        con.style = GL_NEAREST;
-        con.format = GL_RGBA;
-        con.internal = GL_RGBA16F;
-        gl::Texture2D screenTexture = gl::Texture2D(con);
+        // Initialize Framebuffer
+        auto &screenTexture = raytracer.getCurrentFrame();
+        gl::Framebuffer screenFB;
         screenFB.attachTexture(screenTexture);
 
         if (!screenFB.isCompleted()) {
@@ -202,15 +190,24 @@ int main() {
                 glfwSetWindowShouldClose(window, true);
 
             // Bind screen framebuffer
-            screenFB.bind();
-            glViewport(0, 0, screenTexture.getWidth(), screenTexture.getHeight());
-            glClear(GL_COLOR_BUFFER_BIT);
 
-            // Render scene
-            vao.bind();
-            shader.bind();
-            shader.setUniform1i("buf", 0);
-            glDrawElements(GL_TRIANGLES, ibo.count(), GL_UNSIGNED_INT, 0);
+            double previous = glfwGetTime();
+            screenFB.bind();
+                glViewport(0, 0, screenTexture.getWidth(), screenTexture.getHeight());
+                glClear(GL_COLOR_BUFFER_BIT);
+
+                // Render scene
+                quadVao.bind();
+                raytracer.renderToTexture(scene);
+                glDrawElements(GL_TRIANGLES, quadIbo.count(), GL_UNSIGNED_INT, 0);
+
+                // Bind to next frame
+                screenTexture = raytracer.getCurrentFrame();
+                screenFB.attachTexture(screenTexture);
+
+                if (!screenFB.isCompleted()) {
+                    return -1;
+                }
 
             screenFB.unbind();
 
@@ -221,21 +218,14 @@ int main() {
             quadShader.bind();
             screenTexture.bind(0);
             quadShader.setUniform1i("screenTexture", 0);
-            tbo.bind(1);
             glDrawElements(GL_TRIANGLES, quadIbo.count(), GL_UNSIGNED_INT, 0);
 
-            // Update Data
-            [&data](float t) {
-                t = t * 0.5 + 0.5 - std::floor(t * 0.5 + 0.5);
-                data[0] = 0.5f + 0.5f * std::sin(2.0f * 3.14159265f * (t + 0.0f));
-                data[1] = 0.5f + 0.5f * std::sin(2.0f * 3.14159265f * (t + 0.33f));
-                data[2] = 0.5f + 0.5f * std::sin(2.0f * 3.14159265f * (t + 0.66f));
-            }(std::sin(glfwGetTime() * 0.3));
-
-            // Update TBO data
-            tbo.updateBuffer(data, 0, 3 * sizeof(f32));
-
             glfwSwapBuffers(window);
+
+            double dt = (glfwGetTime() - previous);
+            std::string title = "       " + std::to_string(raytracer.getFrameCount()) + "      " + std::to_string(dt * 1000);
+            glfwSetWindowTitle(window, title.c_str());
+
             glfwPollEvents();
         }
     }
