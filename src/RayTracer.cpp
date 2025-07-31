@@ -497,7 +497,6 @@ void RayTracer::initialize(Camera &camera) {
     con.style = GL_NEAREST;
     con.format = GL_RGBA;
     con.internal = GL_RGBA32F;
-    gl::Texture2D screenTexture = gl::Texture2D(con);
 
     m_frames[0] = std::make_unique<gl::Texture2D>(con);
     m_frames[1] = std::make_unique<gl::Texture2D>(con);
