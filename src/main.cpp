@@ -193,8 +193,8 @@ int main() {
 
             double previous = glfwGetTime();
             screenFB.bind();
+
                 glViewport(0, 0, screenTexture.getWidth(), screenTexture.getHeight());
-                glClear(GL_COLOR_BUFFER_BIT);
 
                 // Render scene
                 quadVao.bind();
