@@ -60,7 +60,7 @@ void main() {
 }
 )";
 
-static int width = 2560, height = 1640;
+static int width = 2048, height = 1280;
 
 static void getDPIScaler(f32* xScale, f32* yScale) {
     GLFWwindow* temp = glfwCreateWindow(1, 1, "", NULL, NULL);
