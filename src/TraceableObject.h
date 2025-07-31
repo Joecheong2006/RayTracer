@@ -3,6 +3,8 @@
 #include "util.h"
 #include "glm/glm.hpp"
 
+#include <vector>
+
 enum class TraceableType {
     Sphere,
     Quad,
