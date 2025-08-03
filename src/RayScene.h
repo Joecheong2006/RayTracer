@@ -50,7 +50,7 @@ public:
     void bindMaterials(i32 slot) const;
     void submit();
     
-    u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
+    inline u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
 
     const Camera &getCamera() const { return m_camera; }
 
