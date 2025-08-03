@@ -94,7 +94,7 @@ int main() {
 
     std::printf("Retina Sacler [%.2g, %.2g]\n", xScale, yScale);
 
-    GLFWwindow* window = glfwCreateWindow(width / xScale, height / yScale, "Ray Tracer Demo - Spheres", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(width / xScale, height / yScale, "Ray Tracer Demo - Roughness and Metallic", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -110,16 +110,17 @@ int main() {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     {
-        // Initialize RayTracer
+        // Initialize Camera
         Camera camera;
-        camera.rayPerPixel = 9;
+        camera.rayPerPixel = 4;
         camera.bounces = 8;
         camera.fov = 60;
         camera.resolution = { width * 0.5, height * 0.5 };
-        camera.pitch = -25;
-        camera.position = { 0, 0.35, 0.13 };
+        camera.pitch = -50;
+        camera.position = { 0, 1.5, 0.3 };
         camera.updateDirection();
 
+        // Initialize RayTracer
         RayTracer raytracer;
         raytracer.initialize(camera);
 
@@ -130,25 +131,23 @@ int main() {
         // Set up Scene
         {
             Material m;
-            scene.addObject<Sphere>(m, glm::vec3{ 0, 0, 1 }, 0.12);
 
-            scene.addObject<Sphere>(m, glm::vec3{ 0, -400 - 0.2, 1 }, 400);
+            m.albedo = glm::vec3(.65, .05, .05);
+            for (int i = 0; i <= 10; ++i) {
+                for (int j = 0; j <= 1; ++j) {
+                    m.roughness = i / 10.0;
+                    m.metallic = j * (1 - i / 10.0);
+                    scene.addObject<Sphere>(
+                            m, glm::vec3{i * 0.3 - 10 * 0.5 * 0.3, 0, 2 - j * 0.5}, 0.1);
+                }
+            }
 
-            float l = 0.3;
-
-            m.emissionColor = { 1, 0.2, 0.2 };
-            m.emissionStrength = 140;
-            scene.addObject<Sphere>(m, glm::vec3{ l, 0.5, 1.0 - l }, 0.03);
-
-            m.emissionColor = { 0.2, 0.2, 1 };
-            scene.addObject<Sphere>(m, glm::vec3{ -l, 0.5, 1.0 - l }, 0.03);
-
-            m.emissionColor = { 0.2, 1.0, 0.2 };
-            scene.addObject<Sphere>(m, glm::vec3{ 0, 0.5, 1 + l * sqrt(2) - 0.1 }, 0.03);
+            m = Material();
+            scene.addObject<Sphere>(m, glm::vec3{ 0, -400 - 0.1, 1 }, 400);
 
             m.emissionColor = { 1, 1, 1 };
-            m.emissionStrength = 1;
-            // scene.addObject<Sphere>(m, glm::vec3{ 0, 6, 30 }, 10);
+            m.emissionStrength = 100;
+            scene.addObject<Sphere>(m, glm::vec3{ -5, 8, -15 }, 1.5);
         }
 
         scene.submit(); // submit scene to GPU
