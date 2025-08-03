@@ -342,10 +342,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         hit(r, info);
 
         if (info.t >= 0xffffff) {
-            // float t = clamp(r.direction.y + 0.5, 0, 1);
             float t = r.direction.y * 0.5 + 0.5;
-            vec3 envColor = (1.0 - t) * vec3(1) + t * vec3(0.5, 0.7, 1.0);
-            // incomingLight += envColor * rayColor;
+            vec3 envColor = (1.0 - t) * vec3(1) + t * skyColor;
+            incomingLight += envColor * rayColor;
             return incomingLight;
         }
 
@@ -385,11 +384,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float VoH = clamp(dot(V, H), 0.0, 1.0);
         float LoV = clamp(dot(L, V), 0.0, 1.0);
 
-        if (NoV < 1e-5 ||
-            NoL < 1e-5 ||
-            NoH < 1e-5 ||
-            VoH < 1e-5 ||
-            LoV < 1e-5) {
+        if (NoL < 1e-8) {
             break;
         }
 
@@ -404,16 +399,8 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 
         float pdf_used = pdf_sss + pdf_spec + pdf_diff;
 
-        if (pdf_used< 1e-5) {
-            break;
-        }
-
         float denom = pdf_diff * pdf_diff + pdf_spec * pdf_spec + pdf_sss * pdf_sss;
-        if (denom < 1e-5) {
-            break;
-        }
-
-        float rdenom = 1.0 / denom;
+        float rdenom = 1.0 / max(denom, 1e-8);
 
         // Combine weighted BRDFs (all lobes)
         vec3 brdf_total = ((pdf_spec * pdf_spec) * brdf_spec
@@ -421,7 +408,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                         + (pdf_sss * pdf_sss) * brdf_sss) * rdenom;
 
         // Final contribution
-        vec3 contribution = (brdf_total * NoL) / pdf_used;
+        vec3 contribution = (brdf_total * NoL) / max(pdf_used, 1e-8);
 
         // Emission (add before rayColor is updated)
         if (mat.emissionStrength > 0.0)
@@ -518,7 +505,7 @@ void RayTracer::renderToTexture(RayScene &scene) {
 
     m_shader->setUniform1i("objectCount", scene.getObjectsCount());
     m_shader->setUniform1u("frameCount", m_frameCount);
-    m_shader->setUniform3f("skyColor", glm::vec3(0.5, 0.1, 1.0));
+    m_shader->setUniform3f("skyColor", glm::vec3(0.5, 0.7, 1.0));
 
     m_shader->setUniform1f("camera.fov", camera.fov);
     m_shader->setUniform2f("camera.resolution", camera.resolution);
