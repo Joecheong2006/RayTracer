@@ -65,3 +65,11 @@ void RayScene::bindMaterials(i32 slot) const {
     m_materialsTexBuffer->bind(slot);
 }
 
+void RayScene::setSkyColor(glm::vec3 skyColor) {
+    m_skyColor = skyColor;
+}
+
+glm::vec3 RayScene::getSkyColor() const {
+    return m_skyColor;
+}
+

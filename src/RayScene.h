@@ -27,6 +27,8 @@ class RayScene {
 private:
     Camera m_camera;
 
+    glm::vec3 m_skyColor = { 0.5, 0.7, 1.0 };
+
     // Materials
     std::vector<Material> m_materials;
     std::unique_ptr<gl::TextureBuffer> m_materialsTexBuffer;
@@ -49,6 +51,9 @@ public:
     void bindObjects(i32 slot) const;
     void bindMaterials(i32 slot) const;
     void submit();
+
+    void setSkyColor(glm::vec3 skyColor);
+    glm::vec3 getSkyColor() const;
     
     inline u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
 
