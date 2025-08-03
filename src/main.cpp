@@ -155,13 +155,6 @@ int main() {
         // Initialize Framebuffer
         auto &screenTexture = raytracer.getCurrentFrame();
         gl::Framebuffer screenFB;
-        screenFB.attachTexture(screenTexture);
-
-        if (!screenFB.isCompleted()) {
-            return -1;
-        }
-
-        screenFB.unbind();
 
         // Initialize screen quad
         gl::VertexArray quadVao;
@@ -189,9 +182,13 @@ int main() {
                 glfwSetWindowShouldClose(window, true);
 
             // Bind screen framebuffer
-
             double previous = glfwGetTime();
             screenFB.bind();
+
+                // Bind to next frame
+                screenTexture = raytracer.getCurrentFrame();
+                screenFB.attachTexture(screenTexture);
+                ASSERT(screenFB.isCompleted());
 
                 glViewport(0, 0, screenTexture.getWidth(), screenTexture.getHeight());
 
@@ -199,14 +196,6 @@ int main() {
                 quadVao.bind();
                 raytracer.renderToTexture(scene);
                 glDrawElements(GL_TRIANGLES, quadIbo.count(), GL_UNSIGNED_INT, 0);
-
-                // Bind to next frame
-                screenTexture = raytracer.getCurrentFrame();
-                screenFB.attachTexture(screenTexture);
-
-                if (!screenFB.isCompleted()) {
-                    return -1;
-                }
 
             screenFB.unbind();
 
