@@ -10,10 +10,6 @@
 #include "TraceableObject.h"
 
 #include "glUtilities/ShaderProgram.h"
-#include "glUtilities/VertexArray.h"
-#include "glUtilities/VertexBufferLayout.h"
-#include "glUtilities/VertexBuffer.h"
-#include "glUtilities/IndexBuffer.h"
 #include "glUtilities/Texture2D.h"
 #include "glUtilities/Framebuffer.h"
 
