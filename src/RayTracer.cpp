@@ -21,6 +21,7 @@ static const char *fragmentShaderSource = R"(
 out vec4 fragColor;
 
 #define SeedType uint
+#define MIN_DENOMINATOR 1e-8
 
 const float PI = 3.1415926;
 const float INV_PI = 1.0 / PI;
@@ -173,14 +174,13 @@ float NDF_GGX(float NoH, float roughness) {
     float a2 = a * a;
     float demon = NoH * NoH * (a2 - 1.0) + 1.0;
     float demon2 = demon * demon;
-    // return a2 / demon2 * INV_PI;
-    return demon2 < 1e-6 ? 1.0 : a2 / demon2 * INV_PI;
+    return demon2 < MIN_DENOMINATOR ? 1.0 : a2 / demon2 * INV_PI;
 }
 
 float geometrySchlickGGX(float NoV, float roughness) {
     float a = roughness * roughness;
     float k = a * 0.5;
-    return NoV / max(NoV * (1.0 - k) + k, 1e-5);
+    return NoV / max(NoV * (1.0 - k) + k, MIN_DENOMINATOR);
 }
 
 float geometrySmith(float NoV, float NoL, float roughness) {
@@ -193,7 +193,7 @@ float geometrySmith(float NoV, float NoL, float roughness) {
 float specularPdf(float NoH, float VoH, float roughness) {
     float a = roughness * roughness;
     float D = NDF_GGX(NoH, roughness);
-    return D * NoH / max(4.0 * VoH, 1e-5);
+    return D * NoH / max(4.0 * VoH, MIN_DENOMINATOR);
 }
 
 vec3 shadeSpecular(in Material mat, float NoV, float NoL, float NoH, float VoH) {
@@ -201,7 +201,7 @@ vec3 shadeSpecular(in Material mat, float NoV, float NoL, float NoH, float VoH) 
     vec3 F = fresnelSchlick(VoH, F0);
     float D = NDF_GGX(NoH, mat.roughness);
     float G = geometrySmith(NoV, NoL, mat.roughness);
-    return (D * G * F) / max(4.0 * NoV * NoL, 1e-5);
+    return (D * G * F) / max(4.0 * NoV * NoL, MIN_DENOMINATOR);
 }
 
 // === Diffuse ===
@@ -384,7 +384,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float VoH = clamp(dot(V, H), 0.0, 1.0);
         float LoV = clamp(dot(L, V), 0.0, 1.0);
 
-        if (NoL < 1e-8) {
+        if (NoL < MIN_DENOMINATOR) {
             break;
         }
 
@@ -400,7 +400,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float pdf_used = pdf_sss + pdf_spec + pdf_diff;
 
         float denom = pdf_diff * pdf_diff + pdf_spec * pdf_spec + pdf_sss * pdf_sss;
-        float rdenom = 1.0 / max(denom, 1e-8);
+        float rdenom = 1.0 / max(denom, MIN_DENOMINATOR);
 
         // Combine weighted BRDFs (all lobes)
         vec3 brdf_total = ((pdf_spec * pdf_spec) * brdf_spec
@@ -408,7 +408,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                         + (pdf_sss * pdf_sss) * brdf_sss) * rdenom;
 
         // Final contribution
-        vec3 contribution = (brdf_total * NoL) / max(pdf_used, 1e-8);
+        vec3 contribution = (brdf_total * NoL) / max(pdf_used, MIN_DENOMINATOR);
 
         // Emission (add before rayColor is updated)
         if (mat.emissionStrength > 0.0)
