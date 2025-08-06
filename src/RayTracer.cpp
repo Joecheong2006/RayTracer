@@ -298,6 +298,46 @@ bool hitSphere(in Sphere sphere, in Ray r, float max, inout HitInfo info) {
     return true;
 }
 
+// Quad Functions
+Quad loadQuad(inout int objectIndex) {
+    Quad result;
+    result.q = texelFetch(objectsBuffer, objectIndex++).xyz;
+    result.u = texelFetch(objectsBuffer, objectIndex++).xyz;
+    result.v = texelFetch(objectsBuffer, objectIndex++).xyz;
+    return result;
+}
+
+bool hitQuad(in Quad quad, in Ray r, float max, inout HitInfo info) {
+    // Precompute normal and its squared length
+    vec3 normal = cross(quad.u, quad.v);
+    float denom = dot(normal, r.direction);
+    float nn = dot(normal, normal); // avoid redundant computation
+
+    // Backface cull or skip parallel rays
+    if (abs(denom) < 1e-8) return false;
+
+    // Solve plane equation: dot(N, X) = dot(N, P)
+    float t = dot(normal, quad.q - r.origin) / denom;
+    if (t <= 1e-3 || t >= max) return false;
+
+    vec3 hitPos = rayAt(r, t);
+    vec3 rel = hitPos - quad.q;
+
+    // Use barycentric-style check in plane coordinates
+    float alpha = dot(normal, cross(rel, quad.v)) / nn;
+    float beta  = dot(normal, cross(quad.u, rel)) / nn;
+
+    // Bounds check inside the quad (0 ≤ alpha, beta ≤ 1)
+    if (alpha < 0.0 || alpha > 1.0 || beta < 0.0 || beta > 1.0) return false;
+
+    // Populate hit info
+    info.t = t;
+    info.point = hitPos;
+    info.normal = denom < 0.0 ? normalize(normal) : -normalize(normal); // Ensure it's facing opposite the ray
+
+    return true;
+}
+
 void hit(in Ray r, inout HitInfo track) {
     HitInfo tmp;
 
@@ -319,6 +359,9 @@ void hit(in Ray r, inout HitInfo track) {
                 hitted = hitSphere(sphere, r, closest, tmp);
                 break;
             case 1:
+                Quad quad = loadQuad(objectIndex);
+                quad.materialIndex = tmp.materialIndex;
+                hitted = hitQuad(quad, r, closest, tmp);
                 break;
             default:
                 break;

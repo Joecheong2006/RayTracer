@@ -47,3 +47,14 @@ struct Sphere : public TraceableObject {
 
 };
 
+struct Quad : public TraceableObject {
+    Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v)
+        : TraceableObject(TraceableType::Quad)
+        , q(q), u(u), v(v)
+    {}
+
+    virtual void write(std::vector<glm::vec4> &buffer) const override;
+
+    glm::vec3 q, u, v;
+};
+
