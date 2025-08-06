@@ -314,11 +314,11 @@ bool hitQuad(in Quad quad, in Ray r, float max, inout HitInfo info) {
     float nn = dot(normal, normal); // avoid redundant computation
 
     // Backface cull or skip parallel rays
-    if (abs(denom) < 1e-8) return false;
+    if (abs(denom) < MIN_DENOMINATOR) return false;
 
     // Solve plane equation: dot(N, X) = dot(N, P)
     float t = dot(normal, quad.q - r.origin) / denom;
-    if (t <= 1e-3 || t >= max) return false;
+    if (t <= 1e-8 || t >= max) return false;
 
     vec3 hitPos = rayAt(r, t);
     vec3 rel = hitPos - quad.q;
