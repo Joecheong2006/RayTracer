@@ -18,7 +18,7 @@ void Sphere::write(std::vector<glm::vec4> &buffer) const {
 
 void Quad::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
-    buffer.push_back({ q, 0 });
+    buffer.push_back({ q, cullFace });
     buffer.push_back({ u, 0 });
     buffer.push_back({ v, 0 });
 }

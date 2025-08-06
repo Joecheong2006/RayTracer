@@ -48,13 +48,14 @@ struct Sphere : public TraceableObject {
 };
 
 struct Quad : public TraceableObject {
-    Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v)
+    Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v, bool cullFace = false)
         : TraceableObject(TraceableType::Quad)
-        , q(q), u(u), v(v)
+        , q(q), u(u), v(v), cullFace(cullFace)
     {}
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
 
     glm::vec3 q, u, v;
+    bool cullFace;
 };
 

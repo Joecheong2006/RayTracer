@@ -65,6 +65,7 @@ struct Sphere {
 
 struct Quad {
     vec3 q, u, v;
+    bool cullFace;
     int materialIndex;
 };
 
@@ -301,9 +302,11 @@ bool hitSphere(in Sphere sphere, in Ray r, float max, inout HitInfo info) {
 // Quad Functions
 Quad loadQuad(inout int objectIndex) {
     Quad result;
-    result.q = texelFetch(objectsBuffer, objectIndex++).xyz;
+    vec4 buf = texelFetch(objectsBuffer, objectIndex++);
+    result.q = buf.xyz;
     result.u = texelFetch(objectsBuffer, objectIndex++).xyz;
     result.v = texelFetch(objectsBuffer, objectIndex++).xyz;
+    result.cullFace = bool(buf.w);
     return result;
 }
 
@@ -360,6 +363,11 @@ void hit(in Ray r, inout HitInfo track) {
                 break;
             case 1:
                 Quad quad = loadQuad(objectIndex);
+
+                if (quad.cullFace && dot(r.direction, cross(quad.u, quad.v)) > 0) {
+                    break;
+                }
+
                 quad.materialIndex = tmp.materialIndex;
                 hitted = hitQuad(quad, r, closest, tmp);
                 break;
