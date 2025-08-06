@@ -38,8 +38,18 @@ uniform sampler2D screenTexture;
 void main() {
     vec3 color = texture(screenTexture, uv).rgb;
 
-    if (any(isnan(color)) || any(isinf(color)) || any(lessThan(color, vec3(0.0)))) {
-        fragColor = vec4(0.0, 2.0, 0.0, 1.0);
+    if (any(isnan(color))) {
+        fragColor = vec4(1.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
+    if (any(lessThan(color, vec3(0.0)))) {
+        fragColor = vec4(0.0, 1.0, 0.0, 1.0);
+        return;
+    }
+
+    if (any(isinf(color))) {
+        fragColor = vec4(0.0, 0.0, 1.0, 1.0);
         return;
     }
 
