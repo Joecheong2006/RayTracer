@@ -17,27 +17,17 @@
 #include "glUtilities/Texture2D.h"
 #include "glUtilities/Framebuffer.h"
 
-static f32 quadVertices[] = {
-     1.0f,  1.0f,
-    -1.0f,  1.0f,
-    -1.0f, -1.0f,
-     1.0f, -1.0f,
-};
-
-static u32 indices[] = {
-    0, 1, 2,
-    0, 3, 2,
-};
+#include "glUtilities/Quad.h"
 
 const char *quadVertexShaderSource = R"(
 #version 330 core
-layout (location = 0) in vec2 aPos;
+layout (location = 0) in vec3 aPos;
 
 out vec2 uv;
 
 void main() {
-    gl_Position = vec4(aPos, 0, 1.0);
-    uv = aPos * 0.5 + 0.5;
+    gl_Position = vec4(aPos, 1.0);
+    uv = aPos.xy * 0.5 + 0.5;
 }
 )";
 
@@ -160,23 +150,13 @@ int main() {
         gl::Framebuffer screenFB;
 
         // Initialize screen quad
-        gl::VertexArray quadVao;
+        gl::Quad quad;
 
         gl::ShaderProgram quadShader;
         quadShader.attachShaderCode(GL_VERTEX_SHADER, quadVertexShaderSource);
         quadShader.attachShaderCode(GL_FRAGMENT_SHADER, quadFragmentShaderSource);
         quadShader.link();
         quadShader.bind();
-
-        gl::VertexBuffer quadVbo(quadVertices, sizeof(quadVertices), GL_STATIC_DRAW);
-        gl::IndexBuffer quadIbo(indices, sizeof(indices) / sizeof(u32), GL_STATIC_DRAW);
-
-        {
-            gl::VertexBufferLayout layout;
-            layout.add<f32>(2);
-            quadVao.applyBufferLayout(layout);
-        }
-        quadVao.unbind();
 
         glClearColor(0.01f, 0.011f, 0.01f, 1.0f);
 
@@ -196,20 +176,20 @@ int main() {
                 glViewport(0, 0, screenTexture.getWidth(), screenTexture.getHeight());
 
                 // Render scene
-                quadVao.bind();
+                quad.bind();
                 raytracer.renderToTexture(scene);
-                glDrawElements(GL_TRIANGLES, quadIbo.count(), GL_UNSIGNED_INT, 0);
+                glDrawElements(GL_TRIANGLES, quad.getCount(), GL_UNSIGNED_INT, 0);
 
             screenFB.unbind();
 
             // Draw screen texture
             glViewport(0, 0, width, height);
             glClear(GL_COLOR_BUFFER_BIT);
-            quadVao.bind();
+            quad.bind();
             quadShader.bind();
             screenTexture.bind(0);
             quadShader.setUniform1i("screenTexture", 0);
-            glDrawElements(GL_TRIANGLES, quadIbo.count(), GL_UNSIGNED_INT, 0);
+            glDrawElements(GL_TRIANGLES, quad.getCount(), GL_UNSIGNED_INT, 0);
 
             glfwSwapBuffers(window);
 
