@@ -143,7 +143,7 @@ int main() {
             }
 
             m = Material();
-            scene.addObject<Sphere>(m, glm::vec3{ 0, -400 - 0.1, 1 }, 400);
+            scene.addObject<Quad>(m, glm::vec3{ -5, -0.1, 0 }, glm::vec3{ 10, 0, 0 }, glm::vec3{ 0, 0, 10 });
 
             m.emissionColor = { 1, 1, 1 };
             m.emissionStrength = 100;
