@@ -2,6 +2,8 @@
 #include <glad/glad.h>
 #include <glfw/glfw3.h>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 
 #include "RayScene.h"
 #include "RayTracer.h"
@@ -92,9 +94,10 @@ int main() {
     f32 xScale, yScale;
     getDPIScaler(&xScale, &yScale);
 
+    const std::string title= "Ray Tracer Demo - Roughness and Metallic";
     std::printf("Retina Sacler [%.2g, %.2g]\n", xScale, yScale);
 
-    GLFWwindow* window = glfwCreateWindow(width / xScale, height / yScale, "Ray Tracer Demo - Roughness and Metallic", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(width / xScale, height / yScale, title.c_str(), NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
@@ -211,8 +214,12 @@ int main() {
             glfwSwapBuffers(window);
 
             double dt = (glfwGetTime() - previous);
-            std::string title = "       " + std::to_string(raytracer.getFrameCount()) + "      " + std::to_string(dt * 1000);
-            glfwSetWindowTitle(window, title.c_str());
+
+            std::stringstream ss;
+            ss << title << '\t' << raytracer.getFrameCount()
+                << '\t' << std::fixed << std::setprecision(2) << dt * 1000.0 << "ms";
+
+            glfwSetWindowTitle(window, ss.str().c_str());
 
             glfwPollEvents();
         }
