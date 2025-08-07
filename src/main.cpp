@@ -110,7 +110,7 @@ int main() {
 
     {
         // Initialize Camera
-        Camera camera;
+        RayCamera camera;
         camera.rayPerPixel = 4;
         camera.bounces = 8;
         camera.fov = 60;

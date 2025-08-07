@@ -522,7 +522,7 @@ void main() {
 }
 )";
 
-void RayTracer::initialize(Camera &camera) {
+void RayTracer::initialize(RayCamera &camera) {
     m_shader = std::make_unique<gl::ShaderProgram>();
     m_shader->attachShaderCode(GL_VERTEX_SHADER, vertexShaderSource);
     m_shader->attachShaderCode(GL_FRAGMENT_SHADER, fragmentShaderSource);

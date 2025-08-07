@@ -4,7 +4,7 @@
 #include "TraceableObject.h"
 #include <glad/glad.h>
 
-void Camera::updateDirection() {
+void RayCamera::updateDirection() {
     glm::vec3 direction;
     direction.x = cos(glm::radians(180 + yaw)) * cos(glm::radians(pitch));
     direction.y = sin(glm::radians(pitch));
@@ -39,7 +39,7 @@ void RayScene::load_objects() {
     }
 }
 
-void RayScene::initialize(Camera &camera) {
+void RayScene::initialize(RayCamera &camera) {
     m_camera = camera;
     m_objectsTexBuffer = std::make_unique<gl::TextureBuffer>(
             nullptr, 0, GL_STATIC_DRAW, GL_RGBA32F);

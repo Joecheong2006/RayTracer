@@ -8,7 +8,7 @@
 #include <vector> // std::vector
 #include <memory> // std::unique_ptr
 
-struct Camera {
+struct RayCamera {
     glm::vec3 position = { 0, 0, 0 };
     f32 yaw = 90, pitch = 0, fov = 45;
 
@@ -25,7 +25,7 @@ struct Camera {
 class RayScene {
     friend class TraceableObject;
 private:
-    Camera m_camera;
+    RayCamera m_camera;
 
     glm::vec3 m_skyColor = { 0.5, 0.7, 1.0 };
 
@@ -47,7 +47,7 @@ private:
 public:
     explicit RayScene() = default;
 
-    void initialize(Camera &camera);
+    void initialize(RayCamera &camera);
     void bindObjects(i32 slot) const;
     void bindMaterials(i32 slot) const;
     void submit();
@@ -57,7 +57,7 @@ public:
     
     inline u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
 
-    const Camera &getCamera() const { return m_camera; }
+    const RayCamera &getCamera() const { return m_camera; }
 
     template <typename T, typename... Args>
     void addObject(const Material &material, Args&&... args) {

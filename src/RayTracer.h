@@ -4,7 +4,7 @@
 
 #include <memory> // std::unique_ptr
 
-struct Camera;
+struct RayCamera;
 class RayScene;
 
 namespace gl {
@@ -22,7 +22,7 @@ private:
 
 public:
     explicit RayTracer() = default;
-    void initialize(Camera &camera);
+    void initialize(RayCamera &camera);
     void renderToTexture(RayScene &scene);
 
     inline gl::Texture2D &getCurrentFrame() const { return *m_frames[m_frameIndex]; }
