@@ -522,7 +522,7 @@ void main() {
 }
 )";
 
-void RayTracer::initialize(RayCamera &camera) {
+void RayTracer::initialize(const RayCamera &camera) {
     m_shader = std::make_unique<gl::ShaderProgram>();
     m_shader->attachShaderCode(GL_VERTEX_SHADER, vertexShaderSource);
     m_shader->attachShaderCode(GL_FRAGMENT_SHADER, fragmentShaderSource);
@@ -540,7 +540,7 @@ void RayTracer::initialize(RayCamera &camera) {
     m_frames[1] = std::make_unique<gl::Texture2D>(con);
 }
 
-void RayTracer::renderToTexture(RayScene &scene) {
+void RayTracer::renderToTexture(const RayScene &scene) {
     auto &camera = scene.getCamera();
 
     m_shader->bind();

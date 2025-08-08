@@ -47,7 +47,7 @@ private:
 public:
     explicit RayScene() = default;
 
-    void initialize(RayCamera &camera);
+    void initialize(const RayCamera &camera);
     void bindObjects(i32 slot) const;
     void bindMaterials(i32 slot) const;
     void submit();

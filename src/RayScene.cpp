@@ -39,7 +39,7 @@ void RayScene::load_objects() {
     }
 }
 
-void RayScene::initialize(RayCamera &camera) {
+void RayScene::initialize(const RayCamera &camera) {
     m_camera = camera;
     m_objectsTexBuffer = std::make_unique<gl::TextureBuffer>(
             nullptr, 0, GL_STATIC_DRAW, GL_RGBA32F);
