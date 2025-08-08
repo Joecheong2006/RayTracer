@@ -5,15 +5,13 @@
 #include <iomanip>
 #include <sstream>
 
-#include "RayScene.h"
-#include "RayTracer.h"
-#include "TraceableObject.h"
-
 #include "glUtilities/ShaderProgram.h"
 #include "glUtilities/Texture2D.h"
 #include "glUtilities/Framebuffer.h"
-
 #include "glUtilities/Quad.h"
+
+#include "TraceableObject.h"
+#include "RayEngine.h"
 
 const char *quadVertexShaderSource = R"(
 #version 330 core
@@ -119,16 +117,13 @@ int main() {
         camera.position = { 0, 1.5, 0.3 };
         camera.updateDirection();
 
-        // Initialize RayTracer
-        RayTracer raytracer;
-        raytracer.initialize(camera);
-
-        // Initialize RayScene
-        RayScene scene;
-        scene.initialize(camera);
+        // Initialize RayEngine
+        RayEngine rayEngine;
+        rayEngine.initialize(camera);
 
         // Set up Scene
         {
+            auto &scene = rayEngine.getScene();
             Material m;
 
             m.albedo = glm::vec3(.65, .05, .05);
@@ -147,17 +142,11 @@ int main() {
             m.emissionColor = { 1, 1, 1 };
             m.emissionStrength = 100;
             scene.addObject<Sphere>(m, glm::vec3{ -5, 8, -15 }, 1.5);
+
+            scene.submit(); // submit scene to GPU
         }
 
-        scene.submit(); // submit scene to GPU
-
-        // Initialize Framebuffer
-        auto &screenTexture = raytracer.getCurrentFrame();
-        gl::Framebuffer screenFB;
-
         // Initialize screen quad
-        gl::Quad quad;
-
         gl::ShaderProgram quadShader;
         quadShader.attachShaderCode(GL_VERTEX_SHADER, quadVertexShaderSource);
         quadShader.attachShaderCode(GL_FRAGMENT_SHADER, quadFragmentShaderSource);
@@ -172,21 +161,11 @@ int main() {
 
             // Bind screen framebuffer
             double previous = glfwGetTime();
-            screenFB.bind();
+            auto &raytracer = rayEngine.getRayTracer();
+            auto &screenTexture = raytracer.getCurrentFrame();
+            rayEngine.render();
 
-                // Bind to next frame
-                screenTexture = raytracer.getCurrentFrame();
-                screenFB.attachTexture(screenTexture);
-                ASSERT(screenFB.isCompleted());
-
-                glViewport(0, 0, screenTexture.getWidth(), screenTexture.getHeight());
-
-                // Render scene
-                quad.bind();
-                raytracer.renderToTexture(scene);
-                glDrawElements(GL_TRIANGLES, quad.getCount(), GL_UNSIGNED_INT, 0);
-
-            screenFB.unbind();
+            auto &quad = rayEngine.getQuad();
 
             // Draw screen texture
             glViewport(0, 0, width, height);
