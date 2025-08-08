@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <glad/glad.h>
 #include <glfw/glfw3.h>
 #include <iostream>
@@ -13,7 +12,7 @@
 #include "TraceableObject.h"
 #include "RayEngine.h"
 
-const char *quadVertexShaderSource = R"(
+const char *screenVertexShaderSource = R"(
 #version 330 core
 layout (location = 0) in vec3 aPos;
 
@@ -25,7 +24,7 @@ void main() {
 }
 )";
 
-const char *quadFragmentShaderSource = R"(
+const char *screenFragmentShaderSource = R"(
 #version 330 core
 out vec4 fragColor;
 
@@ -148,8 +147,8 @@ int main() {
 
         // Initialize screen quad
         gl::ShaderProgram quadShader;
-        quadShader.attachShaderCode(GL_VERTEX_SHADER, quadVertexShaderSource);
-        quadShader.attachShaderCode(GL_FRAGMENT_SHADER, quadFragmentShaderSource);
+        quadShader.attachShaderCode(GL_VERTEX_SHADER, screenVertexShaderSource);
+        quadShader.attachShaderCode(GL_FRAGMENT_SHADER, screenFragmentShaderSource);
         quadShader.link();
         quadShader.bind();
 
