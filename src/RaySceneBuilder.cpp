@@ -20,6 +20,7 @@ void RaySceneBuilder::RoughnessMetallicDemo(RayScene &scene) {
     m.emissionStrength = 100;
     scene.addObject<Sphere>(m, glm::vec3{ -5, 8, -15 }, 1.5);
 }
+
 void RaySceneBuilder::ThreeColorDemo(RayScene &scene) {
     Material m;
     scene.addObject<Sphere>(m, glm::vec3{ 0, 0, 1 }, 0.12);
