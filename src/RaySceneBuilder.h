@@ -3,6 +3,7 @@
 
 struct RaySceneBuilder {
     static void RoughnessMetallicDemo(RayScene &scene);
+    static void ThreeColorDemo(RayScene &scene);
 
 };
 
