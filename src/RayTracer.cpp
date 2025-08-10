@@ -395,7 +395,8 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         if (info.t >= 0xffffff) {
             float t = r.direction.y * 0.5 + 0.5;
             vec3 envColor = (1.0 - t) * vec3(1) + t * skyColor;
-            incomingLight += envColor * rayColor;
+            if (dot(skyColor, skyColor) > 0)
+                incomingLight += envColor * rayColor;
             return incomingLight;
         }
 
