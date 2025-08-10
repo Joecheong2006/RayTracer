@@ -284,9 +284,9 @@ bool hitSphere(in Sphere sphere, in Ray r, float max, inout HitInfo info) {
     float sqrtd = sqrt(discriminant);
     info.t = (-b - sqrtd) / (2.0 * a);
 
-    if (!(info.t > 1e-3 && info.t < max)) {
+    if (info.t <= 1e-8 || info.t >= max) {
         info.t = (-b + sqrtd) / (2.0 * a);
-        if (!(info.t > 0 && info.t < max)) {
+        if (info.t <= 1e-8 || info.t >= max) {
             return false;
         }
     }
@@ -321,7 +321,7 @@ bool hitQuad(in Quad quad, in Ray r, float max, inout HitInfo info) {
 
     // Solve plane equation: dot(N, X) = dot(N, P)
     float t = dot(normal, quad.q - r.origin) / denom;
-    if (t <= 1e-8 || t >= max) return false;
+    if (t < 1e-8 || t > max) return false;
 
     vec3 hitPos = rayAt(r, t);
     vec3 rel = hitPos - quad.q;
