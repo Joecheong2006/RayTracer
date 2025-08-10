@@ -89,7 +89,7 @@ int main() {
     f32 xScale, yScale;
     getDPIScaler(&xScale, &yScale);
 
-    const std::string title= "Ray Tracer Demo - Roughness and Metallic";
+    const std::string title= "Ray Tracer Demo - Cornell Box";
     std::printf("Retina Sacler [%.2g, %.2g]\n", xScale, yScale);
 
     GLFWwindow *window = glfwCreateWindow(width / xScale, height / yScale, title.c_str(), NULL, NULL);
@@ -110,12 +110,12 @@ int main() {
     {
         // Initialize Camera
         RayCamera camera;
-        camera.rayPerPixel = 4;
-        camera.bounces = 8;
+        camera.rayPerPixel = 1;
+        camera.bounces = 15;
         camera.fov = 60;
         camera.resolution = { width * 0.5, height * 0.5 };
-        camera.pitch = -50;
-        camera.position = { 0, 1.5, 0.3 };
+        camera.pitch = 0;
+        camera.position = { 0, 1, -1.76 };
         camera.updateDirection();
 
         // Initialize RayEngine
@@ -125,7 +125,22 @@ int main() {
         // Set up Scene
         {
             auto &scene = rayEngine.getScene();
-            RaySceneBuilder::RoughnessMetallicDemo(scene);
+            scene.setSkyColor({});
+
+            RaySceneBuilder::BuildCornellBox(scene, glm::vec3{ -1, 0, 0 }, 2, 0.7);
+
+            Material m;
+
+            // Right Box
+            RaySceneBuilder::BuildBox(scene, m,
+                    glm::vec3{ 0.54, 0.54, 0.54 }, glm::vec3{0.32, 0.27, 0.7}, glm::angleAxis(glm::radians(-18.0f), glm::vec3(0, 1, 0)));
+
+            m.roughness = 0;
+            m.metallic = 1.0;
+            // Left Box
+            RaySceneBuilder::BuildBox(scene, m,
+                    glm::vec3{ 0.6, 1.2, 0.6 }, glm::vec3{-0.35, 0.6, 1.2}, glm::angleAxis(glm::radians(18.0f), glm::vec3(0, 1, 0)));
+
             scene.submit(); // submit scene to GPU
         }
 
