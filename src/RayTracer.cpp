@@ -274,18 +274,18 @@ Sphere loadSphere(inout int objectIndex) {
 bool hitSphere(in Sphere sphere, in Ray r, float max, inout HitInfo info) {
     vec3 dir = sphere.center - r.origin;
     float a = dot(r.direction, r.direction);
-    float b = -2.0 * dot(r.direction, dir);
+    float h = dot(r.direction, dir);
     float c = dot(dir, dir) - sphere.radius * sphere.radius;
-    float discriminant = b * b - 4 * a * c;
+    float discriminant = h * h - a * c;
     if (discriminant < 0) {
         return false;
     }
 
     float sqrtd = sqrt(discriminant);
-    info.t = (-b - sqrtd) / (2.0 * a);
 
+    info.t = (h - sqrtd) / a;
     if (info.t <= 1e-8 || info.t >= max) {
-        info.t = (-b + sqrtd) / (2.0 * a);
+        info.t = (h + sqrtd) / a;
         if (info.t <= 1e-8 || info.t >= max) {
             return false;
         }
