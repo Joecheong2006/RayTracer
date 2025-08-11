@@ -8,6 +8,7 @@
 enum class TraceableType {
     Sphere,
     Quad,
+    Triangle,
     Count
 };
 
@@ -57,5 +58,16 @@ struct Quad : public TraceableObject {
 
     glm::vec3 q, u, v;
     bool cullFace;
+};
+
+struct Triangle : public TraceableObject {
+    Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC)
+        : TraceableObject(TraceableType::Triangle)
+        , posA(posA), posB(posB), posC(posC)
+    {}
+
+    virtual void write(std::vector<glm::vec4> &buffer) const override;
+
+    glm::vec3 posA, posB, posC;
 };
 

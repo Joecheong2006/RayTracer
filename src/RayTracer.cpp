@@ -69,6 +69,11 @@ struct Quad {
     int materialIndex;
 };
 
+struct Triangle {
+    vec3 posA, posB, posC;
+    int materialIndex;
+};
+
 uniform sampler2D previousFrame;
 uniform samplerBuffer objectsBuffer;
 uniform samplerBuffer materialsBuffer;
@@ -283,15 +288,16 @@ bool hitSphere(in Sphere sphere, in Ray r, float max, inout HitInfo info) {
 
     float sqrtd = sqrt(discriminant);
 
-    info.t = (h - sqrtd) / a;
-    if (info.t <= 1e-8 || info.t >= max) {
-        info.t = (h + sqrtd) / a;
-        if (info.t <= 1e-8 || info.t >= max) {
+    float t = (h - sqrtd) / a;
+    if (t <= 1e-8 || t >= max || t >= info.t) {
+        t = (h + sqrtd) / a;
+        if (t <= 1e-8 || t >= max || t >= info.t) {
             return false;
         }
     }
 
-    info.point = rayAt(r, info.t);
+    info.t = t;
+    info.point = rayAt(r, t);
     info.normal = (info.point - sphere.center) / sphere.radius;
     if (dot(r.direction, info.normal) > 0) {
         info.normal = -info.normal;
@@ -321,7 +327,7 @@ bool hitQuad(in Quad quad, in Ray r, float max, inout HitInfo info) {
 
     // Solve plane equation: dot(N, X) = dot(N, P)
     float t = dot(normal, quad.q - r.origin) / denom;
-    if (t < 1e-8 || t > max) return false;
+    if (t < 1e-8 || t > max || t >= info.t) return false;
 
     vec3 hitPos = rayAt(r, t);
     vec3 rel = hitPos - quad.q;
@@ -341,10 +347,44 @@ bool hitQuad(in Quad quad, in Ray r, float max, inout HitInfo info) {
     return true;
 }
 
+// Triangle Function
+Triangle loadTriangle(inout int objectIndex) {
+    Triangle result;
+    result.posA = texelFetch(objectsBuffer, objectIndex++).xyz;
+    result.posB = texelFetch(objectsBuffer, objectIndex++).xyz;
+    result.posC = texelFetch(objectsBuffer, objectIndex++).xyz;
+    return result;
+}
+
+bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
+    vec3 edgeAB = tri.posB - tri.posA;
+    vec3 edgeAC = tri.posC - tri.posA;
+    vec3 normal = cross(edgeAB, edgeAC);
+    vec3 ao = r.origin - tri.posA;
+    vec3 dao = cross(ao, r.direction);
+
+    float determinant = -dot(r.direction, normal);
+    float invDet = 1.0 / determinant;
+
+    float t = dot(ao, normal) * invDet;
+    if (t < 0 || t > max || t >= info.t) return false;
+
+    float u = dot(edgeAC, dao) * invDet;
+    float v = -dot(edgeAB, dao) * invDet;
+    if (u < 0.0 || v < 0.0 || u + v > 1.0) return false;
+
+    info.t = t;
+    info.point = rayAt(r, t);
+    info.normal = normalize(normal);
+    if (determinant < 0.0) info.normal = -info.normal;
+    return true;
+}
+
 void hit(in Ray r, inout HitInfo track) {
     HitInfo tmp;
 
     float closest = 0xffffff;
+    tmp.t = closest;
 
     int objectIndex = 0;
 
@@ -370,6 +410,11 @@ void hit(in Ray r, inout HitInfo track) {
 
                 quad.materialIndex = tmp.materialIndex;
                 hitted = hitQuad(quad, r, closest, tmp);
+                break;
+            case 2:
+                Triangle tri = loadTriangle(objectIndex);
+                tri.materialIndex = tmp.materialIndex;
+                hitted = hitTriangle(tri, r, closest, tmp);
                 break;
             default:
                 break;

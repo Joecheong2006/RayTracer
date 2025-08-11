@@ -23,3 +23,10 @@ void Quad::write(std::vector<glm::vec4> &buffer) const {
     buffer.push_back({ v, 0 });
 }
 
+void Triangle::write(std::vector<glm::vec4> &buffer) const {
+    writeHeader(buffer);
+    buffer.push_back({ posA, 0 });
+    buffer.push_back({ posB, 0 });
+    buffer.push_back({ posC, 0 });
+}
+
