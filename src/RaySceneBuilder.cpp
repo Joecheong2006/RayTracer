@@ -44,7 +44,7 @@ void RaySceneBuilder::ThreeColorDemo(RayScene &scene) {
     m.emissionStrength = 1;
 }
  
-void RaySceneBuilder::BuildCornellBox(RayScene &scene, glm::vec3 pos, float boxLen, float lightLen) {
+void RaySceneBuilder::BuildCornellBox(RayScene &scene, glm::vec3 pos, float boxLen, float lightLen, float emissionStrenth) {
     glm::vec3 red   = glm::vec3(.65, .05, .05);
     glm::vec3 green = glm::vec3(.12, .45, .15);
     glm::vec3 white = glm::vec3(1.0, 1.0, 1.0);
@@ -52,11 +52,11 @@ void RaySceneBuilder::BuildCornellBox(RayScene &scene, glm::vec3 pos, float boxL
     Material m;
     m.albedo = glm::vec3(0.0);
     m.emissionColor = glm::vec3(1.0);
-    m.emissionStrength = 8;
+    m.emissionStrength = emissionStrenth;
 
     // Construct Light
     scene.addObject<Quad>(m,
-                pos + glm::vec3{ (boxLen - lightLen) * 0.5, boxLen - 1e-4, boxLen * 0.5 - lightLen * 0.7},
+                pos + glm::vec3{ (boxLen - lightLen) * 0.5, boxLen - 1e-4, boxLen * 0.5 - lightLen * 1.0},
                 glm::vec3{ lightLen, 0, 0 },
                 glm::vec3{ 0, 0, lightLen }
             );
@@ -108,13 +108,13 @@ void RaySceneBuilder::BuildBox(RayScene &scene, const Material &material, glm::v
     glm::mat3 R = glm::mat4_cast(q);
 
     glm::vec3 vertics[] = {
-        glm::vec3{ size.x, size.y, size.z } * 0.5f * R,
-        glm::vec3{ -size.x, size.y, size.z } * 0.5f * R,
-        glm::vec3{ size.x, -size.y, size.z } * 0.5f * R,
-        glm::vec3{ -size.x, -size.y, size.z } * 0.5f * R,
-        glm::vec3{ size.x, size.y, -size.z } * 0.5f * R,
-        glm::vec3{ -size.x, size.y, -size.z } * 0.5f * R,
-        glm::vec3{ size.x, -size.y, -size.z } * 0.5f * R,
+        glm::vec3{  size.x,  size.y,  size.z } * 0.5f * R,
+        glm::vec3{ -size.x,  size.y,  size.z } * 0.5f * R,
+        glm::vec3{  size.x, -size.y,  size.z } * 0.5f * R,
+        glm::vec3{ -size.x, -size.y,  size.z } * 0.5f * R,
+        glm::vec3{  size.x,  size.y, -size.z } * 0.5f * R,
+        glm::vec3{ -size.x,  size.y, -size.z } * 0.5f * R,
+        glm::vec3{  size.x, -size.y, -size.z } * 0.5f * R,
         glm::vec3{ -size.x, -size.y, -size.z } * 0.5f * R
     };
 

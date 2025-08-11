@@ -127,7 +127,7 @@ int main() {
             auto &scene = rayEngine.getScene();
             scene.setSkyColor({});
 
-            RaySceneBuilder::BuildCornellBox(scene, glm::vec3{ -1, 0, 0 }, 2, 0.7);
+            RaySceneBuilder::BuildCornellBox(scene, glm::vec3{ -1, 0, 0 }, 2, 0.6, 20);
 
             Material m;
 
