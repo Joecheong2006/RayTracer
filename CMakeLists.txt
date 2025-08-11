@@ -19,7 +19,6 @@ add_executable(raytracer
     ${SOURCES_LEVEL0}
     ${SOURCES_LEVEL1}
     lib/glad/src/glad.c
-    lib/stb_image/stb_image.cpp
 )
 
 target_include_directories(raytracer PRIVATE ${CMAKE_SOURCE_DIR}/src)

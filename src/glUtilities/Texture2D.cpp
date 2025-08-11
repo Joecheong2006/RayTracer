@@ -1,6 +1,6 @@
 #include "Texture2D.h"
 #include "glad/glad.h"
-#include "stb_image/stb_image.h"
+#include <tinygltf/stb_image.h>
 #include "util.h"
 
 namespace gl {
