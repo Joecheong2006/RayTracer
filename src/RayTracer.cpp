@@ -39,6 +39,7 @@ struct HitInfo {
     vec3 point, normal;
     float t;
     int materialIndex;
+    int tests;
 };
 
 struct Ray {
@@ -430,6 +431,7 @@ void hit(in Ray r, inout HitInfo track) {
     tmp.t = closest;
 
     int objectIndex = 0;
+    int tests = 0;
 
     for (int i = 0; i < objectCount; ++i) {
         vec4 buf = texelFetch(objectsBuffer, objectIndex++);
@@ -448,7 +450,7 @@ void hit(in Ray r, inout HitInfo track) {
                 Quad quad = loadQuad(objectIndex);
 
                 if (quad.cullFace && dot(r.direction, cross(quad.u, quad.v)) > 0) {
-                    break;
+                    continue;
                 }
 
                 quad.materialIndex = tmp.materialIndex;
@@ -463,6 +465,7 @@ void hit(in Ray r, inout HitInfo track) {
                 Model model = loadModel(objectIndex);
                 if (!rayIntersectsAABB(r, model.boundingBox)) {
                     objectIndex += model.endIndex;
+                    continue;
                 }
                 break;
             default:
@@ -473,16 +476,19 @@ void hit(in Ray r, inout HitInfo track) {
             closest = tmp.t;
             track = tmp;
         }
+        tests++;
     }
 
     track.t = closest;
+    track.tests = tests;
 }
 
 vec3 traceColor(in Ray r, inout SeedType seed) {
     vec3 incomingLight = vec3(0.0);
     vec3 rayColor = vec3(1.0);
 
-    for (int i = 0; i < camera.bounces; ++i) {
+    int tests = 0;
+    for (int i = 0; i <= camera.bounces; ++i) {
         HitInfo info;
         hit(r, info);
 
@@ -493,6 +499,8 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 incomingLight += envColor * rayColor;
             return incomingLight;
         }
+
+        tests += info.tests;
 
         Material mat = loadMaterial(info.materialIndex);
         vec3 N = normalize(info.normal);
