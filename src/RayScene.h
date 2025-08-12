@@ -57,6 +57,7 @@ public:
 
     void setSkyColor(glm::vec3 skyColor);
     glm::vec3 getSkyColor() const;
+    i32 getMaterialCount() const { return m_materials.size(); }
     
     inline u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
 
