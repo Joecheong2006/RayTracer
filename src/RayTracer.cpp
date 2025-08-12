@@ -389,23 +389,27 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
     vec3 edgeAB = tri.posB - tri.posA;
     vec3 edgeAC = tri.posC - tri.posA;
     vec3 normal = cross(edgeAB, edgeAC);
+
+    if (dot(normal, r.direction) >= 0) return false;
+
+    float determinant = -dot(r.direction, normal);
+    if (abs(determinant) < 1e-8) return false; // parallel
+
     vec3 ao = r.origin - tri.posA;
     vec3 dao = cross(ao, r.direction);
 
-    float determinant = -dot(r.direction, normal);
     float invDet = 1.0 / determinant;
 
     float t = dot(ao, normal) * invDet;
     if (t < 0 || t > max || t >= info.t) return false;
 
-    float u = dot(edgeAC, dao) * invDet;
+    float u =  dot(edgeAC, dao) * invDet;
     float v = -dot(edgeAB, dao) * invDet;
     if (u < 0.0 || v < 0.0 || u + v > 1.0) return false;
 
     info.t = t;
     info.point = rayAt(r, t);
     info.normal = normalize(normal);
-    if (determinant < 0.0) info.normal = -info.normal;
     return true;
 }
 
