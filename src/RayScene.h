@@ -45,6 +45,9 @@ private:
     void load_objects();
 
 public:
+    static std::vector<Triangle> LoadModel(std::string modelPath);
+
+public:
     explicit RayScene() = default;
 
     void initialize(const RayCamera &camera);
