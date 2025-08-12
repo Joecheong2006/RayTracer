@@ -568,8 +568,10 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         if (mat.emissionStrength > 0.0)
             incomingLight += rayColor * mat.emissionColor * mat.emissionStrength;
 
-        // Continue path
         rayColor *= contribution;
+        if (dot(rayColor, vec3(1)) < 1e-4) break;
+
+        // Continue path
         r.origin = info.point + L * 0.001;
         r.direction = L;
     }
