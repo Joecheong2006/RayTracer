@@ -64,12 +64,31 @@ public:
     const RayCamera &getCamera() const { return m_camera; }
 
     template <typename T, typename... Args>
+    struct trace_initalize {
+        trace_initalize(RayScene&) {}
+    };
+
+    template <typename... Args>
+    struct trace_initalize<Model, Args...> {
+        trace_initalize(RayScene &scene) {
+            auto model = static_cast<Model&>(*scene.m_traceableObjects.back().get());
+            for (auto &triangle : model.triangles) {
+                scene.m_traceableObjects.push_back(std::make_unique<Triangle>(triangle));
+                auto &object = scene.m_traceableObjects.back();
+                object->m_materialIndex = model.m_materialIndex;
+            }
+        }
+    };
+
+    template <typename T, typename... Args>
     void addObject(const Material &material, Args&&... args) {
         m_traceableObjects.push_back(std::make_unique<T>(std::forward<Args>(args)...));
 
         auto &object = m_traceableObjects.back();
         object->m_materialIndex = m_materials.size();
         m_materials.push_back(material);
+
+        trace_initalize<T, Args...>(*this);
     }
 
     template <typename T, typename... Args>
@@ -79,6 +98,9 @@ public:
 
         auto &object = m_traceableObjects.back();
         object->m_materialIndex = materialIndex;
+
+        trace_initalize<T, Args...>(*this);
     }
 
 };
+
