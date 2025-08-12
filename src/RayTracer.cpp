@@ -74,6 +74,12 @@ struct Triangle {
     int materialIndex;
 };
 
+struct Model {
+    int endIndex;
+    vec3 min, max;
+    int materialIndex;
+};
+
 uniform sampler2D previousFrame;
 uniform samplerBuffer objectsBuffer;
 uniform samplerBuffer materialsBuffer;
@@ -267,6 +273,25 @@ vec3 rayAt(in Ray r, float t) {
     return r.origin + t * r.direction;
 }
 
+bool rayIntersectsAABB(in Ray r, vec3 boxMin, vec3 boxMax)
+{
+    float tNear = -1e20;
+    float tFar  =  1e20;
+
+    for (int i = 0; i < 3; i++) {
+        float invD = 1.0 / r.direction[i];
+        float t1 = (boxMin[i] - r.origin[i]) * invD;
+        float t2 = (boxMax[i] - r.origin[i]) * invD;
+        if (t1 > t2) {
+            float tmp = t1; t1 = t2; t2 = tmp;
+        }
+        tNear = max(tNear, t1);
+        tFar  = min(tFar,  t2);
+        if (tNear > tFar) return false;
+    }
+    return true;
+}
+
 // Sphere Functions
 Sphere loadSphere(inout int objectIndex) {
     vec4 buf = texelFetch(objectsBuffer, objectIndex++);
@@ -380,6 +405,16 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
     return true;
 }
 
+// Model Function
+Model loadModel(inout int objectIndex) {
+    Model result;
+    vec4 buf = texelFetch(objectsBuffer, objectIndex++);
+    result.endIndex = int(buf.w);
+    result.min = buf.xyz;
+    result.max = texelFetch(objectsBuffer, objectIndex++).xyz;
+    return result;
+}
+
 void hit(in Ray r, inout HitInfo track) {
     HitInfo tmp;
 
@@ -415,6 +450,15 @@ void hit(in Ray r, inout HitInfo track) {
                 Triangle tri = loadTriangle(objectIndex);
                 tri.materialIndex = tmp.materialIndex;
                 hitted = hitTriangle(tri, r, closest, tmp);
+                break;
+            case 3:
+                Model model = loadModel(objectIndex);
+                if (rayIntersectsAABB(r, model.min, model.max)) {
+                    i -= model.endIndex / 4;
+                }
+                else {
+                    objectIndex += model.endIndex;
+                }
                 break;
             default:
                 break;

@@ -9,7 +9,28 @@ enum class TraceableType {
     Sphere,
     Quad,
     Triangle,
+    Model,
     Count
+};
+
+struct AABB {
+    AABB() = default;
+
+    AABB(glm::vec3 min, glm::vec3 max)
+        : min(min), max(max)
+    {}
+
+    AABB(const AABB &box1, const AABB &box2) {
+        min.x = std::min(box1.min.x, box2.min.x);
+        min.y = std::min(box1.min.y, box2.min.y);
+        min.z = std::min(box1.min.z, box2.min.z);
+
+        max.x = std::max(box1.max.x, box2.max.x);
+        max.y = std::max(box1.max.y, box2.max.y);
+        max.z = std::max(box1.max.z, box2.max.z);
+    }
+
+    glm::vec3 min, max;
 };
 
 class RayScene;
@@ -22,6 +43,7 @@ private:
 protected:
     void writeHeader(std::vector<glm::vec4> &buffer) const;
     virtual void write(std::vector<glm::vec4> &buffer) const = 0;
+    virtual AABB getAABB() const = 0;
 
 public:
     explicit TraceableObject(TraceableType type)
@@ -42,6 +64,7 @@ struct Sphere : public TraceableObject {
     {}
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
+    virtual AABB getAABB() const override;
 
     glm::vec3 center = { 0, 0, 0 };
     f32 radius = 1.0;
@@ -55,6 +78,7 @@ struct Quad : public TraceableObject {
     {}
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
+    virtual AABB getAABB() const override;
 
     glm::vec3 q, u, v;
     bool cullFace;
@@ -67,7 +91,24 @@ struct Triangle : public TraceableObject {
     {}
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
+    virtual AABB getAABB() const override;
 
     glm::vec3 posA, posB, posC;
+};
+
+struct Model : public TraceableObject {
+    Model(std::vector<Triangle> triangles)
+        : TraceableObject(TraceableType::Model)
+        , triangles(triangles), endIndex(triangles.size() * 4)
+    {
+        aabb = getAABB();
+    }
+
+    virtual void write(std::vector<glm::vec4> &buffer) const override;
+    virtual AABB getAABB() const override;
+
+    std::vector<Triangle> triangles;
+    int endIndex;
+    AABB aabb;
 };
 
