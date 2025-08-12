@@ -283,7 +283,13 @@ bool rayIntersectsAABB(in Ray r, in AABB box)
     float tNear = -1e20;
     float tFar  =  1e20;
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; ++i) {
+        if (abs(r.direction[i]) < 1e-8) {
+            if (r.origin[i] < box.min[i] || r.origin[i] > box.max[i])
+                return false; // parallel and outside slab
+            continue;
+        }
+
         float invD = 1.0 / r.direction[i];
         float t1 = (box.min[i] - r.origin[i]) * invD;
         float t2 = (box.max[i] - r.origin[i]) * invD;
@@ -294,7 +300,7 @@ bool rayIntersectsAABB(in Ray r, in AABB box)
         tFar  = min(tFar,  t2);
         if (tNear > tFar) return false;
     }
-    return true;
+    return tFar >= max(tNear, 0);
 }
 
 // Sphere Functions
