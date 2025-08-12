@@ -1,9 +1,10 @@
 #pragma once
-#include "RayScene.h"
+#include "Material.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+class RayScene;
 struct RaySceneBuilder {
     static void RoughnessMetallicDemo(RayScene &scene);
     static void ThreeColorDemo(RayScene &scene);

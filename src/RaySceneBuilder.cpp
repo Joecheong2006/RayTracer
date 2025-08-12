@@ -1,5 +1,5 @@
 #include "RaySceneBuilder.h"
-#include <algorithm>
+#include "RayScene.h"
 #include <glm/gtc/matrix_transform.hpp> // for glm::mat4_cast
 
 void RaySceneBuilder::RoughnessMetallicDemo(RayScene &scene) {
