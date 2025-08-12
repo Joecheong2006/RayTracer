@@ -196,14 +196,18 @@ std::vector<Triangle> RayScene::LoadModel(std::string modelPath) {
 
     bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, modelPath);
 
-    if (!warn.empty()) std::cout << "Warn: " << warn << std::endl;
-    if (!err.empty()) std::cerr << "Err: " << err << std::endl;
+    if (!warn.empty()) std::cout << "Warn: " << warn << '\n';
+    if (!err.empty()) std::cerr << "Err: " << err << '\n';
     if (!ret) {
-        std::cerr << "Failed to load model1.glb" << std::endl;
+        std::cerr << "Failed to load " << modelPath << '\n';
         ASSERT(false);
     }
 
+    std::cout << "Load " << modelPath << " successfully!\n";
+
     LoadWorldSpaceTriangle(result, model, 0);
+    
+    std::cout << "\tTriangle Count: " << result.size() << '\n';
 
     return result;
 }
@@ -229,7 +233,11 @@ void RayScene::load_material(i32 materialIndex) {
 void RayScene::load_objects() {
     for (auto &e : m_traceableObjects) {
         e->write(m_objectsBuffer);
-        load_material(e->getMaterialIndex());
+        i32 materialIndex = e->getMaterialIndex();
+
+        // Material uses 3 vec4 buffers
+        if (materialIndex * 3 >= m_materialsBuffer.size())
+            load_material(materialIndex);
     }
 }
 
