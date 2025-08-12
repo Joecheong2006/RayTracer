@@ -194,7 +194,7 @@ std::vector<Triangle> RayScene::LoadModel(std::string modelPath) {
     std::string err;
     std::string warn;
 
-    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, "model1.glb");
+    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, modelPath);
 
     if (!warn.empty()) std::cout << "Warn: " << warn << std::endl;
     if (!err.empty()) std::cerr << "Err: " << err << std::endl;
