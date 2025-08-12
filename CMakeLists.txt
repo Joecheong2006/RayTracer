@@ -18,6 +18,7 @@ file(GLOB SOURCES_LEVEL1 "src/**/*.cpp")
 add_executable(raytracer 
     ${SOURCES_LEVEL0}
     ${SOURCES_LEVEL1}
+    lib/tinygltf/tiny_gltf.cc
     lib/glad/src/glad.c
 )
 
