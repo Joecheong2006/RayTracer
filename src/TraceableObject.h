@@ -21,13 +21,13 @@ struct AABB {
     {}
 
     AABB(const AABB &box1, const AABB &box2) {
-        min.x = std::min(box1.min.x, box2.min.x);
-        min.y = std::min(box1.min.y, box2.min.y);
-        min.z = std::min(box1.min.z, box2.min.z);
+        min.x = std::min(box1.min.x, box2.min.x) - 1e3;
+        min.y = std::min(box1.min.y, box2.min.y) - 1e3;
+        min.z = std::min(box1.min.z, box2.min.z) - 1e3;
 
-        max.x = std::max(box1.max.x, box2.max.x);
-        max.y = std::max(box1.max.y, box2.max.y);
-        max.z = std::max(box1.max.z, box2.max.z);
+        max.x = std::max(box1.max.x, box2.max.x) + 1e3; 
+        max.y = std::max(box1.max.y, box2.max.y) + 1e3; 
+        max.z = std::max(box1.max.z, box2.max.z) + 1e3; 
     }
 
     glm::vec3 min, max;
