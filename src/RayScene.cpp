@@ -166,7 +166,7 @@ static void LoadWorldSpaceTriangle(std::vector<Triangle> &triangles, const tinyg
                 break;
             }
             default:
-                throw std::runtime_error("Unsupported index component type");
+                ASSERT(false); // Unsupported index component type
         }
 
         // Print triangles in world space
