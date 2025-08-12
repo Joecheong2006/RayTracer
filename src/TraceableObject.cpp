@@ -1,4 +1,5 @@
 #include "TraceableObject.h"
+#include <algorithm>
 
 void TraceableObject::writeHeader(std::vector<glm::vec4> &buffer) const {
     buffer.push_back({
