@@ -45,6 +45,10 @@ struct Ray {
     vec3 origin, direction;
 };
 
+struct AABB {
+    vec3 min, max;
+};
+
 struct Material {
     vec3 emissionColor;
     float emissionStrength;
@@ -76,7 +80,7 @@ struct Triangle {
 
 struct Model {
     int endIndex;
-    vec3 min, max;
+    AABB boundingBox;
     int materialIndex;
 };
 
@@ -273,15 +277,15 @@ vec3 rayAt(in Ray r, float t) {
     return r.origin + t * r.direction;
 }
 
-bool rayIntersectsAABB(in Ray r, vec3 boxMin, vec3 boxMax)
+bool rayIntersectsAABB(in Ray r, in AABB box)
 {
     float tNear = -1e20;
     float tFar  =  1e20;
 
     for (int i = 0; i < 3; i++) {
         float invD = 1.0 / r.direction[i];
-        float t1 = (boxMin[i] - r.origin[i]) * invD;
-        float t2 = (boxMax[i] - r.origin[i]) * invD;
+        float t1 = (box.min[i] - r.origin[i]) * invD;
+        float t2 = (box.max[i] - r.origin[i]) * invD;
         if (t1 > t2) {
             float tmp = t1; t1 = t2; t2 = tmp;
         }
@@ -410,8 +414,8 @@ Model loadModel(inout int objectIndex) {
     Model result;
     vec4 buf = texelFetch(objectsBuffer, objectIndex++);
     result.endIndex = int(buf.w);
-    result.min = buf.xyz;
-    result.max = texelFetch(objectsBuffer, objectIndex++).xyz;
+    result.boundingBox.min = buf.xyz;
+    result.boundingBox.max = texelFetch(objectsBuffer, objectIndex++).xyz;
     return result;
 }
 
@@ -453,10 +457,7 @@ void hit(in Ray r, inout HitInfo track) {
                 break;
             case 3:
                 Model model = loadModel(objectIndex);
-                if (rayIntersectsAABB(r, model.min, model.max)) {
-                    i -= model.endIndex / 4;
-                }
-                else {
+                if (!rayIntersectsAABB(r, model.boundingBox)) {
                     objectIndex += model.endIndex;
                 }
                 break;
