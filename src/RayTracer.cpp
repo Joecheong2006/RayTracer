@@ -456,7 +456,7 @@ void hit(in Ray r, inout HitInfo track) {
                 Quad quad = loadQuad(objectIndex);
 
                 if (quad.cullFace && dot(r.direction, cross(quad.u, quad.v)) > 0) {
-                    continue;
+                    break;
                 }
 
                 quad.materialIndex = tmp.materialIndex;
@@ -471,7 +471,6 @@ void hit(in Ray r, inout HitInfo track) {
                 Model model = loadModel(objectIndex);
                 if (!rayIntersectsAABB(r, model.boundingBox)) {
                     objectIndex += model.endIndex;
-                    continue;
                 }
                 break;
             default:
