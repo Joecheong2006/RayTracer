@@ -157,10 +157,11 @@ int main() {
             if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
                 glfwSetWindowShouldClose(window, true);
 
-            // Bind screen framebuffer
             double previous = glfwGetTime();
             auto &raytracer = rayEngine.getRayTracer();
             auto &screenTexture = raytracer.getCurrentFrame();
+
+            // Accumulate Scene
             rayEngine.render();
 
             auto &quad = rayEngine.getQuad();
