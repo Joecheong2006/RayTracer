@@ -17,7 +17,7 @@ struct AABB {
     AABB() = default;
 
     AABB(glm::vec3 min, glm::vec3 max)
-        : min(min), max(max)
+        : min(min - glm::vec3(1e-5)), max(max + glm::vec3(1e-5))
     {}
 
     AABB(const AABB &box1, const AABB &box2) {
