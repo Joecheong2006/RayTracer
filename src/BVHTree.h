@@ -1,5 +1,7 @@
 #pragma once
-#include "TraceableObject.h"
+#include "util.h"
+#include "AABB.h"
+#include <vector>
 
 struct BVHNode {
     AABB box;
@@ -9,6 +11,7 @@ struct BVHNode {
     BVHNode() = default;
 };
 
+class Triangle;
 class BVHTree {
     void construct_bvh(std::vector<Triangle> &triangles, i32 depth, i32 axis, i32 start, i32 end);
 

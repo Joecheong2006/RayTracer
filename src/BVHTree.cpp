@@ -1,4 +1,5 @@
 #include "BVHTree.h"
+#include "TraceableObject.h"
 
 #include <algorithm>
 #include <stack>
