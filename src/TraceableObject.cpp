@@ -12,7 +12,12 @@ Sphere::Sphere(glm::vec3 center, f32 radius)
     : TraceableObject(TraceableType::Sphere)
     , center(center)
     , radius(radius)
-{}
+{
+    boundingBox = AABB(
+            center - glm::vec3(radius),
+            center + glm::vec3(radius)
+        );
+}
 
 void Sphere::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
@@ -20,13 +25,6 @@ void Sphere::write(std::vector<glm::vec4> &buffer) const {
             center,         // vec3 for center
             radius          // 1 float for radius
         });
-}
-
-AABB Sphere::getAABB() const {
-    return AABB(
-            center - glm::vec3(radius),
-            center + glm::vec3(radius)
-        );
 }
 
 bool Sphere::inAABB(const AABB &box) const {
@@ -38,24 +36,22 @@ bool Sphere::inAABB(const AABB &box) const {
 Quad::Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v, bool cullFace)
     : TraceableObject(TraceableType::Quad)
     , q(q), u(u), v(v), cullFace(cullFace)
-{}
+{
+    glm::vec3 p0 = q;          // corner
+    glm::vec3 p1 = q + u;      // corner + edge u
+    glm::vec3 p2 = q + v;      // corner + edge v
+    glm::vec3 p3 = q + u + v;  // corner + edge u + edge v
+    boundingBox = AABB(
+            glm::min(glm::min(p0, p1), glm::min(p2, p3)),
+            glm::max(glm::max(p0, p1), glm::max(p2, p3))
+        );
+}
 
 void Quad::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
     buffer.push_back({ q, cullFace });
     buffer.push_back({ u, 0 });
     buffer.push_back({ v, 0 });
-}
-
-AABB Quad::getAABB() const {
-    glm::vec3 p0 = q;          // corner
-    glm::vec3 p1 = q + u;      // corner + edge u
-    glm::vec3 p2 = q + v;      // corner + edge v
-    glm::vec3 p3 = q + u + v;  // corner + edge u + edge v
-    return AABB(
-            glm::min(glm::min(p0, p1), glm::min(p2, p3)),
-            glm::max(glm::max(p0, p1), glm::max(p2, p3))
-        );
 }
 
 bool Quad::inAABB(const AABB &box) const {
@@ -75,7 +71,12 @@ bool Quad::inAABB(const AABB &box) const {
 Triangle::Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC)
     : TraceableObject(TraceableType::Triangle)
     , posA(posA), posB(posB), posC(posC)
-{}
+{
+    boundingBox = AABB(
+            glm::min(posA, glm::min(posB, posC)),
+            glm::max(posA, glm::max(posB, posC))
+        );
+}
 
 void Triangle::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
@@ -95,37 +96,26 @@ bool Triangle::inAABB(const AABB &box) const {
     return true;
 }
 
-AABB Triangle::getAABB() const {
-    return AABB(
-            glm::min(posA, glm::min(posB, posC)),
-            glm::max(posA, glm::max(posB, posC))
-        );
-}
-
 Model::Model(std::vector<Triangle> triangles)
     : TraceableObject(TraceableType::Model)
     , triangles(triangles), endIndex(triangles.size() * 4)
 {
     if (triangles.size() > 0) {
         for (auto &triangle : triangles) {
-            aabb = AABB(aabb , triangle.getAABB());
+            boundingBox = AABB(boundingBox, triangle.getAABB());
         }
     }
 }
 
 void Model::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
-    buffer.push_back({ aabb.min, endIndex });
-    buffer.push_back({ aabb.max, 0});
-}
-
-AABB Model::getAABB() const {
-    return aabb;
+    buffer.push_back({ boundingBox.min, endIndex });
+    buffer.push_back({ boundingBox.max, 0});
 }
 
 bool Model::inAABB(const AABB &box) const {
-    glm::vec3 clampedMin = glm::max(aabb.min, box.min);
-    glm::vec3 clampedMax = glm::min(aabb.max, box.max);
-    return clampedMin == aabb.min && clampedMax == aabb.max;
+    glm::vec3 clampedMin = glm::max(boundingBox.min, box.min);
+    glm::vec3 clampedMax = glm::min(boundingBox.max, box.max);
+    return clampedMin == boundingBox.min && clampedMax == boundingBox.max;
 }
 

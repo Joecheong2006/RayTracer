@@ -44,6 +44,8 @@ protected:
     void writeHeader(std::vector<glm::vec4> &buffer) const;
     virtual void write(std::vector<glm::vec4> &buffer) const = 0;
 
+    AABB boundingBox;
+
 public:
     explicit TraceableObject(TraceableType type)
         : m_type(type)
@@ -53,7 +55,7 @@ public:
 
     inline i32 getMaterialIndex() const { return m_materialIndex; }
 
-    virtual AABB getAABB() const = 0;
+    virtual AABB getAABB() const { return boundingBox; }
     virtual bool inAABB(const AABB &box) const = 0;
 
 };
@@ -62,7 +64,6 @@ struct Sphere : public TraceableObject {
     Sphere(glm::vec3 center, f32 radius);
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
-    virtual AABB getAABB() const override;
     virtual bool inAABB(const AABB &box) const override;
 
     glm::vec3 center = { 0, 0, 0 };
@@ -74,7 +75,6 @@ struct Quad : public TraceableObject {
     Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v, bool cullFace = false);
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
-    virtual AABB getAABB() const override;
     virtual bool inAABB(const AABB &box) const override;
 
     glm::vec3 q, u, v;
@@ -85,7 +85,6 @@ struct Triangle : public TraceableObject {
     Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC);
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
-    virtual AABB getAABB() const override;
     virtual bool inAABB(const AABB &box) const override;
 
     glm::vec3 posA, posB, posC;
@@ -95,11 +94,9 @@ struct Model : public TraceableObject {
     Model(std::vector<Triangle> triangles);
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
-    virtual AABB getAABB() const override;
     virtual bool inAABB(const AABB &box) const override;
 
     std::vector<Triangle> triangles;
     int endIndex;
-    AABB aabb;
 };
 
