@@ -8,6 +8,12 @@ void TraceableObject::writeHeader(std::vector<glm::vec4> &buffer) const {
         });
 }
 
+Sphere::Sphere(glm::vec3 center, f32 radius)
+    : TraceableObject(TraceableType::Sphere)
+    , center(center)
+    , radius(radius)
+{}
+
 void Sphere::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
     buffer.push_back({
@@ -28,6 +34,11 @@ bool Sphere::inAABB(const AABB &box) const {
            (center.y - radius >= box.min.y && center.y + radius <= box.max.y) &&
            (center.z - radius >= box.min.z && center.z + radius <= box.max.z);
 }
+
+Quad::Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v, bool cullFace)
+    : TraceableObject(TraceableType::Quad)
+    , q(q), u(u), v(v), cullFace(cullFace)
+{}
 
 void Quad::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
@@ -61,6 +72,11 @@ bool Quad::inAABB(const AABB &box) const {
            (quadMax.z >= box.min.z && quadMin.z <= box.max.z);
 }
 
+Triangle::Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC)
+    : TraceableObject(TraceableType::Triangle)
+    , posA(posA), posB(posB), posC(posC)
+{}
+
 void Triangle::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
     buffer.push_back({ posA, 0 });
@@ -86,6 +102,17 @@ AABB Triangle::getAABB() const {
         );
 }
 
+Model::Model(std::vector<Triangle> triangles)
+    : TraceableObject(TraceableType::Model)
+    , triangles(triangles), endIndex(triangles.size() * 4)
+{
+    if (triangles.size() > 0) {
+        for (auto &triangle : triangles) {
+            aabb = AABB(aabb , triangle.getAABB());
+        }
+    }
+}
+
 void Model::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
     buffer.push_back({ aabb.min, endIndex });
@@ -93,17 +120,7 @@ void Model::write(std::vector<glm::vec4> &buffer) const {
 }
 
 AABB Model::getAABB() const {
-    if (triangles.size() == 0) {
-        return {};
-    }
-
-    AABB box = triangles.front().getAABB();
-
-    for (auto &triangle : triangles) {
-        box = AABB(box, triangle.getAABB());
-    }
-
-    return box;
+    return aabb;
 }
 
 bool Model::inAABB(const AABB &box) const {

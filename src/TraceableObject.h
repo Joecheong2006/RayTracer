@@ -59,11 +59,7 @@ public:
 };
 
 struct Sphere : public TraceableObject {
-    Sphere(glm::vec3 center, f32 radius)
-        : TraceableObject(TraceableType::Sphere)
-        , center(center)
-        , radius(radius)
-    {}
+    Sphere(glm::vec3 center, f32 radius);
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
     virtual AABB getAABB() const override;
@@ -75,10 +71,7 @@ struct Sphere : public TraceableObject {
 };
 
 struct Quad : public TraceableObject {
-    Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v, bool cullFace = false)
-        : TraceableObject(TraceableType::Quad)
-        , q(q), u(u), v(v), cullFace(cullFace)
-    {}
+    Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v, bool cullFace = false);
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
     virtual AABB getAABB() const override;
@@ -89,10 +82,7 @@ struct Quad : public TraceableObject {
 };
 
 struct Triangle : public TraceableObject {
-    Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC)
-        : TraceableObject(TraceableType::Triangle)
-        , posA(posA), posB(posB), posC(posC)
-    {}
+    Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC);
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
     virtual AABB getAABB() const override;
@@ -102,12 +92,7 @@ struct Triangle : public TraceableObject {
 };
 
 struct Model : public TraceableObject {
-    Model(std::vector<Triangle> triangles)
-        : TraceableObject(TraceableType::Model)
-        , triangles(triangles), endIndex(triangles.size() * 4)
-    {
-        aabb = getAABB();
-    }
+    Model(std::vector<Triangle> triangles);
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
     virtual AABB getAABB() const override;
