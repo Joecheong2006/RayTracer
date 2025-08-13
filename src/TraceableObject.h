@@ -54,6 +54,7 @@ public:
     inline i32 getMaterialIndex() const { return m_materialIndex; }
 
     virtual AABB getAABB() const = 0;
+    virtual bool inAABB(const AABB &box) const = 0;
 
 };
 
@@ -66,6 +67,7 @@ struct Sphere : public TraceableObject {
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
     virtual AABB getAABB() const override;
+    virtual bool inAABB(const AABB &box) const override;
 
     glm::vec3 center = { 0, 0, 0 };
     f32 radius = 1.0;
@@ -80,6 +82,7 @@ struct Quad : public TraceableObject {
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
     virtual AABB getAABB() const override;
+    virtual bool inAABB(const AABB &box) const override;
 
     glm::vec3 q, u, v;
     bool cullFace;
@@ -93,6 +96,7 @@ struct Triangle : public TraceableObject {
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
     virtual AABB getAABB() const override;
+    virtual bool inAABB(const AABB &box) const override;
 
     glm::vec3 posA, posB, posC;
 };
@@ -107,6 +111,7 @@ struct Model : public TraceableObject {
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
     virtual AABB getAABB() const override;
+    virtual bool inAABB(const AABB &box) const override;
 
     std::vector<Triangle> triangles;
     int endIndex;
