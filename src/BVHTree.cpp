@@ -4,17 +4,6 @@
 #include <stack>
 #include <iostream>
 
-static bool triangleInAABB(const Triangle &tri, AABB &aabb) {
-    for (auto v : {tri.posA, tri.posB, tri.posC}) {
-        if (v.x < aabb.min.x || v.x > aabb.max.x ||
-            v.y < aabb.min.y || v.y > aabb.max.y ||
-            v.z < aabb.min.z || v.z > aabb.max.z) {
-            return false;
-        }
-    }
-    return true;
-}
-
 void BVHTree::construct_bvh(std::vector<Triangle> &triangles, i32 depth, i32 axis, i32 start, i32 end) {
     AABB box;
     for (auto &triangle : triangles) {
@@ -94,7 +83,7 @@ BVHTree::BVHTree(const std::vector<Triangle>& triangles) {
         if (current->isLeaf) {
             std::cout << '[' << current->leftIndex << ' ' << current->rightIndex << ") ";
             for (i32 i = current->leftIndex; i < current->rightIndex; ++i) {
-                if (!triangleInAABB(m_triangles[i], current->box)) {
+                if (!m_triangles[i].inAABB(current->box)) {
                     std::cout << "Invalid BVH\n";
                     return;
                 }
