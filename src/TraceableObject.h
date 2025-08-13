@@ -43,7 +43,6 @@ private:
 protected:
     void writeHeader(std::vector<glm::vec4> &buffer) const;
     virtual void write(std::vector<glm::vec4> &buffer) const = 0;
-    virtual AABB getAABB() const = 0;
 
 public:
     explicit TraceableObject(TraceableType type)
@@ -53,6 +52,8 @@ public:
     virtual ~TraceableObject() = default;
 
     inline i32 getMaterialIndex() const { return m_materialIndex; }
+
+    virtual AABB getAABB() const = 0;
 
 };
 
