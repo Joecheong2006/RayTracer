@@ -18,7 +18,10 @@ void Sphere::write(std::vector<glm::vec4> &buffer) const {
 }
 
 AABB Sphere::getAABB() const {
-    return AABB();
+    return AABB(
+            center - glm::vec3(radius),
+            center + glm::vec3(radius)
+        );
 }
 
 void Quad::write(std::vector<glm::vec4> &buffer) const {
@@ -29,7 +32,14 @@ void Quad::write(std::vector<glm::vec4> &buffer) const {
 }
 
 AABB Quad::getAABB() const {
-    return AABB();
+    glm::vec3 p0 = q;          // corner
+    glm::vec3 p1 = q + u;      // corner + edge u
+    glm::vec3 p2 = q + v;      // corner + edge v
+    glm::vec3 p3 = q + u + v;  // corner + edge u + edge v
+    return AABB(
+            glm::min(glm::min(p0, p1), glm::min(p2, p3)),
+            glm::max(glm::max(p0, p1), glm::max(p2, p3))
+        );
 }
 
 void Triangle::write(std::vector<glm::vec4> &buffer) const {
@@ -40,17 +50,10 @@ void Triangle::write(std::vector<glm::vec4> &buffer) const {
 }
 
 AABB Triangle::getAABB() const {
-    AABB box;
-
-    box.min.x = std::min({posA.x, posB.x, posC.x});
-    box.min.y = std::min({posA.y, posB.y, posC.y});
-    box.min.z = std::min({posA.z, posB.z, posC.z});
-
-    box.max.x = std::max({posA.x, posB.x, posC.x});
-    box.max.y = std::max({posA.y, posB.y, posC.y});
-    box.max.z = std::max({posA.z, posB.z, posC.z});
-
-    return box;
+    return AABB(
+            glm::min(posA, glm::min(posB, posC)),
+            glm::max(posA, glm::max(posB, posC))
+        );
 }
 
 void Model::write(std::vector<glm::vec4> &buffer) const {
