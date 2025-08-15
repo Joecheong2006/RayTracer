@@ -101,88 +101,138 @@ static glm::mat4 GetWorldTransform(const tinygltf::Model &model, int nodeIndex) 
     return ComputeWorldTransformCached(model, nodeIndex, parentMap, visited, cache);
 }
 
-static void LoadWorldSpaceTriangle(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex) {
+void RayScene::LoadWorldSpaceTriangle(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform) {
     const tinygltf::Node &node = model.nodes[nodeIndex];
+    const glm::mat4 worldTransform = GetWorldTransform(model, nodeIndex);
 
-    if (node.mesh < 0) {
-        std::cout << "Node has no mesh\n";
-        return;
+    if (node.mesh >= 0) {
+        glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(worldTransform)));
+
+        const tinygltf::Mesh &mesh = model.meshes[node.mesh];
+
+        for (const tinygltf::Primitive &primitive : mesh.primitives) {
+            if (primitive.mode != TINYGLTF_MODE_TRIANGLES) {
+                std::cout << "Only TRIANGLES mode supported\n";
+                continue;
+            }
+
+            // ---- Load positions ----
+            const tinygltf::Accessor &posAccessor = model.accessors[primitive.attributes.at("POSITION")];
+            const tinygltf::BufferView &posView = model.bufferViews[posAccessor.bufferView];
+            const tinygltf::Buffer &posBuffer = model.buffers[posView.buffer];
+
+            const float* positions = reinterpret_cast<const float*>(
+                &posBuffer.data[posView.byteOffset + posAccessor.byteOffset]
+            );
+
+            size_t vertexCount = posAccessor.count;
+
+            // Transform all positions once
+            std::vector<glm::vec3> worldPositions(vertexCount);
+            for (size_t i = 0; i < vertexCount; ++i) {
+                worldPositions[i] = glm::vec3(worldTransform *
+                    glm::vec4(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2], 1.0f));
+            }
+
+            // ---- Load or compute normals ----
+            std::vector<glm::vec3> vertexNormals(vertexCount, glm::vec3(0.0f));
+            bool hasNormals = primitive.attributes.count("NORMAL") > 0;
+
+            if (hasNormals) {
+                const tinygltf::Accessor &normAccessor = model.accessors[primitive.attributes.at("NORMAL")];
+                const tinygltf::BufferView &normView = model.bufferViews[normAccessor.bufferView];
+                const tinygltf::Buffer &normBuffer = model.buffers[normView.buffer];
+                const float* normals = reinterpret_cast<const float*>(
+                    &normBuffer.data[normView.byteOffset + normAccessor.byteOffset]
+                );
+                for (size_t i = 0; i < vertexCount; ++i) {
+                    vertexNormals[i] = glm::normalize(normalMatrix *
+                        glm::vec3(normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]));
+                }
+            }
+
+            // ---- Load indices----
+            if (primitive.indices < 0) {
+                std::cerr << "Primitive has no indices\n";
+                continue;
+            }
+
+            const tinygltf::Accessor &indexAccessor = model.accessors[primitive.indices];
+            const tinygltf::BufferView &indexView = model.bufferViews[indexAccessor.bufferView];
+            const tinygltf::Buffer &indexBuffer = model.buffers[indexView.buffer];
+
+            const unsigned char* dataPtr = indexBuffer.data.data() + indexView.byteOffset + indexAccessor.byteOffset;
+
+            std::vector<uint32_t> indices;
+            indices.reserve(indexAccessor.count);
+
+            switch (indexAccessor.componentType) {
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE: {
+                    const uint8_t* buf = reinterpret_cast<const uint8_t*>(dataPtr);
+                    for (size_t i = 0; i < indexAccessor.count; ++i) {
+                        indices.push_back(static_cast<uint32_t>(buf[i]));
+                    }
+                    break;
+                }
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
+                    const uint16_t* buf = reinterpret_cast<const uint16_t*>(dataPtr);
+                    for (size_t i = 0; i < indexAccessor.count; ++i) {
+                        indices.push_back(static_cast<uint32_t>(buf[i]));
+                    }
+                    break;
+                }
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
+                    const uint32_t* buf = reinterpret_cast<const uint32_t*>(dataPtr);
+                    for (size_t i = 0; i < indexAccessor.count; ++i) {
+                        indices.push_back(buf[i]);
+                    }
+                    break;
+                }
+                default:
+                    ASSERT(false); // Unsupported index component type
+            }
+
+            // ---- If no normals, accumulate face normals ----
+            if (!hasNormals) {
+                for (size_t tri = 0; tri < indices.size(); tri += 3) {
+                    uint32_t i0 = indices[tri + 0];
+                    uint32_t i1 = indices[tri + 1];
+                    uint32_t i2 = indices[tri + 2];
+
+                    glm::vec3 faceNormal = glm::normalize(glm::cross(
+                        worldPositions[i1] - worldPositions[i0],
+                        worldPositions[i2] - worldPositions[i0]));
+
+                    vertexNormals[i0] += faceNormal;
+                    vertexNormals[i1] += faceNormal;
+                    vertexNormals[i2] += faceNormal;
+                }
+                for (auto &n : vertexNormals) {
+                    n = glm::normalize(n);
+                }
+            }
+
+            // ---- Laod materials ====
+            int materialIndex = primitive.material;
+            for (size_t tri = 0; tri < indices.size(); tri += 3) {
+                uint32_t idx0 = indices[tri + 0];
+                uint32_t idx1 = indices[tri + 1];
+                uint32_t idx2 = indices[tri + 2];
+
+                Triangle triangle {
+                            worldPositions[idx0], worldPositions[idx1], worldPositions[idx2],
+                            vertexNormals[idx0], vertexNormals[idx1], vertexNormals[idx2]
+                        };
+                triangle.m_materialIndex = materialIndex < 0 ? 0 : m_materials.size() + materialIndex;
+
+                triangles.push_back(triangle);
+            }
+        }
     }
 
-    glm::mat4 worldTransform = GetWorldTransform(model, nodeIndex);
-
-    const tinygltf::Mesh &mesh = model.meshes[node.mesh];
-
-    for (const tinygltf::Primitive &primitive : mesh.primitives) {
-        if (primitive.mode != TINYGLTF_MODE_TRIANGLES) {
-            std::cout << "Only TRIANGLES mode supported\n";
-            continue;
-        }
-
-        // Positions
-        const tinygltf::Accessor &posAccessor = model.accessors[primitive.attributes.at("POSITION")];
-        const tinygltf::BufferView &posView = model.bufferViews[posAccessor.bufferView];
-        const tinygltf::Buffer &posBuffer = model.buffers[posView.buffer];
-
-        const float* positions = reinterpret_cast<const float*>(
-            &posBuffer.data[posView.byteOffset + posAccessor.byteOffset]
-        );
-
-        // Indices
-        if (primitive.indices < 0) {
-            std::cerr << "Primitive has no indices\n";
-            continue;
-        }
-
-        const tinygltf::Accessor &indexAccessor = model.accessors[primitive.indices];
-        const tinygltf::BufferView &indexView = model.bufferViews[indexAccessor.bufferView];
-        const tinygltf::Buffer &indexBuffer = model.buffers[indexView.buffer];
-
-        const unsigned char* dataPtr = indexBuffer.data.data() + indexView.byteOffset + indexAccessor.byteOffset;
-
-        std::vector<uint32_t> indices;
-        indices.reserve(indexAccessor.count);
-
-        switch (indexAccessor.componentType) {
-            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE: {
-                const uint8_t* buf = reinterpret_cast<const uint8_t*>(dataPtr);
-                for (size_t i = 0; i < indexAccessor.count; ++i) {
-                    indices.push_back(static_cast<uint32_t>(buf[i]));
-                }
-                break;
-            }
-            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
-                const uint16_t* buf = reinterpret_cast<const uint16_t*>(dataPtr);
-                for (size_t i = 0; i < indexAccessor.count; ++i) {
-                    indices.push_back(static_cast<uint32_t>(buf[i]));
-                }
-                break;
-            }
-            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
-                const uint32_t* buf = reinterpret_cast<const uint32_t*>(dataPtr);
-                for (size_t i = 0; i < indexAccessor.count; ++i) {
-                    indices.push_back(buf[i]);
-                }
-                break;
-            }
-            default:
-                ASSERT(false); // Unsupported index component type
-        }
-
-        // Print triangles in world space
-        for (size_t tri = 0; tri < indices.size(); tri += 3) {
-            uint32_t idx0 = indices[tri + 0];
-            uint32_t idx1 = indices[tri + 1];
-            uint32_t idx2 = indices[tri + 2];
-
-            glm::vec4 v0 = worldTransform * glm::vec4(
-                positions[idx0 * 3 + 0], positions[idx0 * 3 + 1], positions[idx0 * 3 + 2], 1.0f);
-            glm::vec4 v1 = worldTransform * glm::vec4(
-                positions[idx1 * 3 + 0], positions[idx1 * 3 + 1], positions[idx1 * 3 + 2], 1.0f);
-            glm::vec4 v2 = worldTransform * glm::vec4(
-                positions[idx2 * 3 + 0], positions[idx2 * 3 + 1], positions[idx2 * 3 + 2], 1.0f);
-            triangles.push_back(Triangle{ v0, v1, v2 });
-        }
+    // Load children
+    for (int childIndex : node.children) {
+        LoadWorldSpaceTriangle(triangles, model, childIndex, worldTransform);
     }
 }
 
@@ -205,9 +255,67 @@ std::vector<Triangle> RayScene::LoadModel(std::string modelPath) {
 
     std::cout << "Load " << modelPath << " successfully!\n";
 
-    LoadWorldSpaceTriangle(result, model, 0);
-    
-    std::cout << "\tTriangle Count: " << result.size() << '\n';
+    const tinygltf::Scene &scene = model.scenes[model.defaultScene > -1 ? model.defaultScene : 0];
+    for (int nodeIndex : scene.nodes) {
+        LoadWorldSpaceTriangle(result, model, nodeIndex, glm::mat4(1.0f));
+    }
+
+    for (auto &material : model.materials) {
+        Material m;
+        auto it = material.values.find("baseColorFactor");
+        if (it != material.values.end()) {
+            m.albedo = {
+                it->second.number_array[0],
+                it->second.number_array[1],
+                it->second.number_array[2]
+            };
+        }
+
+        auto extIt = material.extensions.find("KHR_materials_volume");
+        if (extIt != material.extensions.end()) {
+            const tinygltf::Value &ext = extIt->second;
+
+            auto tIt = ext.Get("thicknessFactor");
+            if (tIt.IsNumber()) {
+                m.subsurface = static_cast<float>(tIt.GetNumberAsDouble());
+            }
+        }
+
+        auto itMetal = material.values.find("metallicFactor");
+        if (itMetal != material.values.end()) {
+            m.metallic = static_cast<float>(itMetal->second.number_value);
+        }
+
+        auto itRough = material.values.find("roughnessFactor");
+        if (itRough != material.values.end()) {
+            m.roughness = static_cast<float>(itRough->second.number_value);
+        }
+
+        it = material.additionalValues.find("emissiveFactor");
+        if (it != material.additionalValues.end() && it->second.number_array.size() == 3) {
+            m.emissionColor = glm::vec3(
+                it->second.number_array[0],
+                it->second.number_array[1],
+                it->second.number_array[2]
+            );
+        }
+
+        // emissiveStrength  (GLTF extension)
+        extIt = material.extensions.find("KHR_materials_emissive_strength");
+        if (extIt != material.extensions.end()) {
+            const tinygltf::Value &ext = extIt->second;
+            auto sIt = ext.Get("emissiveStrength");
+            if (sIt.IsNumber()) {
+                m.emissionStrength = static_cast<float>(sIt.GetNumberAsDouble());
+            }
+        }
+
+        m_materials.push_back(m);
+        load_material(m_materials.size() - 1);
+    }
+
+    std::cout << "\tTriangles Count: " << result.size() << '\n';
+    std::cout << "\tMaterials Count: " << model.materials.size() << '\n';
 
     return result;
 }
@@ -230,37 +338,36 @@ void RayScene::load_material(i32 materialIndex) {
         });
 }
 
-void RayScene::load_objects() {
-    for (auto &e : m_traceableObjects) {
-        e->write(m_objectsBuffer);
-        i32 materialIndex = e->getMaterialIndex();
-
-        // Material uses 3 vec4 buffers
-        if (materialIndex * 3 >= m_materialsBuffer.size())
-            load_material(materialIndex);
-    }
-}
-
 void RayScene::initialize(const RayCamera &camera) {
     m_camera = camera;
+
     m_objectsTexBuffer = std::make_unique<gl::TextureBuffer>(
+            nullptr, 0, GL_STATIC_DRAW, GL_RGBA32F);
+
+    m_modelObjectsTexBuffer = std::make_unique<gl::TextureBuffer>(
             nullptr, 0, GL_STATIC_DRAW, GL_RGBA32F);
 
     m_materialsTexBuffer = std::make_unique<gl::TextureBuffer>(
             nullptr, 0, GL_STATIC_DRAW, GL_RGBA32F);
+
+    // Added default material
+    Material defaultMat;
+    m_materials.push_back(defaultMat);
+    load_material(0);
 }
 
 void RayScene::submit() {
-    m_materialsBuffer.clear();
-    m_objectsBuffer.clear();
-
-    load_objects();
     m_objectsTexBuffer->setBuffer(m_objectsBuffer.data(), m_objectsBuffer.size() * sizeof(glm::vec4));
+    m_modelObjectsTexBuffer->setBuffer(m_modelObjectsBuffer.data(), m_modelObjectsBuffer.size() * sizeof(glm::vec4));
     m_materialsTexBuffer->setBuffer(m_materialsBuffer.data(), m_materialsBuffer.size() * sizeof(glm::vec4));
 }
 
 void RayScene::bindObjects(i32 slot) const {
     m_objectsTexBuffer->bind(slot);
+}
+
+void RayScene::bindModelObjects(i32 slot) const {
+    m_modelObjectsTexBuffer->bind(slot);
 }
 
 void RayScene::bindMaterials(i32 slot) const {
@@ -273,5 +380,20 @@ void RayScene::setSkyColor(glm::vec3 skyColor) {
 
 glm::vec3 RayScene::getSkyColor() const {
     return m_skyColor;
+}
+
+void RayScene::addModel(std::string modelPath) {
+    m_traceableObjects.push_back(
+                std::make_unique<Model>(LoadModel(modelPath))
+            );
+    auto &object = m_traceableObjects.back();
+    object->m_materialIndex = 0; // Default material
+    object->write(m_objectsBuffer);
+
+    auto model = static_cast<Model&>(*m_traceableObjects.back().get());
+    auto &triangles = model.bvh.getTriangles();
+    for (auto &triangle : triangles) {
+        triangle.write(m_modelObjectsBuffer);
+    }
 }
 

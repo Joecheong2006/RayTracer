@@ -24,8 +24,6 @@ private:
 
 protected:
     void writeHeader(std::vector<glm::vec4> &buffer) const;
-    virtual void write(std::vector<glm::vec4> &buffer) const = 0;
-
     AABB boundingBox;
 
 public:
@@ -35,10 +33,11 @@ public:
 
     virtual ~TraceableObject() = default;
 
-    inline i32 getMaterialIndex() const { return m_materialIndex; }
-
-    virtual AABB getAABB() const { return boundingBox; }
+    virtual void write(std::vector<glm::vec4> &buffer) const = 0;
     virtual bool inAABB(const AABB &box) const = 0;
+
+    inline i32 getMaterialIndex() const { return m_materialIndex; }
+    inline virtual AABB getAABB() const { return boundingBox; }
 
 };
 
@@ -64,22 +63,24 @@ struct Quad : public TraceableObject {
 };
 
 struct Triangle : public TraceableObject {
-    Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC);
+    Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC,
+             glm::vec3 normA = {}, glm::vec3 normB = {}, glm::vec3 normC = {});
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
 
     glm::vec3 posA, posB, posC;
+    glm::vec3 normA, normB, normC;
 };
 
+#include "BVHTree.h"
 struct Model : public TraceableObject {
-    Model(std::vector<Triangle> triangles);
+    Model(const std::vector<Triangle> &triangles);
 
     virtual void write(std::vector<glm::vec4> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
 
-    std::vector<Triangle> triangles;
-    int endIndex;
+    BVHTree bvh;
 
 };
 

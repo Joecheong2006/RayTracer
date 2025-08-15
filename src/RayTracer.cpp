@@ -76,17 +76,25 @@ struct Quad {
 
 struct Triangle {
     vec3 posA, posB, posC;
+    vec3 normA, normB, normC;
     int materialIndex;
 };
 
-struct Model {
-    int endIndex;
+struct BVHNode {
     AABB boundingBox;
+    int leftIndex, rightIndex;
+    bool isLeaf;
+};
+
+struct Model {
+    AABB boundingBox;
+    int trianglesCount, nodesCount;
     int materialIndex;
 };
 
 uniform sampler2D previousFrame;
 uniform samplerBuffer objectsBuffer;
+uniform samplerBuffer modelObjectsBuffer;
 uniform samplerBuffer materialsBuffer;
 
 uniform int objectCount;
@@ -278,34 +286,25 @@ vec3 rayAt(in Ray r, float t) {
     return r.origin + t * r.direction;
 }
 
-bool rayIntersectsAABB(in Ray r, in AABB box)
-{
-    float tNear = -1e20;
-    float tFar  =  1e20;
+float RayBoundingBoxDst(in Ray r, in AABB box, float t) {
+    vec3 invDir = 1.0 / r.direction;
+    vec3 tMin = (box.min - r.origin) * invDir;
+    vec3 tMax = (box.max - r.origin) * invDir;
 
-    for (int i = 0; i < 3; ++i) {
-        if (abs(r.direction[i]) < 1e-8) {
-            if (r.origin[i] < box.min[i] || r.origin[i] > box.max[i])
-                return false; // parallel and outside slab
-            continue;
-        }
+    vec3 t1 = min(tMin, tMax);
+    vec3 t2 = max(tMin, tMax);
 
-        float invD = 1.0 / r.direction[i];
-        float t1 = (box.min[i] - r.origin[i]) * invD;
-        float t2 = (box.max[i] - r.origin[i]) * invD;
-        if (t1 > t2) {
-            float tmp = t1; t1 = t2; t2 = tmp;
-        }
-        tNear = max(tNear, t1);
-        tFar  = min(tFar,  t2);
-        if (tNear > tFar) return false;
-    }
-    return tFar >= max(tNear, 0);
+    float near = max(max(t1.x, t1.y), t1.z);
+    if (near > t) return 1e20;
+
+    float far = min(min(t2.x, t2.y), t2.z);
+
+    return far >= near && far > 0 ? near : 1e20;
 }
 
 // Sphere Functions
-Sphere loadSphere(inout int objectIndex) {
-    vec4 buf = texelFetch(objectsBuffer, objectIndex++);
+Sphere loadSphere(in samplerBuffer buffer, inout int objectIndex) {
+    vec4 buf = texelFetch(buffer, objectIndex++);
     Sphere result;
     result.center = buf.xyz;
     result.radius = buf.w;
@@ -342,12 +341,12 @@ bool hitSphere(in Sphere sphere, in Ray r, float max, inout HitInfo info) {
 }
 
 // Quad Functions
-Quad loadQuad(inout int objectIndex) {
+Quad loadQuad(in samplerBuffer buffer, inout int objectIndex) {
     Quad result;
-    vec4 buf = texelFetch(objectsBuffer, objectIndex++);
+    vec4 buf = texelFetch(buffer, objectIndex++);
     result.q = buf.xyz;
-    result.u = texelFetch(objectsBuffer, objectIndex++).xyz;
-    result.v = texelFetch(objectsBuffer, objectIndex++).xyz;
+    result.u = texelFetch(buffer, objectIndex++).xyz;
+    result.v = texelFetch(buffer, objectIndex++).xyz;
     result.cullFace = bool(buf.w);
     return result;
 }
@@ -384,11 +383,22 @@ bool hitQuad(in Quad quad, in Ray r, float max, inout HitInfo info) {
 }
 
 // Triangle Function
-Triangle loadTriangle(inout int objectIndex) {
+Triangle loadTriangle(in samplerBuffer buffer, inout int objectIndex) {
     Triangle result;
-    result.posA = texelFetch(objectsBuffer, objectIndex++).xyz;
-    result.posB = texelFetch(objectsBuffer, objectIndex++).xyz;
-    result.posC = texelFetch(objectsBuffer, objectIndex++).xyz;
+    vec4 buf = texelFetch(buffer, objectIndex++);
+    result.posA = buf.xyz;
+    result.normA.x = buf.w;
+
+    buf = texelFetch(buffer, objectIndex++);
+    result.posB = buf.xyz;
+    result.normA.y = buf.w;
+
+    buf = texelFetch(buffer, objectIndex++);
+    result.posC = buf.xyz;
+    result.normA.z = buf.w;
+
+    result.normB = texelFetch(buffer, objectIndex++).xyz;
+    result.normC = texelFetch(buffer, objectIndex++).xyz;
     return result;
 }
 
@@ -397,7 +407,7 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
     vec3 edgeAC = tri.posC - tri.posA;
     vec3 normal = cross(edgeAB, edgeAC);
 
-    if (dot(normal, r.direction) >= 0) return false;
+    // if (dot(normal, r.direction) >= 0) return false;
 
     float determinant = -dot(r.direction, normal);
     if (abs(determinant) < 1e-8) return false; // parallel
@@ -416,27 +426,113 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
 
     info.t = t;
     info.point = rayAt(r, t);
-    info.normal = normalize(normal);
+
+    if (dot(tri.normA, tri.normA) > 0) {
+        float w = 1.0 - u - v;
+        vec3 smoothNormal = normalize(
+              tri.normA * w +
+              tri.normB * u +
+              tri.normC * v
+        );
+        info.normal = smoothNormal;
+    }
+    else {
+        info.normal = normalize(normal);
+    }
+    if (determinant < 0) {
+        info.normal = -info.normal;
+    }
     return true;
 }
 
 // Model Function
 Model loadModel(inout int objectIndex) {
     Model result;
+
     vec4 buf = texelFetch(objectsBuffer, objectIndex++);
-    result.endIndex = int(buf.w);
     result.boundingBox.min = buf.xyz;
-    result.boundingBox.max = texelFetch(objectsBuffer, objectIndex++).xyz;
+    result.trianglesCount = int(buf.w);
+
+    buf = texelFetch(objectsBuffer, objectIndex++);
+    result.boundingBox.max = buf.xyz;
+    result.nodesCount = int(buf.w);
+
     return result;
+}
+
+BVHNode loadBVHNodeAt(int objectIndex) {
+    BVHNode result;
+
+    result.boundingBox.min = texelFetch(objectsBuffer, objectIndex++).xyz;
+    result.boundingBox.max = texelFetch(objectsBuffer, objectIndex++).xyz;
+
+    vec4 buf = texelFetch(objectsBuffer, objectIndex++);
+    result.leftIndex = int(buf.x);
+    result.rightIndex = int(buf.y);
+    result.isLeaf = bool(buf.z);
+
+    return result;
+}
+
+bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex, int modelObjectsIndex) {
+    if (RayBoundingBoxDst(r, model.boundingBox, info.t) >= 1e20) {
+        return false;
+    }
+
+    int stack[32];
+    int stackIndex = 0;
+    stack[stackIndex++] = 0;
+
+    HitInfo hInfo;
+    hInfo.t = 1e20;
+
+    while (stackIndex > 0) {
+        int nodeIndex = stack[--stackIndex];
+        BVHNode node = loadBVHNodeAt(objectIndex + nodeIndex * 3);
+
+        if (node.isLeaf) {
+            for (int offset = node.leftIndex; offset < node.rightIndex; ++offset) {
+                int index = (modelObjectsIndex + offset) * 6;
+                vec4 buf = texelFetch(modelObjectsBuffer, index++);
+                Triangle tri = loadTriangle(modelObjectsBuffer, index);
+                tri.materialIndex = int(buf.g);
+
+                if (hitTriangle(tri, r, max, hInfo)) {
+                    max = hInfo.t;
+                    hInfo.materialIndex = tri.materialIndex;
+                }
+            }
+            continue;
+        }
+
+        BVHNode leftNode = loadBVHNodeAt(objectIndex + node.leftIndex * 3);
+        BVHNode rightNode = loadBVHNodeAt(objectIndex + node.rightIndex * 3);
+
+        float leftDst = RayBoundingBoxDst(r, leftNode.boundingBox, hInfo.t);
+        float rightDst = RayBoundingBoxDst(r, rightNode.boundingBox, hInfo.t);
+
+        if (leftDst < rightDst) {
+            if (rightDst < hInfo.t) stack[stackIndex++] = node.rightIndex;
+            if (leftDst < hInfo.t) stack[stackIndex++] = node.leftIndex;
+        }
+        else {
+            if (leftDst < hInfo.t) stack[stackIndex++] = node.leftIndex;
+            if (rightDst < hInfo.t) stack[stackIndex++] = node.rightIndex;
+        }
+    }
+    info = hInfo;
+    return info.t < 1e20;
 }
 
 void hit(in Ray r, inout HitInfo track) {
     HitInfo tmp;
 
-    float closest = 0xffffff;
+    float closest = 1e20;
     tmp.t = closest;
 
     int objectIndex = 0;
+    int modelObjectsIndex = 0;
+
     int tests = 0;
 
     for (int i = 0; i < objectCount; ++i) {
@@ -448,12 +544,12 @@ void hit(in Ray r, inout HitInfo track) {
 
         switch (type) {
             case 0:
-                Sphere sphere = loadSphere(objectIndex);
+                Sphere sphere = loadSphere(objectsBuffer, objectIndex);
                 sphere.materialIndex = tmp.materialIndex;
                 hitted = hitSphere(sphere, r, closest, tmp);
                 break;
             case 1:
-                Quad quad = loadQuad(objectIndex);
+                Quad quad = loadQuad(objectsBuffer, objectIndex);
 
                 if (quad.cullFace && dot(r.direction, cross(quad.u, quad.v)) > 0) {
                     break;
@@ -463,15 +559,16 @@ void hit(in Ray r, inout HitInfo track) {
                 hitted = hitQuad(quad, r, closest, tmp);
                 break;
             case 2:
-                Triangle tri = loadTriangle(objectIndex);
+                Triangle tri = loadTriangle(objectsBuffer, objectIndex);
                 tri.materialIndex = tmp.materialIndex;
                 hitted = hitTriangle(tri, r, closest, tmp);
                 break;
             case 3:
                 Model model = loadModel(objectIndex);
-                if (!rayIntersectsAABB(r, model.boundingBox)) {
-                    objectIndex += model.endIndex;
-                }
+                model.materialIndex = tmp.materialIndex;
+                hitted = hitModel(model, r, closest, tmp, objectIndex, modelObjectsIndex);
+                objectIndex += model.nodesCount * 3;
+                modelObjectsIndex += model.trianglesCount;
                 break;
             default:
                 break;
@@ -497,7 +594,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         HitInfo info;
         hit(r, info);
 
-        if (info.t >= 0xffffff) {
+        if (info.t >= 1e20) {
             float t = r.direction.y * 0.5 + 0.5;
             vec3 envColor = (1.0 - t) * vec3(1) + t * skyColor;
             if (dot(skyColor, skyColor) > 0)
@@ -610,9 +707,9 @@ void main() {
 
     vec3 color = vec3(0.0);
 
+#if 0
     int ssq = int(sqrt(camera.rayPerPixel));
     float rssq = 1.0 / ssq;
-
     for (int i = 0; i < ssq; ++i) {
         for (int j = 0; j < ssq; ++j) {
             seed = SeedType(hashSeed(uint(fragCoord.x), uint(fragCoord.y), frameCount, uint(j + i * ssq)));
@@ -625,6 +722,17 @@ void main() {
     }
 
     color *= rssq * rssq;
+#else
+    for (int i = 0; i < camera.rayPerPixel; ++i) {
+        seed = SeedType(hashSeed(uint(fragCoord.x), uint(fragCoord.y), frameCount, uint(i)));
+        Ray r;
+        r.origin = cameraCenter;
+        r.direction = uv + randFloat(seed) * rImgSize.x * camera.right + randFloat(seed) * rImgSize.y * camera.up;
+        r.direction = normalize(r.direction - cameraCenter);
+        color += traceColor(r, seed);
+    }
+    color /= camera.rayPerPixel;
+#endif
 
     color = (texture(previousFrame, vec2(gl_FragCoord.xy) * rImgSize).rgb * (frameCount - 1.0) + color) / float(frameCount);
 
@@ -661,8 +769,11 @@ void RayTracer::renderToTexture(const RayScene &scene) {
     scene.bindObjects(1);
     m_shader->setUniform1i("objectsBuffer", 1);
 
-    scene.bindMaterials(2);
-    m_shader->setUniform1i("materialsBuffer", 2);
+    scene.bindModelObjects(2);
+    m_shader->setUniform1i("modelObjectsBuffer", 2);
+
+    scene.bindMaterials(3);
+    m_shader->setUniform1i("materialsBuffer", 3);
 
     m_shader->setUniform1i("objectCount", scene.getObjectsCount());
     m_shader->setUniform1u("frameCount", m_frameCount);

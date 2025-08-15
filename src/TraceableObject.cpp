@@ -68,9 +68,10 @@ bool Quad::inAABB(const AABB &box) const {
            (quadMax.z >= box.min.z && quadMin.z <= box.max.z);
 }
 
-Triangle::Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC)
+Triangle::Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC, glm::vec3 normA, glm::vec3 normB, glm::vec3 normC)
     : TraceableObject(TraceableType::Triangle)
     , posA(posA), posB(posB), posC(posC)
+    , normA(normA), normB(normB), normC(normC)
 {
     boundingBox = AABB(
             glm::min(posA, glm::min(posB, posC)),
@@ -80,9 +81,11 @@ Triangle::Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC)
 
 void Triangle::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
-    buffer.push_back({ posA, 0 });
-    buffer.push_back({ posB, 0 });
-    buffer.push_back({ posC, 0 });
+    buffer.push_back({ posA, normA.x });
+    buffer.push_back({ posB, normA.y });
+    buffer.push_back({ posC, normA.z });
+    buffer.push_back({ normB, 0 });
+    buffer.push_back({ normC, 0 });
 }
 
 bool Triangle::inAABB(const AABB &box) const {
@@ -96,11 +99,12 @@ bool Triangle::inAABB(const AABB &box) const {
     return true;
 }
 
-Model::Model(std::vector<Triangle> triangles)
+Model::Model(const std::vector<Triangle> &triangles)
     : TraceableObject(TraceableType::Model)
-    , triangles(triangles), endIndex(triangles.size() * 4)
+    , bvh(triangles)
 {
     if (triangles.size() > 0) {
+        boundingBox = triangles.front().getAABB();
         for (auto &triangle : triangles) {
             boundingBox = AABB(boundingBox, triangle.getAABB());
         }
@@ -109,8 +113,18 @@ Model::Model(std::vector<Triangle> triangles)
 
 void Model::write(std::vector<glm::vec4> &buffer) const {
     writeHeader(buffer);
-    buffer.push_back({ boundingBox.min, endIndex });
-    buffer.push_back({ boundingBox.max, 0});
+
+    const auto &nodes = bvh.getNodes();
+    const auto &triangles = bvh.getTriangles();
+
+    buffer.push_back({ boundingBox.min, triangles.size() });
+    buffer.push_back({ boundingBox.max, nodes.size() });
+
+    for (auto &node : nodes) {
+        buffer.push_back({ node.box.min, 0 });
+        buffer.push_back({ node.box.max, 0 });
+        buffer.push_back({ node.leftIndex, node.rightIndex, node.isLeaf, 0 });
+    }
 }
 
 bool Model::inAABB(const AABB &box) const {

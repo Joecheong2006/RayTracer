@@ -22,6 +22,10 @@ struct RayCamera {
     void updateDirection();
 };
 
+namespace tinygltf{
+    class Model;
+}
+
 class RayScene {
     friend class TraceableObject;
 private:
@@ -39,19 +43,22 @@ private:
     std::unique_ptr<gl::TextureBuffer> m_objectsTexBuffer;
     std::vector<glm::vec4> m_objectsBuffer;
 
+    std::unique_ptr<gl::TextureBuffer> m_modelObjectsTexBuffer;
+    std::vector<glm::vec4> m_modelObjectsBuffer;
+
     u32 m_objectBottomIndex = 0;
 
     void load_material(i32 materialIndex);
-    void load_objects();
 
-public:
-    static std::vector<Triangle> LoadModel(std::string modelPath);
+    void LoadWorldSpaceTriangle(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform);
+    std::vector<Triangle> LoadModel(std::string modelPath);
 
 public:
     explicit RayScene() = default;
 
     void initialize(const RayCamera &camera);
     void bindObjects(i32 slot) const;
+    void bindModelObjects(i32 slot) const;
     void bindMaterials(i32 slot) const;
     void submit();
 
@@ -63,32 +70,19 @@ public:
 
     const RayCamera &getCamera() const { return m_camera; }
 
-    template <typename T, typename... Args>
-    struct trace_initalize {
-        trace_initalize(RayScene&) {}
-    };
-
-    template <typename... Args>
-    struct trace_initalize<Model, Args...> {
-        trace_initalize(RayScene &scene) {
-            auto model = static_cast<Model&>(*scene.m_traceableObjects.back().get());
-            for (auto &triangle : model.triangles) {
-                scene.m_traceableObjects.push_back(std::make_unique<Triangle>(triangle));
-                auto &object = scene.m_traceableObjects.back();
-                object->m_materialIndex = model.m_materialIndex;
-            }
-        }
-    };
+    void addModel(std::string modelPath);
 
     template <typename T, typename... Args>
     void addObject(const Material &material, Args&&... args) {
         m_traceableObjects.push_back(std::make_unique<T>(std::forward<Args>(args)...));
 
         auto &object = m_traceableObjects.back();
-        object->m_materialIndex = m_materials.size();
-        m_materials.push_back(material);
 
-        trace_initalize<T, Args...>(*this);
+        object->m_materialIndex = m_materials.size();
+        object->write(m_objectsBuffer);
+
+        m_materials.push_back(material);
+        load_material(object->getMaterialIndex());
     }
 
     template <typename T, typename... Args>
@@ -97,9 +91,9 @@ public:
         m_traceableObjects.push_back(std::make_unique<T>(std::forward<Args>(args)...));
 
         auto &object = m_traceableObjects.back();
-        object->m_materialIndex = materialIndex;
 
-        trace_initalize<T, Args...>(*this);
+        object->m_materialIndex = materialIndex;
+        object->write(m_objectsBuffer);
     }
 
 };
