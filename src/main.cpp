@@ -12,8 +12,6 @@
 #include "TraceableObject.h"
 #include "RayEngine.h"
 
-#include "RaySceneBuilder.h"
-
 const char *screenVertexShaderSource = R"(
 #version 330 core
 layout (location = 0) in vec3 aPos;
@@ -89,7 +87,7 @@ int main() {
     f32 xScale, yScale;
     getDPIScaler(&xScale, &yScale);
 
-    const std::string title= "Ray Tracer Demo - Cornell Box";
+    const std::string title= "Ray Tracer Demo - Model BVH";
     std::printf("Retina Sacler [%.2g, %.2g]\n", xScale, yScale);
 
     GLFWwindow *window = glfwCreateWindow(width / xScale, height / yScale, title.c_str(), NULL, NULL);
@@ -111,35 +109,27 @@ int main() {
         // Initialize Camera
         RayCamera camera;
         camera.rayPerPixel = 1;
-        camera.bounces = 15;
-        camera.fov = 60;
-        camera.resolution = { width * 0.5, height * 0.5 };
+        camera.bounces = 5;
+        camera.fov = 50;
+        camera.resolution = { width, height };
         camera.pitch = 0;
-        camera.position = { 0, 1, -1.76 };
+        camera.position = { 0, 1, -2.2 };
         camera.updateDirection();
 
         // Initialize RayEngine
         RayEngine rayEngine;
         rayEngine.initialize(camera);
+        // rayEngine.changeResolution({ width * 0.5f, height * 0.5f });
 
         // Set up Scene
         {
             auto &scene = rayEngine.getScene();
+
             scene.setSkyColor({});
 
-            RaySceneBuilder::BuildCornellBox(scene, glm::vec3{ -1, 0, 0 }, 2, 0.6, 20);
-
-            Material m;
-
-            // Right Box
-            RaySceneBuilder::BuildBox(scene, m,
-                    glm::vec3{ 0.54, 0.54, 0.54 }, glm::vec3{0.32, 0.27, 0.7}, glm::angleAxis(glm::radians(-18.0f), glm::vec3(0, 1, 0)));
-
-            m.roughness = 0;
-            m.metallic = 1.0;
-            // Left Box
-            RaySceneBuilder::BuildBox(scene, m,
-                    glm::vec3{ 0.6, 1.2, 0.6 }, glm::vec3{-0.35, 0.6, 1.2}, glm::angleAxis(glm::radians(18.0f), glm::vec3(0, 1, 0)));
+            // NOTE: Models are in res folder to be unziped
+            scene.addModel("cornellBox.glb");
+            scene.addModel("herculesBeetle.glb");
 
             scene.submit(); // submit scene to GPU
         }
@@ -153,6 +143,8 @@ int main() {
 
         glClearColor(0.01f, 0.011f, 0.01f, 1.0f);
 
+        f32 avgRenderTime = 0;
+
         while (!glfwWindowShouldClose(window)) {
             if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
                 glfwSetWindowShouldClose(window, true);
@@ -163,6 +155,15 @@ int main() {
 
             // Accumulate Scene
             rayEngine.render();
+
+            f32 dt = (glfwGetTime() - previous) * 1000.0f;
+            i32 frameCount = raytracer.getFrameCount();
+            avgRenderTime = (avgRenderTime * (frameCount - 1) + dt) / frameCount;
+
+            std::stringstream ss;
+            ss << title
+                << '\t'<< frameCount
+                <<'\t' << std::fixed << std::setprecision(3) << avgRenderTime << "ms";
 
             auto &quad = rayEngine.getQuad();
 
@@ -176,12 +177,6 @@ int main() {
             glDrawElements(GL_TRIANGLES, quad.getCount(), GL_UNSIGNED_INT, 0);
 
             glfwSwapBuffers(window);
-
-            double dt = (glfwGetTime() - previous);
-
-            std::stringstream ss;
-            ss << title << '\t' << raytracer.getFrameCount()
-                << '\t' << std::fixed << std::setprecision(2) << dt * 1000.0 << "ms";
 
             glfwSetWindowTitle(window, ss.str().c_str());
 
