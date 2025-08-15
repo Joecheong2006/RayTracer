@@ -156,15 +156,6 @@ int main() {
             // Accumulate Scene
             rayEngine.render();
 
-            f32 dt = (glfwGetTime() - previous) * 1000.0f;
-            i32 frameCount = raytracer.getFrameCount();
-            avgRenderTime = (avgRenderTime * (frameCount - 1) + dt) / frameCount;
-
-            std::stringstream ss;
-            ss << title
-                << '\t'<< frameCount
-                <<'\t' << std::fixed << std::setprecision(3) << avgRenderTime << "ms";
-
             auto &quad = rayEngine.getQuad();
 
             // Draw screen texture
@@ -177,6 +168,15 @@ int main() {
             glDrawElements(GL_TRIANGLES, quad.getCount(), GL_UNSIGNED_INT, 0);
 
             glfwSwapBuffers(window);
+
+            f32 dt = (glfwGetTime() - previous) * 1000.0f;
+            i32 frameCount = raytracer.getFrameCount();
+            avgRenderTime = (avgRenderTime * (frameCount - 1) + dt) / frameCount;
+
+            std::stringstream ss;
+            ss << title
+                << '\t'<< frameCount
+                <<'\t' << std::fixed << std::setprecision(3) << avgRenderTime << "ms";
 
             glfwSetWindowTitle(window, ss.str().c_str());
 
