@@ -740,15 +740,15 @@ void main() {
 }
 )";
 
-void RayTracer::initialize(const RayCamera &camera) {
+void RayTracer::initialize(glm::ivec2 resolution) {
     m_shader = std::make_unique<gl::ShaderProgram>();
     m_shader->attachShaderCode(GL_VERTEX_SHADER, vertexShaderSource);
     m_shader->attachShaderCode(GL_FRAGMENT_SHADER, fragmentShaderSource);
     m_shader->link();
 
     gl::Texture2D::Construct con;
-    con.width = camera.resolution.x;
-    con.height = camera.resolution.y;
+    con.width = resolution.x;
+    con.height = resolution.y;
     con.style = GL_LINEAR;
     con.style = GL_NEAREST;
     con.format = GL_RGBA;
@@ -758,9 +758,7 @@ void RayTracer::initialize(const RayCamera &camera) {
     m_frames[1] = std::make_unique<gl::Texture2D>(con);
 }
 
-void RayTracer::renderToTexture(const RayScene &scene) {
-    auto &camera = scene.getCamera();
-
+void RayTracer::renderToTexture(const RayCamera &camera, const RayScene &scene) {
     m_shader->bind();
 
     getPreviousFrame().bind(0);

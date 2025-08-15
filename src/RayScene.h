@@ -29,8 +29,6 @@ namespace tinygltf{
 class RayScene {
     friend class TraceableObject;
 private:
-    RayCamera m_camera;
-
     glm::vec3 m_skyColor = { 0.5, 0.7, 1.0 };
 
     // Materials
@@ -54,7 +52,7 @@ private:
 public:
     explicit RayScene() = default;
 
-    void initialize(const RayCamera &camera);
+    void initialize();
     void bindObjects(i32 slot) const;
     void bindModelObjects(i32 slot) const;
     void bindMaterials(i32 slot) const;
@@ -64,7 +62,6 @@ public:
     glm::vec3 getSkyColor() const;
     i32 getMaterialCount() const { return m_materials.size(); }
     inline u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
-    const RayCamera &getCamera() const { return m_camera; }
 
     void addModel(std::string modelPath);
 

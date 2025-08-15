@@ -22,8 +22,8 @@ private:
 
 public:
     explicit RayTracer() = default;
-    void initialize(const RayCamera &camera);
-    void renderToTexture(const RayScene &scene);
+    void initialize(glm::ivec2 resolution);
+    void renderToTexture(const RayCamera &camera, const RayScene &scene);
 
     inline gl::Texture2D &getCurrentFrame() const { return *m_frames[m_frameIndex]; }
     inline gl::Texture2D &getPreviousFrame() const { return *m_frames[!m_frameIndex]; }

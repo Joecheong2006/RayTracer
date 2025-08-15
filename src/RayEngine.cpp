@@ -5,8 +5,9 @@
 #include "glUtilities/Quad.h"
     
 void RayEngine::initialize(const RayCamera &camera) {
-    m_rayTracer.initialize(camera);
-    m_rayScene.initialize(camera);
+    m_camera = camera;
+    m_rayScene.initialize();
+    m_rayTracer.initialize(camera.resolution);
     m_framebuffer = std::make_unique<gl::Framebuffer>();
     m_quad = std::make_unique<gl::Quad>();
 }
@@ -21,7 +22,7 @@ void RayEngine::render() {
     glViewport(0, 0, screenTexture.getWidth(), screenTexture.getHeight());
 
     m_quad->bind();
-    m_rayTracer.renderToTexture(m_rayScene);
+    m_rayTracer.renderToTexture(m_camera, m_rayScene);
     glDrawElements(GL_TRIANGLES, m_quad->getCount(), GL_UNSIGNED_INT, 0);
 
     m_framebuffer->unbind();
