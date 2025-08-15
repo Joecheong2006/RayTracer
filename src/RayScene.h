@@ -46,8 +46,6 @@ private:
     std::unique_ptr<gl::TextureBuffer> m_modelObjectsTexBuffer;
     std::vector<glm::vec4> m_modelObjectsBuffer;
 
-    u32 m_objectBottomIndex = 0;
-
     void load_material(const Material &material);
 
     void load_triangles_gltf(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform);
