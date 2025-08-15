@@ -122,22 +122,34 @@ BVHTree::BVHTree(const std::vector<Triangle>& triangles) {
         s.push({ current.leftIndex, track[1] + 1 });
     }
 
+    glm::ivec2 nodesUsage = { m_nodes.size() * sizeof(BVHNode), m_nodes.size() * 3 * sizeof(glm::vec4) };
+    glm::ivec2 trianglesUsage = { m_triangles.size() * sizeof(Triangle), m_triangles.size() * 6 * sizeof(glm::vec4) };
+
+    glm::ivec2 bvhUsage = nodesUsage + trianglesUsage;
+
+    const char *gaps = "\t";
+
     std::cout
         << "\nBVH Constructed Successfully!\n"
-        << "\tNodes Count: " << m_nodes.size() << '\n'
-            << "\t\tCPU Usage: " << m_nodes.size() * sizeof(BVHNode) / 1024.0f << " (KB)\n"
-            << "\t\tGPU Usage: " << m_nodes.size() * 3 * sizeof(glm::vec4) / 1024.0f << " (KB)\n"
-        << "\tTriangles Count: " << m_triangles.size() << '\n'
-            << "\t\tCPU Usage: " << m_nodes.size() * sizeof(Triangle) / 1024.0f << " (KB)\n"
-            << "\t\tGPU Usage: " << m_nodes.size() * 6 * sizeof(glm::vec4) / 1024.0f << " (KB)\n"
+        << "\tNodes Count: " << gaps << gaps <<m_nodes.size() << '\n'
+            << "\t\tCPU Usage: " << gaps << nodesUsage[0] / 1024.0f << " (KB)\n"
+            << "\t\tGPU Usage: " << gaps << nodesUsage[1] / 1024.0f << " (KB)\n"
 
-        << "\tBVH Min Height: " << minHeight << '\n'
-        << "\tBVH Max Height: " << maxHeight << '\n'
-        << "\tBVH Avg Height: " << totalHeight / (f32)leafNodeCount << '\n'
+        << "\tTriangles Count: " << gaps << m_triangles.size() << '\n'
+            << "\t\tCPU Usage: " << gaps << trianglesUsage[0] / 1024.0f << " (KB)\n"
+            << "\t\tGPU Usage: " << gaps << trianglesUsage[1] / 1024.0f << " (KB)\n"
 
-        << "\tMin Triangles Per Leaf Node: " << minTri << '\n'
-        << "\tMax Triangles Per Leaf Node: " << maxTri << '\n'
-        << "\tAvg Triangles Per Leaf Node: " << tris.size() / (f32)leafNodeCount << '\n'
-        << "\tEmpty Leaf Nodes: " << emptyLeaf  << "\n\n";
+        << "\tBVH Memory Usage: " << '\n'
+            << "\t\tCPU Usage: "  << gaps << bvhUsage[0] / 1024.0f<< " (KB)\n"
+            << "\t\tGPU Usage: "  << gaps << bvhUsage[1] / 1024.0f << " (KB)\n"
+
+        << "\tBVH Min Height: " << gaps << minHeight << '\n'
+        << "\tBVH Max Height: " << gaps << maxHeight << '\n'
+        << "\tBVH Avg Height: " << gaps << totalHeight / (f32)leafNodeCount << '\n'
+
+        << "\tMin Triangles Leaf: " << gaps << minTri << '\n'
+        << "\tMax Triangles Leaf: " << gaps << maxTri << '\n'
+        << "\tAvg Triangles Leaf: " << gaps << tris.size() / (f32)leafNodeCount << '\n'
+        << "\tEmpty Leaf: " << gaps << gaps << emptyLeaf  << "\n\n";
 }
 
