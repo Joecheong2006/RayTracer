@@ -789,3 +789,17 @@ void RayTracer::renderToTexture(const RayCamera &camera, const RayScene &scene) 
     m_frameIndex = !m_frameIndex;
     ++m_frameCount;
 }
+
+void RayTracer::changeResolution(glm::ivec2 resolution) {
+    gl::Texture2D::Construct con;
+    con.width = resolution.x;
+    con.height = resolution.y;
+    con.style = GL_LINEAR;
+    con.style = GL_NEAREST;
+    con.format = GL_RGBA;
+    con.internal = GL_RGBA32F;
+
+    m_frames[0] = std::make_unique<gl::Texture2D>(con);
+    m_frames[1] = std::make_unique<gl::Texture2D>(con);
+}
+

@@ -22,6 +22,7 @@ public:
     RayEngine() = default;
     
     void initialize(const RayCamera &camera);
+    void changeResolution(glm::ivec2 resolution);
     void render();
 
     inline RayScene& getScene() { return m_rayScene; }

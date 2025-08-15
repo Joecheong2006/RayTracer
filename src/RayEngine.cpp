@@ -12,6 +12,11 @@ void RayEngine::initialize(const RayCamera &camera) {
     m_quad = std::make_unique<gl::Quad>();
 }
 
+void RayEngine::changeResolution(glm::ivec2 resolution) {
+    getRayTracer().changeResolution(resolution);
+    m_camera.resolution = resolution;
+}
+
 void RayEngine::render() {
     m_framebuffer->bind();
 
