@@ -50,8 +50,8 @@ private:
 
     void load_material(const Material &material);
 
-    void LoadWorldSpaceTriangle(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform);
-    std::vector<Triangle> LoadModel(std::string modelPath);
+    void load_triangles_gltf(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform);
+    std::vector<Triangle> load_model(std::string modelPath);
 
 public:
     explicit RayScene() = default;

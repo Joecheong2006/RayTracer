@@ -101,7 +101,7 @@ static glm::mat4 GetWorldTransform(const tinygltf::Model &model, int nodeIndex) 
     return ComputeWorldTransformCached(model, nodeIndex, parentMap, visited, cache);
 }
 
-void RayScene::LoadWorldSpaceTriangle(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform) {
+void RayScene::load_triangles_gltf(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform) {
     const tinygltf::Node &node = model.nodes[nodeIndex];
     const glm::mat4 worldTransform = GetWorldTransform(model, nodeIndex);
 
@@ -232,11 +232,11 @@ void RayScene::LoadWorldSpaceTriangle(std::vector<Triangle> &triangles, const ti
 
     // Load children
     for (int childIndex : node.children) {
-        LoadWorldSpaceTriangle(triangles, model, childIndex, worldTransform);
+        load_triangles_gltf(triangles, model, childIndex, worldTransform);
     }
 }
 
-std::vector<Triangle> RayScene::LoadModel(std::string modelPath) {
+std::vector<Triangle> RayScene::load_model(std::string modelPath) {
     std::vector<Triangle> result;
 
     tinygltf::Model model;
@@ -257,7 +257,7 @@ std::vector<Triangle> RayScene::LoadModel(std::string modelPath) {
 
     const tinygltf::Scene &scene = model.scenes[model.defaultScene > -1 ? model.defaultScene : 0];
     for (int nodeIndex : scene.nodes) {
-        LoadWorldSpaceTriangle(result, model, nodeIndex, glm::mat4(1.0f));
+        load_triangles_gltf(result, model, nodeIndex, glm::mat4(1.0f));
     }
 
     for (auto &material : model.materials) {
@@ -383,7 +383,7 @@ glm::vec3 RayScene::getSkyColor() const {
 
 void RayScene::addModel(std::string modelPath) {
     m_traceableObjects.push_back(
-                std::make_unique<Model>(LoadModel(modelPath))
+                std::make_unique<Model>(load_model(modelPath))
             );
     auto &object = m_traceableObjects.back();
     object->m_materialIndex = 0; // Default material
