@@ -48,7 +48,7 @@ private:
 
     u32 m_objectBottomIndex = 0;
 
-    void load_material(i32 materialIndex);
+    void load_material(const Material &material);
 
     void LoadWorldSpaceTriangle(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform);
     std::vector<Triangle> LoadModel(std::string modelPath);
@@ -65,9 +65,7 @@ public:
     void setSkyColor(glm::vec3 skyColor);
     glm::vec3 getSkyColor() const;
     i32 getMaterialCount() const { return m_materials.size(); }
-    
     inline u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
-
     const RayCamera &getCamera() const { return m_camera; }
 
     void addModel(std::string modelPath);
@@ -82,7 +80,7 @@ public:
         object->write(m_objectsBuffer);
 
         m_materials.push_back(material);
-        load_material(object->getMaterialIndex());
+        load_material(material);
     }
 
     template <typename T, typename... Args>

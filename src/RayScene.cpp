@@ -311,7 +311,7 @@ std::vector<Triangle> RayScene::LoadModel(std::string modelPath) {
         }
 
         m_materials.push_back(m);
-        load_material(m_materials.size() - 1);
+        load_material(m);
     }
 
     std::cout << "\tTriangles Count: " << result.size() << '\n';
@@ -320,8 +320,7 @@ std::vector<Triangle> RayScene::LoadModel(std::string modelPath) {
     return result;
 }
 
-void RayScene::load_material(i32 materialIndex) {
-    auto &material = m_materials[materialIndex];
+void RayScene::load_material(const Material &material) {
     m_materialsBuffer.push_back({
             material.emissionColor, material.emissionStrength
         });
@@ -353,7 +352,7 @@ void RayScene::initialize(const RayCamera &camera) {
     // Added default material
     Material defaultMat;
     m_materials.push_back(defaultMat);
-    load_material(0);
+    load_material(defaultMat);
 }
 
 void RayScene::submit() {
