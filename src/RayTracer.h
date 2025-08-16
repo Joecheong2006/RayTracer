@@ -25,6 +25,7 @@ public:
     void initialize(glm::ivec2 resolution);
     void renderToTexture(const RayCamera &camera, const RayScene &scene);
     void changeResolution(glm::ivec2 resolution);
+    void reset();
 
     inline gl::Texture2D &getCurrentFrame() const { return *m_frames[m_frameIndex]; }
     inline gl::Texture2D &getPreviousFrame() const { return *m_frames[!m_frameIndex]; }

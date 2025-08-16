@@ -803,3 +803,8 @@ void RayTracer::changeResolution(glm::ivec2 resolution) {
     m_frames[1] = std::make_unique<gl::Texture2D>(con);
 }
 
+void RayTracer::reset() {
+    m_frameCount = 1;
+    m_frameIndex = 0;
+}
+
