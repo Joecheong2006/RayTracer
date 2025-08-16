@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <queue>
 
 #include "glUtilities/ShaderProgram.h"
 #include "glUtilities/Texture2D.h"
@@ -144,6 +145,7 @@ int main() {
         glClearColor(0.01f, 0.011f, 0.01f, 1.0f);
 
         f32 avgRenderTime = 0;
+        std::queue<f32> frameQueue({ 0, 0, 0 });
 
         while (!glfwWindowShouldClose(window)) {
             if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -170,13 +172,16 @@ int main() {
             glfwSwapBuffers(window);
 
             f32 dt = (glfwGetTime() - previous) * 1000.0f;
+
             i32 frameCount = raytracer.getFrameCount();
-            avgRenderTime = (avgRenderTime * (frameCount - 1) + dt) / frameCount;
+            avgRenderTime -= frameQueue.front() - frameQueue.back();
+            frameQueue.push(dt);
+            frameQueue.pop();
 
             std::stringstream ss;
             ss << title
                 << '\t'<< frameCount
-                <<'\t' << std::fixed << std::setprecision(3) << avgRenderTime << "ms";
+                <<'\t' << std::fixed << std::setprecision(3) << avgRenderTime / 3.0 << "ms";
 
             glfwSetWindowTitle(window, ss.str().c_str());
 
