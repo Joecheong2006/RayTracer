@@ -60,6 +60,9 @@ struct Material {
     float metallic;
     float specular;
     float specularTint;
+
+    float transmission;
+    float ior;
 };
 
 struct Sphere {
@@ -262,7 +265,7 @@ vec3 shadeSubsurface(in Material mat, float NoL, float NoV, float LoV) {
 Material loadMaterial(int materialIndex) {
     Material result;
 
-    int offset = materialIndex * 3;
+    int offset = materialIndex * 4;
 
     vec4 buf = texelFetch(materialsBuffer, offset + 0);
     result.emissionColor = buf.rgb;
@@ -277,6 +280,10 @@ Material loadMaterial(int materialIndex) {
     result.metallic = buf.g;
     result.specular = buf.b;
     result.specularTint = buf.a;
+
+    buf = texelFetch(materialsBuffer, offset + 3);
+    result.transmission = buf.r;
+    result.ior = buf.g;
 
     return result;
 }

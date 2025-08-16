@@ -14,5 +14,8 @@ struct Material {
     f32 specular = 0.5;
     f32 specularTint = 0;
 
+    f32 transmission = 0;
+    f32 ior = 1.5;
+
 };
 

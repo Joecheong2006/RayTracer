@@ -335,6 +335,10 @@ void RayScene::load_material(const Material &material) {
             material.specular,
             material.specularTint
         });
+
+    m_materialsBuffer.push_back({
+            material.transmission, material.ior, 0, 0
+        });
 }
 
 void RayScene::initialize() {
