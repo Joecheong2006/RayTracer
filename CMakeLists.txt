@@ -22,6 +22,8 @@ add_executable(raytracer
     lib/glad/src/glad.c
 )
 
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG -march=native")
+
 target_include_directories(raytracer PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 if (WIN32)
