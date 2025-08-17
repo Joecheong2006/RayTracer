@@ -310,6 +310,16 @@ std::vector<Triangle> RayScene::load_model(std::string modelPath) {
             }
         }
 
+        // transmissionFactor (GLTF extension)
+        extIt = material.extensions.find("KHR_materials_transmission");
+        if (extIt != material.extensions.end()) {
+            const tinygltf::Value &ext = extIt->second;
+            auto sIt = ext.Get("transmissionFactor");
+            if (sIt.IsNumber()) {
+                m.transmission = static_cast<float>(sIt.GetNumberAsDouble());
+            }
+        }
+
         m_materials.push_back(m);
         load_material(m);
     }
