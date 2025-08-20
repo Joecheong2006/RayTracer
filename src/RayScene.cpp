@@ -320,6 +320,14 @@ std::vector<Triangle> RayScene::load_model(std::string modelPath) {
             }
         }
 
+        extIt = material.extensions.find("KHR_materials_ior");
+        if (extIt != material.extensions.end()) {
+            const tinygltf::Value &ext = extIt->second;
+            if (ext.Has("ior")) {
+                m.ior = static_cast<float>(ext.Get("ior").Get<double>());
+            }
+        }
+
         m_materials.push_back(m);
         load_material(m);
     }
