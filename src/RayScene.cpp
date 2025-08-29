@@ -250,7 +250,8 @@ std::vector<Triangle> RayScene::load_model(std::string modelPath) {
     if (!err.empty()) std::cerr << "Err: " << err << '\n';
     if (!ret) {
         std::cerr << "Failed to load " << modelPath << '\n';
-        ASSERT(false);
+        std::cout << "You may try the models in res/models.7z" << '\n';
+        return {};
     }
 
     std::cout << "Load " << modelPath << " successfully!\n";
@@ -402,8 +403,13 @@ glm::vec3 RayScene::getSkyColor() const {
 }
 
 void RayScene::addModel(std::string modelPath) {
+    auto tris = load_model(modelPath);
+    if (tris.empty()) {
+        return;
+    }
+
     m_traceableObjects.push_back(
-                std::make_unique<Model>(load_model(modelPath))
+                std::make_unique<Model>(tris)
             );
     auto &object = m_traceableObjects.back();
     object->m_materialIndex = 0; // Default material
