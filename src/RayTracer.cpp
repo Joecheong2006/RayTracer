@@ -151,7 +151,7 @@ vec3 sampleHemisphereCosine(in vec3 N, inout SeedType seed) {
     return T * local.x + B * local.y + N * local.z;
 }
 
-vec3 sampleGGXVNDF(in vec3 N, in vec3 V, float roughness, inout SeedType seed) {
+vec3 sampleGGXVNDF_H(in vec3 N, in vec3 V, float roughness, inout SeedType seed) {
     // Transform view to local space
     float a = roughness * roughness;
 
@@ -169,6 +169,11 @@ vec3 sampleGGXVNDF(in vec3 N, in vec3 V, float roughness, inout SeedType seed) {
 
     vec3 Hlocal = vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
     vec3 H = TBN * Hlocal;
+    return H;
+}
+
+vec3 sampleGGXVNDF(in vec3 N, in vec3 V, float roughness, inout SeedType seed) {
+    vec3 H = sampleGGXVNDF_H(N, V, roughness, seed);
 
     vec3 L = reflect(-V, H);
     return dot(N, L) > 0.0 ? L : vec3(0.0); // Ensure valid bounce
