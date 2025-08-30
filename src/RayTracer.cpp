@@ -39,6 +39,7 @@ struct HitInfo {
     vec3 point, normal;
     float t;
     int materialIndex;
+    bool front_face;
     int tests;
 };
 
@@ -345,10 +346,8 @@ bool hitSphere(in Sphere sphere, in Ray r, float max, inout HitInfo info) {
 
     info.t = t;
     info.point = rayAt(r, t);
-    info.normal = (info.point - sphere.center) / sphere.radius;
-    if (dot(r.direction, info.normal) > 0) {
-        info.normal = -info.normal;
-    }
+    info.normal = normalize((info.point - sphere.center) / sphere.radius);
+    info.front_face = dot(r.direction, info.normal) < 0;
     return true;
 }
 
@@ -389,8 +388,9 @@ bool hitQuad(in Quad quad, in Ray r, float max, inout HitInfo info) {
     // Populate hit info
     info.t = t;
     info.point = hitPos;
-    info.normal = denom < 0.0 ? normalize(normal) : -normalize(normal); // Ensure it's facing opposite the ray
+    info.normal = denom < 0.0 ? normalize(normal) : -normalize(normal);
 
+    info.front_face = dot(r.direction, info.normal) < 0;
     return true;
 }
 
@@ -451,9 +451,8 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
     else {
         info.normal = normalize(normal);
     }
-    if (determinant < 0) {
-        info.normal = -info.normal;
-    }
+
+    info.front_face = dot(r.direction, info.normal) < 0;
     return true;
 }
 
@@ -619,6 +618,11 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         Material mat = loadMaterial(info.materialIndex);
         vec3 N = normalize(info.normal);
         vec3 V = normalize(-r.direction);
+
+
+        if (!info.front_face) {
+            N = -N;
+        }
 
         float subsurfaceProb = mat.subsurface;
         float diffuseProb = 1.0 - mat.metallic;
