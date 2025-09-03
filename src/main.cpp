@@ -120,7 +120,7 @@ int main() {
         // Initialize RayEngine
         RayEngine rayEngine;
         rayEngine.initialize(camera);
-        // rayEngine.changeResolution({ width * 0.5f, height * 0.5f });
+        rayEngine.changeResolution({ width * 0.5f, height * 0.5f });
 
         // Set up Scene
         {
@@ -130,7 +130,7 @@ int main() {
 
             // NOTE: Models are in res folder to be unziped
             scene.addModel("cornellBox.glb");
-            scene.addModel("herculesBeetle.glb");
+            scene.addModel("test1.glb");
 
             scene.submit(); // submit scene to GPU
         }
