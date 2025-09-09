@@ -21,3 +21,6 @@ mkdir build && cd build && cmake .. && make && ./raytracer
 
 ## Hercules beetle
 ![](screenshots/herculesBeetle.jpeg)
+
+## Transmissive dragon2
+![]("screenshots/transmissive dragon2.jpeg")
