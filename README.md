@@ -15,3 +15,9 @@ git clone --recursive https://github.com/Joecheong2006/RayTracer.git
 ```
 mkdir build && cd build && cmake .. && make && ./raytracer
 ```
+
+## Dragon2
+![](screenshots/dragon2.jpeg)
+
+## Hercules beetle
+![](screenshots/herculesBeetle.jpeg)
