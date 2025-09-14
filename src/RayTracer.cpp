@@ -649,7 +649,6 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         vec3 N = normalize(info.normal);
         vec3 V = normalize(-r.direction);
 
-
         if (!info.front_face) {
             N = -N;
         }
@@ -696,6 +695,16 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         r.direction = L;
 
         if (trans == 1) {
+            if (!info.front_face) {
+                vec3 transmittance = exp(info.t * log(mat.albedo)); // Beer–Lambert
+                                                                    //
+                float eta = info.front_face ? (1.0 / mat.ior) : mat.ior;
+                float cos_theta = min(dot(V, N), 1);
+                float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+                float R = reflectance(cos_theta, eta);
+
+                rayColor *= (1.0 - R) * transmittance;
+            }
             continue;
         }
 
