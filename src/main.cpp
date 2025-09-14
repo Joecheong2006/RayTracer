@@ -88,7 +88,7 @@ int main() {
     f32 xScale, yScale;
     getDPIScaler(&xScale, &yScale);
 
-    const std::string title= "Ray Tracer Demo - Model BVH";
+    const std::string title= "Ray Tracer Demo - Transmissive Test";
     std::printf("Retina Sacler [%.2g, %.2g]\n", xScale, yScale);
 
     GLFWwindow *window = glfwCreateWindow(width / xScale, height / yScale, title.c_str(), NULL, NULL);
