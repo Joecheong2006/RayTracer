@@ -53,6 +53,12 @@ cmake --build . --config Release
 
 ## Gallery
 
+## Transmissive dragon1
+![](screenshots/transmissive_dragon1.png)
+
+## Transmissive dragon2
+![](screenshots/transmissive_dragon2.png)
+
 ### Dragon 2
 ![Dragon 2](screenshots/dragon2.jpeg)
 

@@ -596,6 +596,36 @@ void hit(in Ray r, inout HitInfo track) {
     track.tests = tests;
 }
 
+vec3 refract(in vec3 uv, in vec3 n, float etai_over_etat) {
+    float cos_theta = min(dot(-uv, n), 1.0);
+    vec3 r_out_perp =  etai_over_etat * (uv + cos_theta * n);
+    vec3 r_out_parallel = -sqrt(abs(1.0 - dot(r_out_perp, r_out_perp))) * n;
+    return r_out_perp + r_out_parallel;
+}
+
+float reflectance(float cosine, float reflectance_index) {
+    // Use Schlick's approximation for reflectance.
+    float r0 = (1 - reflectance_index) / (1 + reflectance_index);
+    r0 = r0 * r0;
+    return r0 + (1 - r0) * pow(1 - cosine, 5);
+}
+
+vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, inout SeedType seed) {
+    float eta = front_face ? (1.0 / mat.ior) : mat.ior;
+
+    float cos_theta = min(dot(V, N), 1);
+    float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+
+    vec3 H = sampleGGXVNDF_H(N, V, mat.roughness, seed);
+    float R = reflectance(cos_theta, eta);
+    bool cannot_refract = eta * sin_theta > 1.0;
+    if (cannot_refract || randFloat(seed) < R) {
+        return reflect(-V, H);
+    }
+
+    return refract(-V, H, eta);
+}
+
 vec3 traceColor(in Ray r, inout SeedType seed) {
     vec3 incomingLight = vec3(0.0);
     vec3 rayColor = vec3(1.0);
@@ -619,29 +649,33 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         vec3 N = normalize(info.normal);
         vec3 V = normalize(-r.direction);
 
-
         if (!info.front_face) {
             N = -N;
         }
 
-        float subsurfaceProb = mat.subsurface;
-        float diffuseProb = 1.0 - mat.metallic;
-        float specularProb = 0.5 + 0.5 * mat.metallic;
+        float transmissionProb = mat.transmission;
+        float subsurfaceProb = mat.subsurface * (1.0 - transmissionProb);
+        float diffuseProb = (1.0 - mat.metallic) * (1.0 - transmissionProb);
+        float specularProb = (0.5 + 0.5 * mat.metallic) * (1.0 - transmissionProb);
 
-        float totalProb = subsurfaceProb + diffuseProb + specularProb;
+        float totalProb = subsurfaceProb + diffuseProb + specularProb + transmissionProb;
         subsurfaceProb /= totalProb;
         diffuseProb /= totalProb;
         specularProb /= totalProb;
+        transmissionProb /= totalProb;
 
         vec3 L;
         float Xi = randFloat(seed);
-        float diff = 0, spec = 0, subsurface = 0;
+        float diff = 0, spec = 0, subsurface = 0, trans = 0;
         if (Xi <= diffuseProb) {
             L = sampleHemisphereCosine(N, seed);
             diff = 1;
         } else if (Xi <= diffuseProb + specularProb) {
             L = sampleGGXVNDF(N, V, mat.roughness, seed);
             spec = 1;
+        } else if (Xi <= diffuseProb + specularProb + transmissionProb) {
+            L = sampleTransmission(N, V, info.front_face, mat, seed);
+            trans = 1;
         } else { // Subsurface — also treated diffuse-like
             L = sampleHemisphereCosine(N, seed);
             subsurface = 1;
@@ -655,6 +689,23 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float NoH = clamp(dot(N, H), 0.0, 1.0);
         float VoH = clamp(dot(V, H), 0.0, 1.0);
         float LoV = clamp(dot(L, V), 0.0, 1.0);
+
+        // Continue path
+        r.origin = info.point + L * 0.001;
+        r.direction = L;
+
+        if (trans == 1) {
+            float eta = info.front_face ? (1.0 / mat.ior) : mat.ior;
+            float cos_theta = min(dot(V, N), 1);
+            float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+            if (!info.front_face) {
+                vec3 albedo = pow(mat.albedo, vec3(2.2));
+                vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
+                float R = reflectance(cos_theta, eta);
+                rayColor *= (1.0 - R) * transmittance;
+            }
+            continue;
+        }
 
         if (NoL < MIN_DENOMINATOR) {
             break;
@@ -688,10 +739,6 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 
         rayColor *= contribution;
         if (dot(rayColor, vec3(1)) < 1e-4) break;
-
-        // Continue path
-        r.origin = info.point + L * 0.001;
-        r.direction = L;
     }
 
     return incomingLight;
