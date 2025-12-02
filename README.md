@@ -68,7 +68,7 @@ cmake --build . --config Release
 ## Roadmap
 
 - [x] Static BVH acceleration structure
-- [ ] Transmissive materials (glass, water) - *In Progress*
+- [x] Transmissive materials (glass, water)
 - [ ] Texture mapping and UV coordinates
 - [ ] Next Event Estimation (NEE) for direct light sampling
 - [ ] Denoising filters
