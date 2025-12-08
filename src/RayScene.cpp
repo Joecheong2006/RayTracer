@@ -282,11 +282,15 @@ std::vector<Triangle> RayScene::load_model(std::string modelPath) {
             }
         }
 
+        // Default metallic from glTF PBR spec
+        m.metallic = 1;
         auto itMetal = material.values.find("metallicFactor");
         if (itMetal != material.values.end()) {
             m.metallic = static_cast<float>(itMetal->second.number_value);
         }
 
+        // Default roughness from glTF PBR spec
+        m.roughness = 1;
         auto itRough = material.values.find("roughnessFactor");
         if (itRough != material.values.end()) {
             m.roughness = static_cast<float>(itRough->second.number_value);
