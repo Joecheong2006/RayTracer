@@ -667,13 +667,13 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         vec3 L;
         float Xi = randFloat(seed);
         float diff = 0, spec = 0, subsurface = 0, trans = 0;
-        if (Xi <= diffuseProb) {
+        if (Xi < diffuseProb) {
             L = sampleHemisphereCosine(N, seed);
             diff = 1;
-        } else if (Xi <= diffuseProb + specularProb) {
+        } else if (Xi < diffuseProb + specularProb) {
             L = sampleGGXVNDF(N, V, mat.roughness, seed);
             spec = 1;
-        } else if (Xi <= diffuseProb + specularProb + transmissionProb) {
+        } else if (Xi < diffuseProb + specularProb + transmissionProb) {
             L = sampleTransmission(N, V, info.front_face, mat, seed);
             trans = 1;
         } else { // Subsurface — also treated diffuse-like
