@@ -716,7 +716,12 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         vec3 brdf_spec = shadeSpecular(mat, NoV, NoL, NoH, VoH);
         vec3 brdf_diff = shadeDiffuse(mat, NoL, NoV, VoH);
 
-        float surfaceNormalization = 1.0 / (1.0 - transmissionProb);
+        float p_surf = 1.0 - transmissionProb;
+
+        // avoid values in (0, 1e-8) that arise from FP error
+        p_surf = (p_surf < 1e-8) ? 0.0 : p_surf;
+        float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
+
         float pdf_sss = NoL * INV_PI * subsurfaceProb * subsurface * surfaceNormalization;
         float pdf_spec = specularPdf(NoH, VoH, mat.roughness) * specularProb * spec * surfaceNormalization;
         float pdf_diff = diffusePdf(NoL) * diffuseProb * diff * surfaceNormalization;
