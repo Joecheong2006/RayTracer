@@ -267,29 +267,41 @@ vec3 shadeSubsurface(in Material mat, float NoL, float NoV, float LoV) {
     return mat.albedo * Fd * INV_PI * mat.subsurface;
 }
 
+// === Buffer Utilities ===
+float samplerLoadFloat(samplerBuffer buffer, inout int index) {
+    float x = texelFetch(buffer, index).r;
+    index++;
+    return x;
+}
+
+vec3 samplerLoadVec3(samplerBuffer buffer, inout int index) {
+    float x = texelFetch(buffer, index + 0).r;
+    float y = texelFetch(buffer, index + 1).r;
+    float z = texelFetch(buffer, index + 2).r;
+    index += 3;
+    return vec3(x, y, z);
+}
+
 // Material
 Material loadMaterial(int materialIndex) {
     Material result;
 
-    int offset = materialIndex * 4;
+    // Offset = (byteof Material / byteof f32) -> how many floats from Material
+    int offset = materialIndex * (56 / 4);
 
-    vec4 buf = texelFetch(materialsBuffer, offset + 0);
-    result.emissionColor = buf.rgb;
-    result.emissionStrength = buf.a;
+    result.emissionColor = samplerLoadVec3(materialsBuffer, offset);
+    result.emissionStrength = samplerLoadFloat(materialsBuffer, offset);
 
-    buf = texelFetch(materialsBuffer, offset + 1);
-    result.albedo = buf.rgb;
-    result.subsurface = buf.a;
+    result.albedo = samplerLoadVec3(materialsBuffer, offset);
+    result.subsurface = samplerLoadFloat(materialsBuffer, offset);
 
-    buf = texelFetch(materialsBuffer, offset + 2);
-    result.roughness = buf.r;
-    result.metallic = buf.g;
-    result.specular = buf.b;
-    result.specularTint = buf.a;
+    result.roughness = samplerLoadFloat(materialsBuffer, offset);
+    result.metallic = samplerLoadFloat(materialsBuffer, offset);
+    result.specular = samplerLoadFloat(materialsBuffer, offset);
+    result.specularTint = samplerLoadFloat(materialsBuffer, offset);
 
-    buf = texelFetch(materialsBuffer, offset + 3);
-    result.transmission = buf.r;
-    result.ior = buf.g;
+    result.transmission = samplerLoadFloat(materialsBuffer, offset);
+    result.ior = samplerLoadFloat(materialsBuffer, offset);
 
     return result;
 }
@@ -809,11 +821,20 @@ void main() {
 }
 )";
 
+#include <iostream>
+
 void RayTracer::initialize(glm::ivec2 resolution) {
     m_shader = std::make_unique<gl::ShaderProgram>();
     m_shader->attachShaderCode(GL_VERTEX_SHADER, vertexShaderSource);
     m_shader->attachShaderCode(GL_FRAGMENT_SHADER, fragmentShaderSource);
     m_shader->link();
+
+    auto errors = m_shader->getShaderError();
+    if (!errors.empty()) {
+        for (auto str : errors) {
+            std::cout << str << std::endl;
+        }
+    }
 
     gl::Texture2D::Construct con;
     con.width = resolution.x;

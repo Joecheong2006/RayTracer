@@ -34,7 +34,7 @@ private:
     // Materials
     std::vector<Material> m_materials;
     std::unique_ptr<gl::TextureBuffer> m_materialsTexBuffer;
-    std::vector<glm::vec4> m_materialsBuffer;
+    std::vector<f32> m_materialsBuffer;
 
     // Objects
     std::vector<std::unique_ptr<TraceableObject>> m_traceableObjects;

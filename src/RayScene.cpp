@@ -344,24 +344,9 @@ std::vector<Triangle> RayScene::load_model(std::string modelPath) {
 }
 
 void RayScene::load_material(const Material &material) {
-    m_materialsBuffer.push_back({
-            material.emissionColor, material.emissionStrength
-        });
-
-    m_materialsBuffer.push_back({
-            material.albedo, material.subsurface
-        });
-
-    m_materialsBuffer.push_back({
-            material.roughness,
-            material.metallic,
-            material.specular,
-            material.specularTint
-        });
-
-    m_materialsBuffer.push_back({
-            material.transmission, material.ior, 0, 0
-        });
+    m_materialsBuffer.insert(m_materialsBuffer.end(),
+            reinterpret_cast<const f32*>(&material),
+            reinterpret_cast<const f32*>(&material) + sizeof(Material) / sizeof(f32));
 }
 
 void RayScene::initialize() {
@@ -372,7 +357,7 @@ void RayScene::initialize() {
             nullptr, 0, GL_STATIC_DRAW, GL_RGBA32F);
 
     m_materialsTexBuffer = std::make_unique<gl::TextureBuffer>(
-            nullptr, 0, GL_STATIC_DRAW, GL_RGBA32F);
+            nullptr, 0, GL_STATIC_DRAW, GL_R32F);
 
     // Added default material
     Material defaultMat;
@@ -383,7 +368,7 @@ void RayScene::initialize() {
 void RayScene::submit() {
     m_objectsTexBuffer->setBuffer(m_objectsBuffer.data(), m_objectsBuffer.size() * sizeof(glm::vec4));
     m_modelObjectsTexBuffer->setBuffer(m_modelObjectsBuffer.data(), m_modelObjectsBuffer.size() * sizeof(glm::vec4));
-    m_materialsTexBuffer->setBuffer(m_materialsBuffer.data(), m_materialsBuffer.size() * sizeof(glm::vec4));
+    m_materialsTexBuffer->setBuffer(m_materialsBuffer.data(), m_materialsBuffer.size() * sizeof(f32));
 }
 
 void RayScene::bindObjects(i32 slot) const {
