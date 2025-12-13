@@ -351,10 +351,10 @@ void RayScene::load_material(const Material &material) {
 
 void RayScene::initialize() {
     m_objectsTexBuffer = std::make_unique<gl::TextureBuffer>(
-            nullptr, 0, GL_STATIC_DRAW, GL_RGBA32F);
+            nullptr, 0, GL_STATIC_DRAW, GL_R32F);
 
     m_modelObjectsTexBuffer = std::make_unique<gl::TextureBuffer>(
-            nullptr, 0, GL_STATIC_DRAW, GL_RGBA32F);
+            nullptr, 0, GL_STATIC_DRAW, GL_R32F);
 
     m_materialsTexBuffer = std::make_unique<gl::TextureBuffer>(
             nullptr, 0, GL_STATIC_DRAW, GL_R32F);
@@ -366,8 +366,8 @@ void RayScene::initialize() {
 }
 
 void RayScene::submit() {
-    m_objectsTexBuffer->setBuffer(m_objectsBuffer.data(), m_objectsBuffer.size() * sizeof(glm::vec4));
-    m_modelObjectsTexBuffer->setBuffer(m_modelObjectsBuffer.data(), m_modelObjectsBuffer.size() * sizeof(glm::vec4));
+    m_objectsTexBuffer->setBuffer(m_objectsBuffer.data(), m_objectsBuffer.size() * sizeof(f32));
+    m_modelObjectsTexBuffer->setBuffer(m_modelObjectsBuffer.data(), m_modelObjectsBuffer.size() * sizeof(f32));
     m_materialsTexBuffer->setBuffer(m_materialsBuffer.data(), m_materialsBuffer.size() * sizeof(f32));
 }
 

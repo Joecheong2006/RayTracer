@@ -39,10 +39,10 @@ private:
     // Objects
     std::vector<std::unique_ptr<TraceableObject>> m_traceableObjects;
     std::unique_ptr<gl::TextureBuffer> m_objectsTexBuffer;
-    std::vector<glm::vec4> m_objectsBuffer;
+    std::vector<f32> m_objectsBuffer;
 
     std::unique_ptr<gl::TextureBuffer> m_modelObjectsTexBuffer;
-    std::vector<glm::vec4> m_modelObjectsBuffer;
+    std::vector<f32> m_modelObjectsBuffer;
 
     void load_material(const Material &material);
 

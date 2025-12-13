@@ -329,10 +329,9 @@ float RayBoundingBoxDst(in Ray r, in AABB box, float t) {
 
 // Sphere Functions
 Sphere loadSphere(in samplerBuffer buffer, inout int objectIndex) {
-    vec4 buf = texelFetch(buffer, objectIndex++);
     Sphere result;
-    result.center = buf.xyz;
-    result.radius = buf.w;
+    result.center = samplerLoadVec3(buffer, objectIndex);
+    result.radius = samplerLoadFloat(buffer, objectIndex);
     return result;
 }
 
@@ -366,11 +365,10 @@ bool hitSphere(in Sphere sphere, in Ray r, float max, inout HitInfo info) {
 // Quad Functions
 Quad loadQuad(in samplerBuffer buffer, inout int objectIndex) {
     Quad result;
-    vec4 buf = texelFetch(buffer, objectIndex++);
-    result.q = buf.xyz;
-    result.u = texelFetch(buffer, objectIndex++).xyz;
-    result.v = texelFetch(buffer, objectIndex++).xyz;
-    result.cullFace = bool(buf.w);
+    result.q = samplerLoadVec3(buffer, objectIndex);
+    result.u = samplerLoadVec3(buffer, objectIndex);
+    result.v = samplerLoadVec3(buffer, objectIndex);
+    result.cullFace = bool(samplerLoadFloat(buffer, objectIndex));
     return result;
 }
 
@@ -409,20 +407,15 @@ bool hitQuad(in Quad quad, in Ray r, float max, inout HitInfo info) {
 // Triangle Function
 Triangle loadTriangle(in samplerBuffer buffer, inout int objectIndex) {
     Triangle result;
-    vec4 buf = texelFetch(buffer, objectIndex++);
-    result.posA = buf.xyz;
-    result.normA.x = buf.w;
 
-    buf = texelFetch(buffer, objectIndex++);
-    result.posB = buf.xyz;
-    result.normA.y = buf.w;
+    result.posA = samplerLoadVec3(buffer, objectIndex);
+    result.posB = samplerLoadVec3(buffer, objectIndex);
+    result.posC = samplerLoadVec3(buffer, objectIndex);
 
-    buf = texelFetch(buffer, objectIndex++);
-    result.posC = buf.xyz;
-    result.normA.z = buf.w;
+    result.normA = samplerLoadVec3(buffer, objectIndex);
+    result.normB = samplerLoadVec3(buffer, objectIndex);
+    result.normC = samplerLoadVec3(buffer, objectIndex);
 
-    result.normB = texelFetch(buffer, objectIndex++).xyz;
-    result.normC = texelFetch(buffer, objectIndex++).xyz;
     return result;
 }
 
@@ -472,13 +465,11 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
 Model loadModel(inout int objectIndex) {
     Model result;
 
-    vec4 buf = texelFetch(objectsBuffer, objectIndex++);
-    result.boundingBox.min = buf.xyz;
-    result.trianglesCount = int(buf.w);
+    result.boundingBox.min = samplerLoadVec3(objectsBuffer, objectIndex);
+    result.boundingBox.max = samplerLoadVec3(objectsBuffer, objectIndex);
 
-    buf = texelFetch(objectsBuffer, objectIndex++);
-    result.boundingBox.max = buf.xyz;
-    result.nodesCount = int(buf.w);
+    result.trianglesCount = int(samplerLoadFloat(objectsBuffer, objectIndex));
+    result.nodesCount = int(samplerLoadFloat(objectsBuffer, objectIndex));
 
     return result;
 }
@@ -486,13 +477,12 @@ Model loadModel(inout int objectIndex) {
 BVHNode loadBVHNodeAt(int objectIndex) {
     BVHNode result;
 
-    result.boundingBox.min = texelFetch(objectsBuffer, objectIndex++).xyz;
-    result.boundingBox.max = texelFetch(objectsBuffer, objectIndex++).xyz;
+    result.boundingBox.min = samplerLoadVec3(objectsBuffer, objectIndex);
+    result.boundingBox.max = samplerLoadVec3(objectsBuffer, objectIndex);
 
-    vec4 buf = texelFetch(objectsBuffer, objectIndex++);
-    result.leftIndex = int(buf.x);
-    result.rightIndex = int(buf.y);
-    result.isLeaf = bool(buf.z);
+    result.leftIndex = int(samplerLoadFloat(objectsBuffer, objectIndex));
+    result.rightIndex = int(samplerLoadFloat(objectsBuffer, objectIndex));
+    result.isLeaf = bool(samplerLoadFloat(objectsBuffer, objectIndex));
 
     return result;
 }
@@ -511,14 +501,16 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
 
     while (stackIndex > 0) {
         int nodeIndex = stack[--stackIndex];
-        BVHNode node = loadBVHNodeAt(objectIndex + nodeIndex * 3);
+        BVHNode node = loadBVHNodeAt(objectIndex + nodeIndex * 9);
 
         if (node.isLeaf) {
             for (int offset = node.leftIndex; offset < node.rightIndex; ++offset) {
-                int index = (modelObjectsIndex + offset) * 6;
-                vec4 buf = texelFetch(modelObjectsBuffer, index++);
+                int index = (modelObjectsIndex + offset) * 20;
+
+                int type = int(samplerLoadFloat(modelObjectsBuffer, index));
+                int materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
                 Triangle tri = loadTriangle(modelObjectsBuffer, index);
-                tri.materialIndex = int(buf.g);
+                tri.materialIndex = materialIndex;
 
                 if (hitTriangle(tri, r, max, hInfo)) {
                     max = hInfo.t;
@@ -528,8 +520,8 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
             continue;
         }
 
-        BVHNode leftNode = loadBVHNodeAt(objectIndex + node.leftIndex * 3);
-        BVHNode rightNode = loadBVHNodeAt(objectIndex + node.rightIndex * 3);
+        BVHNode leftNode = loadBVHNodeAt(objectIndex + node.leftIndex * 9);
+        BVHNode rightNode = loadBVHNodeAt(objectIndex + node.rightIndex * 9);
 
         float leftDst = RayBoundingBoxDst(r, leftNode.boundingBox, hInfo.t);
         float rightDst = RayBoundingBoxDst(r, rightNode.boundingBox, hInfo.t);
@@ -559,9 +551,8 @@ void hit(in Ray r, inout HitInfo track) {
     int tests = 0;
 
     for (int i = 0; i < objectCount; ++i) {
-        vec4 buf = texelFetch(objectsBuffer, objectIndex++);
-        int type = int(buf.r);
-        tmp.materialIndex = int(buf.g);
+        int type = int(samplerLoadFloat(objectsBuffer, objectIndex));
+        tmp.materialIndex = int(samplerLoadFloat(objectsBuffer, objectIndex));
 
         bool hitted = false;
 
@@ -590,7 +581,7 @@ void hit(in Ray r, inout HitInfo track) {
                 Model model = loadModel(objectIndex);
                 model.materialIndex = tmp.materialIndex;
                 hitted = hitModel(model, r, closest, tmp, objectIndex, modelObjectsIndex);
-                objectIndex += model.nodesCount * 3;
+                objectIndex += model.nodesCount * 9;
                 modelObjectsIndex += model.trianglesCount;
                 break;
             default:
