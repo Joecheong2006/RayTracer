@@ -23,7 +23,7 @@ void RayCamera::updateDirection() {
 #include <glm/gtc/matrix_transform.hpp> // for glm::mat4_cast
 
 // Build parent map: parent[childIndex] = parentIndex or -1 if root
-static std::vector<int> BuildParentMap(const tinygltf::Model &model) {
+static std::vector<int> build_parent_map(const tinygltf::Model &model) {
     std::vector<int> parent(model.nodes.size(), -1);
     for (size_t i = 0; i < model.nodes.size(); ++i) {
         for (int child : model.nodes[i].children) {
@@ -34,7 +34,7 @@ static std::vector<int> BuildParentMap(const tinygltf::Model &model) {
     return parent;
 }
 
-static glm::mat4 GetLocalTransform(const tinygltf::Node &node) {
+static glm::mat4 get_local_transform(const tinygltf::Node &node) {
     // If matrix present -> use it (glTF stores matrix in column-major order)
     if (!node.matrix.empty()) {
         glm::mat4 m(1.0f);
@@ -74,7 +74,7 @@ static glm::mat4 GetLocalTransform(const tinygltf::Node &node) {
 }
 
 // recursive with memoization
-static glm::mat4 ComputeWorldTransformCached(
+static glm::mat4 compute_world_transform_cached(
     const tinygltf::Model &model,
     int nodeIndex,
     const std::vector<int> &parentMap,
@@ -85,25 +85,25 @@ static glm::mat4 ComputeWorldTransformCached(
 
     int p = parentMap[nodeIndex];
     glm::mat4 parentMat = (p == -1) ? glm::mat4(1.0f)
-                                    : ComputeWorldTransformCached(model, p, parentMap, visited, cache);
+                                    : compute_world_transform_cached(model, p, parentMap, visited, cache);
 
-    glm::mat4 local = GetLocalTransform(model.nodes[nodeIndex]);
+    glm::mat4 local = get_local_transform(model.nodes[nodeIndex]);
     cache[nodeIndex] = parentMat * local; // parent * local
     visited[nodeIndex] = 1;
     return cache[nodeIndex];
 }
 
 // public helper: returns world transform for nodeIndex
-static glm::mat4 GetWorldTransform(const tinygltf::Model &model, int nodeIndex) {
-    auto parentMap = BuildParentMap(model);
+static glm::mat4 get_world_transform(const tinygltf::Model &model, int nodeIndex) {
+    auto parentMap = build_parent_map(model);
     std::vector<char> visited(model.nodes.size(), 0);
     std::vector<glm::mat4> cache(model.nodes.size(), glm::mat4(1.0f));
-    return ComputeWorldTransformCached(model, nodeIndex, parentMap, visited, cache);
+    return compute_world_transform_cached(model, nodeIndex, parentMap, visited, cache);
 }
 
 void RayScene::load_triangles_gltf(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform) {
     const tinygltf::Node &node = model.nodes[nodeIndex];
-    const glm::mat4 worldTransform = GetWorldTransform(model, nodeIndex);
+    const glm::mat4 worldTransform = get_world_transform(model, nodeIndex);
 
     if (node.mesh >= 0) {
         glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(worldTransform)));
