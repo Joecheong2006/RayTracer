@@ -48,7 +48,8 @@ void BVHTree::construct_bvh(std::vector<Triangle> &triangles, i32 axis, i32 star
             triangles, axis, mid, end);
 }
 
-BVHTree::BVHTree(const std::vector<Triangle>& triangles) {
+BVHTree::BVHTree(const MeshData &meshData) {
+    auto &triangles = meshData.triangles;
     if (triangles.size() == 0) {
         return;
     }

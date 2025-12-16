@@ -98,10 +98,12 @@ struct Model {
 
 uniform sampler2D previousFrame;
 uniform samplerBuffer objectsBuffer;
+uniform samplerBuffer modelMeshesDataBuffer;
 uniform samplerBuffer modelObjectsBuffer;
 uniform samplerBuffer materialsBuffer;
 
 uniform int objectCount;
+uniform int modelsCount;
 uniform uint frameCount;
 uniform vec3 skyColor;
 
@@ -462,27 +464,27 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
 }
 
 // Model Function
-Model loadModel(inout int objectIndex) {
+Model loadModel(samplerBuffer buffer, inout int objectIndex) {
     Model result;
 
-    result.boundingBox.min = samplerLoadVec3(objectsBuffer, objectIndex);
-    result.boundingBox.max = samplerLoadVec3(objectsBuffer, objectIndex);
+    result.boundingBox.min = samplerLoadVec3(buffer, objectIndex);
+    result.boundingBox.max = samplerLoadVec3(buffer, objectIndex);
 
-    result.trianglesCount = int(samplerLoadFloat(objectsBuffer, objectIndex));
-    result.nodesCount = int(samplerLoadFloat(objectsBuffer, objectIndex));
+    result.trianglesCount = int(samplerLoadFloat(buffer, objectIndex));
+    result.nodesCount = int(samplerLoadFloat(buffer, objectIndex));
 
     return result;
 }
 
-BVHNode loadBVHNodeAt(int objectIndex) {
+BVHNode loadBVHNodeAt(samplerBuffer buffer, int objectIndex) {
     BVHNode result;
 
-    result.boundingBox.min = samplerLoadVec3(objectsBuffer, objectIndex);
-    result.boundingBox.max = samplerLoadVec3(objectsBuffer, objectIndex);
+    result.boundingBox.min = samplerLoadVec3(buffer, objectIndex);
+    result.boundingBox.max = samplerLoadVec3(buffer, objectIndex);
 
-    result.leftIndex = int(samplerLoadFloat(objectsBuffer, objectIndex));
-    result.rightIndex = int(samplerLoadFloat(objectsBuffer, objectIndex));
-    result.isLeaf = bool(samplerLoadFloat(objectsBuffer, objectIndex));
+    result.leftIndex = int(samplerLoadFloat(buffer, objectIndex));
+    result.rightIndex = int(samplerLoadFloat(buffer, objectIndex));
+    result.isLeaf = bool(samplerLoadFloat(buffer, objectIndex));
 
     return result;
 }
@@ -501,15 +503,14 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
 
     while (stackIndex > 0) {
         int nodeIndex = stack[--stackIndex];
-        BVHNode node = loadBVHNodeAt(objectIndex + nodeIndex * 9);
+        BVHNode node = loadBVHNodeAt(modelObjectsBuffer, objectIndex + nodeIndex * 9);
 
         if (node.isLeaf) {
             for (int offset = node.leftIndex; offset < node.rightIndex; ++offset) {
-                int index = (modelObjectsIndex + offset) * 20;
+                int index = (modelObjectsIndex + offset) * 19;
 
-                int type = int(samplerLoadFloat(modelObjectsBuffer, index));
-                int materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
-                Triangle tri = loadTriangle(modelObjectsBuffer, index);
+                int materialIndex = int(samplerLoadFloat(modelMeshesDataBuffer, index));
+                Triangle tri = loadTriangle(modelMeshesDataBuffer, index);
                 tri.materialIndex = materialIndex;
 
                 if (hitTriangle(tri, r, max, hInfo)) {
@@ -520,8 +521,8 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
             continue;
         }
 
-        BVHNode leftNode = loadBVHNodeAt(objectIndex + node.leftIndex * 9);
-        BVHNode rightNode = loadBVHNodeAt(objectIndex + node.rightIndex * 9);
+        BVHNode leftNode = loadBVHNodeAt(modelObjectsBuffer, objectIndex + node.leftIndex * 9);
+        BVHNode rightNode = loadBVHNodeAt(modelObjectsBuffer, objectIndex + node.rightIndex * 9);
 
         float leftDst = RayBoundingBoxDst(r, leftNode.boundingBox, hInfo.t);
         float rightDst = RayBoundingBoxDst(r, rightNode.boundingBox, hInfo.t);
@@ -539,16 +540,36 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
     return info.t < 1e20;
 }
 
-void hit(in Ray r, inout HitInfo track) {
-    HitInfo tmp;
+void hitModels(in Ray r, inout HitInfo track) {
+    HitInfo tmp = track;
 
-    float closest = 1e20;
-    tmp.t = closest;
+    float closest = tmp.t;
+
+    int modelObjectIndex = 0;
+    int modelMeshDataIndex = 0;
+
+    for (int i = 0; i < modelsCount; ++i) {
+        bool hitted = false;
+
+        Model model = loadModel(modelObjectsBuffer, modelObjectIndex);
+        hitted = hitModel(model, r, closest, tmp, modelObjectIndex, modelMeshDataIndex);
+        modelObjectIndex += model.nodesCount * 9;
+        modelMeshDataIndex += model.trianglesCount;
+
+        if (hitted) {
+            closest = tmp.t;
+            track = tmp;
+        }
+        track.tests++;
+    }
+}
+
+void hit(in Ray r, inout HitInfo track) {
+    HitInfo tmp = track;
+
+    float closest = tmp.t;
 
     int objectIndex = 0;
-    int modelObjectsIndex = 0;
-
-    int tests = 0;
 
     for (int i = 0; i < objectCount; ++i) {
         int type = int(samplerLoadFloat(objectsBuffer, objectIndex));
@@ -577,13 +598,6 @@ void hit(in Ray r, inout HitInfo track) {
                 tri.materialIndex = tmp.materialIndex;
                 hitted = hitTriangle(tri, r, closest, tmp);
                 break;
-            case 3:
-                Model model = loadModel(objectIndex);
-                model.materialIndex = tmp.materialIndex;
-                hitted = hitModel(model, r, closest, tmp, objectIndex, modelObjectsIndex);
-                objectIndex += model.nodesCount * 9;
-                modelObjectsIndex += model.trianglesCount;
-                break;
             default:
                 break;
         }
@@ -592,11 +606,10 @@ void hit(in Ray r, inout HitInfo track) {
             closest = tmp.t;
             track = tmp;
         }
-        tests++;
+        track.tests++;
     }
 
-    track.t = closest;
-    track.tests = tests;
+    hitModels(r, track);
 }
 
 vec3 refract(in vec3 uv, in vec3 n, float etai_over_etat) {
@@ -636,6 +649,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
     int tests = 0;
     for (int i = 0; i <= camera.bounces; ++i) {
         HitInfo info;
+        info.t = 1e20;
         hit(r, info);
 
         if (info.t >= 1e20) {
@@ -848,13 +862,17 @@ void RayTracer::renderToTexture(const RayCamera &camera, const RayScene &scene) 
     scene.bindObjects(1);
     m_shader->setUniform1i("objectsBuffer", 1);
 
-    scene.bindModelObjects(2);
-    m_shader->setUniform1i("modelObjectsBuffer", 2);
+    scene.bindModelMeshesData(2);
+    m_shader->setUniform1i("modelMeshesDataBuffer", 2);
 
     scene.bindMaterials(3);
     m_shader->setUniform1i("materialsBuffer", 3);
 
+    scene.bindModelObjects(4);
+    m_shader->setUniform1i("modelObjectsBuffer", 4);
+
     m_shader->setUniform1i("objectCount", scene.getObjectsCount());
+    m_shader->setUniform1i("modelsCount", scene.getModelsCount());
     m_shader->setUniform1u("frameCount", m_frameCount);
     m_shader->setUniform3f("skyColor", scene.getSkyColor());
 

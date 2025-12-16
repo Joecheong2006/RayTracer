@@ -22,10 +22,6 @@ struct RayCamera {
     void updateDirection();
 };
 
-namespace tinygltf{
-    class Model;
-}
-
 class RayScene {
     friend class TraceableObject;
 private:
@@ -36,24 +32,29 @@ private:
     std::unique_ptr<gl::TextureBuffer> m_materialsTexBuffer;
     std::vector<f32> m_materialsBuffer;
 
-    // Objects
+    // Primitive objects
     std::vector<std::unique_ptr<TraceableObject>> m_traceableObjects;
     std::unique_ptr<gl::TextureBuffer> m_objectsTexBuffer;
     std::vector<f32> m_objectsBuffer;
+
+    // Models
+    std::vector<std::unique_ptr<Model>> m_modelObjects;
+    std::unique_ptr<gl::TextureBuffer> m_modelMeshesDataTexBuffer;
+    std::vector<f32> m_modelMeshesDataBuffer;
 
     std::unique_ptr<gl::TextureBuffer> m_modelObjectsTexBuffer;
     std::vector<f32> m_modelObjectsBuffer;
 
     void load_material(const Material &material);
 
-    void load_triangles_gltf(std::vector<Triangle> &triangles, const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform);
-    std::vector<Triangle> load_model(std::string modelPath);
+    MeshData load_model(std::string modelPath);
 
 public:
     explicit RayScene() = default;
 
     void initialize();
     void bindObjects(i32 slot) const;
+    void bindModelMeshesData(i32 slot) const;
     void bindModelObjects(i32 slot) const;
     void bindMaterials(i32 slot) const;
     void submit();
@@ -62,6 +63,7 @@ public:
     glm::vec3 getSkyColor() const;
     i32 getMaterialCount() const { return m_materials.size(); }
     inline u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
+    inline u32 getModelsCount() const { return static_cast<u32>(m_modelObjects.size()); }
 
     void addModel(std::string modelPath);
 
@@ -72,6 +74,7 @@ public:
         auto &object = m_traceableObjects.back();
 
         object->m_materialIndex = m_materials.size();
+        object->writeHeader(m_objectsBuffer);
         object->write(m_objectsBuffer);
 
         m_materials.push_back(material);
@@ -86,6 +89,7 @@ public:
         auto &object = m_traceableObjects.back();
 
         object->m_materialIndex = materialIndex;
+        object->writeHeader(m_objectsBuffer);
         object->write(m_objectsBuffer);
     }
 

@@ -12,6 +12,7 @@ struct BVHNode {
 };
 
 class Triangle;
+struct MeshData;
 class BVHTree {
     void construct_bvh(std::vector<Triangle> &triangles, i32 axis, i32 start, i32 end);
 
@@ -19,7 +20,7 @@ class BVHTree {
     std::vector<Triangle> m_triangles;
 
 public:
-    BVHTree(const std::vector<Triangle>& triangles);
+    BVHTree(const MeshData &meshData);
 
     const std::vector<BVHNode>& getNodes() const { return m_nodes; }
     const std::vector<Triangle>& getTriangles() const { return m_triangles; }
