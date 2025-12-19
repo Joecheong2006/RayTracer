@@ -1,10 +1,5 @@
 #pragma once
-
-#ifdef WIN32
-#define ASSERT(x) if(!(x)) __debugbreak()
-#else
-#define ASSERT(x) if(!(x)) __builtin_trap()
-#endif
+#include "../util.h"
 
 #define GLCALL(x) gl::GLClearError();\
     x;\

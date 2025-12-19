@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include <cstdint>
 #include <cstdbool>
 
@@ -16,4 +15,10 @@ using i64 = int64_t;
 
 using f32 = float;
 using f64 = double;
+
+#ifdef WIN32
+#define ASSERT(x) if(!(x)) __debugbreak()
+#else
+#define ASSERT(x) if(!(x)) __builtin_trap()
+#endif
 
