@@ -4,7 +4,8 @@
 #include "glm/glm.hpp"
 
 #include <vector> // std::vector
-                  //
+#include <string> // std::string
+
 using GVec3 = glm::vec<3, f32, glm::packed>;
 using GVec3I = glm::vec<3, u32, glm::packed>;
 
