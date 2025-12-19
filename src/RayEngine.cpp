@@ -4,12 +4,17 @@
 #include "glUtilities/Texture2D.h"
 #include "glUtilities/Quad.h"
     
-void RayEngine::initialize(const RayCamera &camera) {
+bool RayEngine::initialize(const RayCamera &camera) {
     m_camera = camera;
     m_rayScene.initialize();
-    m_rayTracer.initialize(camera.resolution);
+
+    if (!m_rayTracer.initialize(camera.resolution)) {
+        return false;
+    }
+
     m_framebuffer = std::make_unique<gl::Framebuffer>();
     m_quad = std::make_unique<gl::Quad>();
+    return true;
 }
 
 void RayEngine::changeResolution(glm::ivec2 resolution) {

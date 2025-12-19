@@ -22,7 +22,7 @@ private:
 
 public:
     explicit RayTracer() = default;
-    void initialize(glm::ivec2 resolution);
+    bool initialize(glm::ivec2 resolution);
     void renderToTexture(const RayCamera &camera, const RayScene &scene);
     void changeResolution(glm::ivec2 resolution);
     void reset();

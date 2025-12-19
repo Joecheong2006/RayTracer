@@ -840,7 +840,7 @@ void main() {
 
 #include <iostream>
 
-void RayTracer::initialize(glm::ivec2 resolution) {
+bool RayTracer::initialize(glm::ivec2 resolution) {
     m_shader = std::make_unique<gl::ShaderProgram>();
     m_shader->attachShaderCode(GL_VERTEX_SHADER, vertexShaderSource);
     m_shader->attachShaderCode(GL_FRAGMENT_SHADER, fragmentShaderSource);
@@ -851,6 +851,7 @@ void RayTracer::initialize(glm::ivec2 resolution) {
         for (auto str : errors) {
             std::cout << str << std::endl;
         }
+        return false;
     }
 
     gl::Texture2D::Construct con;
@@ -863,6 +864,7 @@ void RayTracer::initialize(glm::ivec2 resolution) {
 
     m_frames[0] = std::make_unique<gl::Texture2D>(con);
     m_frames[1] = std::make_unique<gl::Texture2D>(con);
+    return true;
 }
 
 void RayTracer::renderToTexture(const RayCamera &camera, const RayScene &scene) {

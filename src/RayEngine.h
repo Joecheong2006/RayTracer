@@ -21,7 +21,7 @@ class RayEngine {
 public:
     RayEngine() = default;
     
-    void initialize(const RayCamera &camera);
+    bool initialize(const RayCamera &camera);
     void changeResolution(glm::ivec2 resolution);
     void render();
 
