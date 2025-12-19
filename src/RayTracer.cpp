@@ -564,9 +564,9 @@ void hitModels(in Ray r, inout HitInfo track) {
 
         Model model = loadModel(modelObjectsBuffer, modelObjectIndex);
         hitted = hitModel(model, r, closest, tmp, modelObjectIndex);
-        modelObjectIndex += model.nodesCount * 9;
-        modelObjectIndex += model.identifiersCount * 4; // For identifiers
-        modelObjectIndex += model.verticesCount * 6; // For vertices and normals
+        modelObjectIndex += model.nodesCount * 9
+                        + model.identifiersCount * 4 // For identifiers
+                        + model.verticesCount * 6; // For vertices and normals
 
         if (hitted) {
             closest = tmp.t;
