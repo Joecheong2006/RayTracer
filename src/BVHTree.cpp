@@ -27,8 +27,8 @@ static void construct_bvh(std::vector<BVHNode> &m_nodes, std::vector<MeshData::I
     axis = (axis + 1) % 3;
 
     i32 mid = start + (end - start) * 0.5f;
-    // std::nth_element(meshData.identifiers.begin() + start, meshData.identifiers.begin() + mid, meshData.identifiers.begin() + end,
-    std::sort(meshData.identifiers.begin() + start, meshData.identifiers.begin() + end,
+    std::nth_element(meshData.identifiers.begin() + start, meshData.identifiers.begin() + mid, meshData.identifiers.begin() + end,
+    // std::sort(meshData.identifiers.begin() + start, meshData.identifiers.begin() + end,
             [&meshData, axis](const auto &iden1, const auto &iden2) {
                 auto &idx1 = iden1.indices;
                 auto &idx2 = iden2.indices;
