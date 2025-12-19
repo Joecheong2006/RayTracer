@@ -4,9 +4,9 @@
 #include <algorithm>
 
 static void construct_bvh(std::vector<BVHNode> &m_nodes, std::vector<MeshData::Identifier> &identifiers, MeshData &meshData, i32 axis, i32 start, i32 end) {
-    AABB box = MeshData::GetTriangleFromIdentifier(meshData, start).getAABB();
+    AABB box = Model::GetTriangleFromIdentifier(meshData, start).getAABB();
     for (i32 i = start + 1; i < end; ++i) {
-        box = AABB(box, MeshData::GetTriangleFromIdentifier(meshData, i).getAABB());
+        box = AABB(box, Model::GetTriangleFromIdentifier(meshData, i).getAABB());
     }
 
     BVHNode node;
@@ -29,8 +29,8 @@ static void construct_bvh(std::vector<BVHNode> &m_nodes, std::vector<MeshData::I
     i32 mid = start + (end - start) * 0.5f;
     std::nth_element(meshData.identifiers.begin() + start, meshData.identifiers.begin() + mid, meshData.identifiers.begin() + end,
             [&meshData, axis](const auto &iden1, const auto &iden2) {
-                Triangle tri1 = MeshData::GetTriangleFromIdentifier(meshData, iden1);
-                Triangle tri2 = MeshData::GetTriangleFromIdentifier(meshData, iden2);
+                Triangle tri1 = Model::GetTriangleFromIdentifier(meshData, iden1);
+                Triangle tri2 = Model::GetTriangleFromIdentifier(meshData, iden2);
                 glm::vec3 c1 = (tri1.posA + tri1.posB + tri1.posC) / 3.0f;
                 glm::vec3 c2 = (tri2.posA + tri2.posB + tri2.posC) / 3.0f;
                 return c1[axis] < c2[axis];
@@ -55,9 +55,9 @@ BVHTree::BVHTree(MeshData &meshData) {
 
     m_nodes.reserve(meshData.identifiers.size() * 2);
 
-    AABB box = MeshData::GetTriangleFromIdentifier(meshData, 0).getAABB();
+    AABB box = Model::GetTriangleFromIdentifier(meshData, 0).getAABB();
     for (int i = 1; i < meshData.identifiers.size(); ++i) {
-        box = AABB(box, MeshData::GetTriangleFromIdentifier(meshData, i).getAABB());
+        box = AABB(box, Model::GetTriangleFromIdentifier(meshData, i).getAABB());
     }
 
     i32 axis;

@@ -9,7 +9,6 @@
 #include <string> // std::string
 
 using GVec3 = glm::vec<3, f32, glm::packed>;
-using GVec3I = glm::vec<3, u32, glm::packed>;
 
 enum class TraceableType {
     Sphere,
@@ -82,19 +81,10 @@ namespace tinygltf {
     class Model;
 }
 
-#include "Material.h"
-struct MeshData {
-    std::vector<GVec3> vertices;
-    std::vector<GVec3> normals;
+#include "BVHTree.h"
+#include "MeshData.h"
 
-    struct Identifier {
-        GVec3I indices;
-        i32 materialIndex;
-    };
-
-    std::vector<Identifier> identifiers;
-    std::vector<Material> materials;
-
+struct Model : public TraceableObject {
     inline static Triangle GetTriangleFromIdentifier(const MeshData &meshData, int index) {
         GVec3I idx = meshData.identifiers[index].indices;
         return Triangle {
@@ -103,18 +93,13 @@ struct MeshData {
         };
     }
 
-    inline static Triangle GetTriangleFromIdentifier(const MeshData &meshData, const Identifier &iden) {
+    inline static Triangle GetTriangleFromIdentifier(const MeshData &meshData, const MeshData::Identifier &iden) {
         GVec3I idx = iden.indices;
         return Triangle {
             meshData.vertices[idx.x], meshData.vertices[idx.y], meshData.vertices[idx.z],
             meshData.normals[idx.x], meshData.normals[idx.y], meshData.normals[idx.z]
         };
     }
-};
-
-#include "BVHTree.h"
-struct Model : public TraceableObject {
-    static MeshData LoadMeshData(std::string modelPath);
 
     Model(std::string modelPath);
 
