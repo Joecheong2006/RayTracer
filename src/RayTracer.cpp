@@ -91,14 +91,12 @@ struct BVHNode {
 };
 
 struct Model {
-    AABB boundingBox;
-    int trianglesCount, nodesCount;
+    int identifiersCount, verticesCount, nodesCount;
     int materialIndex;
 };
 
 uniform sampler2D previousFrame;
 uniform samplerBuffer objectsBuffer;
-uniform samplerBuffer modelMeshesDataBuffer;
 uniform samplerBuffer modelObjectsBuffer;
 uniform samplerBuffer materialsBuffer;
 
@@ -467,10 +465,8 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
 Model loadModel(samplerBuffer buffer, inout int objectIndex) {
     Model result;
 
-    result.boundingBox.min = samplerLoadVec3(buffer, objectIndex);
-    result.boundingBox.max = samplerLoadVec3(buffer, objectIndex);
-
-    result.trianglesCount = int(samplerLoadFloat(buffer, objectIndex));
+    result.identifiersCount = int(samplerLoadFloat(buffer, objectIndex));
+    result.verticesCount = int(samplerLoadFloat(buffer, objectIndex));
     result.nodesCount = int(samplerLoadFloat(buffer, objectIndex));
 
     return result;
@@ -489,11 +485,18 @@ BVHNode loadBVHNodeAt(samplerBuffer buffer, int objectIndex) {
     return result;
 }
 
-bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex, int modelObjectsIndex) {
-    if (RayBoundingBoxDst(r, model.boundingBox, info.t) >= 1e20) {
-        return false;
-    }
+vec3[3] loadVec3FromIndices(samplerBuffer buffer, ivec3 indices, int offset) {
+    vec3 result[3];
+    int index = offset + indices[0] * 3;
+    result[0] = samplerLoadVec3(buffer, index);
+    index = offset + indices[1] * 3;
+    result[1] = samplerLoadVec3(buffer, index);
+    index = offset + indices[2] * 3;
+    result[2] = samplerLoadVec3(buffer, index);
+    return result;
+}
 
+bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex) {
     int stack[32];
     int stackIndex = 0;
     stack[stackIndex++] = 0;
@@ -507,11 +510,27 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
 
         if (node.isLeaf) {
             for (int offset = node.leftIndex; offset < node.rightIndex; ++offset) {
-                int index = (modelObjectsIndex + offset) * 19;
+                // Looking for identifiers
+                int index = objectIndex + model.nodesCount * 9 + offset * 4;
 
-                int materialIndex = int(samplerLoadFloat(modelMeshesDataBuffer, index));
-                Triangle tri = loadTriangle(modelMeshesDataBuffer, index);
-                tri.materialIndex = materialIndex;
+                Triangle tri;
+
+                ivec3 idx = ivec3(samplerLoadVec3(modelObjectsBuffer, index));
+                tri.materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
+
+                // Looking for positions
+                index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4;
+                vec3 bufs[3] = loadVec3FromIndices(modelObjectsBuffer, idx, index);
+                tri.posA = bufs[0];
+                tri.posB = bufs[1];
+                tri.posC = bufs[2];
+
+                // Looking for normals
+                index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4 + model.verticesCount * 3;
+                bufs = loadVec3FromIndices(modelObjectsBuffer, idx, index);
+                tri.normA = bufs[0];
+                tri.normB = bufs[1];
+                tri.normC = bufs[2];
 
                 if (hitTriangle(tri, r, max, hInfo)) {
                     max = hInfo.t;
@@ -546,15 +565,15 @@ void hitModels(in Ray r, inout HitInfo track) {
     float closest = tmp.t;
 
     int modelObjectIndex = 0;
-    int modelMeshDataIndex = 0;
 
     for (int i = 0; i < modelsCount; ++i) {
         bool hitted = false;
 
         Model model = loadModel(modelObjectsBuffer, modelObjectIndex);
-        hitted = hitModel(model, r, closest, tmp, modelObjectIndex, modelMeshDataIndex);
+        hitted = hitModel(model, r, closest, tmp, modelObjectIndex);
         modelObjectIndex += model.nodesCount * 9;
-        modelMeshDataIndex += model.trianglesCount;
+        modelObjectIndex += model.identifiersCount * 4; // For identifiers
+        modelObjectIndex += model.verticesCount * 6; // For vertices and normals
 
         if (hitted) {
             closest = tmp.t;
@@ -862,14 +881,11 @@ void RayTracer::renderToTexture(const RayCamera &camera, const RayScene &scene) 
     scene.bindObjects(1);
     m_shader->setUniform1i("objectsBuffer", 1);
 
-    scene.bindModelMeshesData(2);
-    m_shader->setUniform1i("modelMeshesDataBuffer", 2);
+    scene.bindMaterials(2);
+    m_shader->setUniform1i("materialsBuffer", 2);
 
-    scene.bindMaterials(3);
-    m_shader->setUniform1i("materialsBuffer", 3);
-
-    scene.bindModelObjects(4);
-    m_shader->setUniform1i("modelObjectsBuffer", 4);
+    scene.bindModelObjects(3);
+    m_shader->setUniform1i("modelObjectsBuffer", 3);
 
     m_shader->setUniform1i("objectCount", scene.getObjectsCount());
     m_shader->setUniform1i("modelsCount", scene.getModelsCount());

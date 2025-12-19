@@ -81,29 +81,38 @@ namespace tinygltf {
     class Model;
 }
 
+#include "Material.h"
 struct MeshData {
     std::vector<GVec3> vertices;
     std::vector<GVec3> normals;
 
     struct Identifier {
         GVec3I indices;
-        i32 mateiralsIndices;
+        i32 materialIndex;
     };
 
     std::vector<Identifier> identifiers;
+    std::vector<Material> materials;
 
-    std::vector<Triangle> triangles;
+    inline static Triangle GetTriangleFromIdentifier(const MeshData &meshData, int index) {
+        GVec3I idx = meshData.identifiers[index].indices;
+        return Triangle {
+            meshData.vertices[idx.x], meshData.vertices[idx.y], meshData.vertices[idx.z],
+            meshData.normals[idx.x], meshData.normals[idx.y], meshData.normals[idx.z]
+        };
+    }
 };
 
 #include "BVHTree.h"
 struct Model : public TraceableObject {
-    static MeshData LocalMeshData(const tinygltf::TinyGLTF &loader, const tinygltf::Model &model);
+    static MeshData LoadMeshData(std::string modelPath);
 
-    Model(const MeshData &meshData);
+    Model(std::string modelPath);
 
     virtual void write(std::vector<f32> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
 
+    MeshData meshData;
     BVHTree bvh;
 
 };

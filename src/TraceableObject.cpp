@@ -1,5 +1,15 @@
 #include "TraceableObject.h"
 
+#include "glUtilities/util.h"
+
+#include <tinygltf/tiny_gltf.h>
+#include <tinygltf/stb_image.h>
+#include <glm/gtc/type_ptr.hpp>
+#include <glad/glad.h>
+#include <iostream>
+
+#include <stack>
+
 void TraceableObject::writeHeader(std::vector<f32> &buffer) const {
     buffer.push_back(static_cast<f32>(m_type));
     buffer.push_back(static_cast<f32>(m_materialIndex));
@@ -92,13 +102,6 @@ bool Triangle::inAABB(const AABB &box) const {
     }
     return true;
 }
-
-#include "glUtilities/util.h"
-
-#include <tinygltf/tiny_gltf.h>
-#include <glm/gtc/type_ptr.hpp>
-#include <glad/glad.h>
-#include <iostream>
 
 static glm::mat4 get_local_transform(const tinygltf::Node& node) {
     glm::mat4 transform(1.0f);
@@ -220,7 +223,7 @@ static void load_mesh_data_gltf(MeshData &meshData, const tinygltf::Primitive &p
     }
 }
 
-static void process_node(const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform, MeshData &meshData) {
+inline static void process_node(const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform, MeshData &meshData) {
     const tinygltf::Node &node = model.nodes[nodeIndex];
     glm::mat4 localTransform = get_local_transform(node);
     glm::mat4 worldTransform = parentTransform * localTransform;
@@ -240,7 +243,98 @@ static void process_node(const tinygltf::Model &model, int nodeIndex, const glm:
     }
 }
 
-MeshData Model::LocalMeshData(const tinygltf::TinyGLTF &loader, const tinygltf::Model &model) {
+static Material process_material(const tinygltf::Model &model, const tinygltf::Material &material) {
+    Material outMat;
+
+    auto it = material.values.find("baseColorFactor");
+    if (it != material.values.end()) {
+        outMat.albedo = {
+            it->second.number_array[0],
+            it->second.number_array[1],
+            it->second.number_array[2]
+        };
+    }
+
+    auto extIt = material.extensions.find("KHR_materials_volume");
+    if (extIt != material.extensions.end()) {
+        const tinygltf::Value &ext = extIt->second;
+
+        auto tIt = ext.Get("thicknessFactor");
+        if (tIt.IsNumber()) {
+            outMat.subsurface = static_cast<float>(tIt.GetNumberAsDouble());
+        }
+    }
+
+    // Default metallic from glTF PBR spec
+    outMat.metallic = 1;
+    auto itMetal = material.values.find("metallicFactor");
+    if (itMetal != material.values.end()) {
+        outMat.metallic = static_cast<float>(itMetal->second.number_value);
+    }
+
+    // Default roughness from glTF PBR spec
+    outMat.roughness = 1;
+    auto itRough = material.values.find("roughnessFactor");
+    if (itRough != material.values.end()) {
+        outMat.roughness = static_cast<float>(itRough->second.number_value);
+    }
+
+    it = material.additionalValues.find("emissiveFactor");
+    if (it != material.additionalValues.end() && it->second.number_array.size() == 3) {
+        outMat.emissionColor = glm::vec3(
+            it->second.number_array[0],
+            it->second.number_array[1],
+            it->second.number_array[2]
+        );
+    }
+
+    // emissiveStrength  (GLTF extension)
+    extIt = material.extensions.find("KHR_materials_emissive_strength");
+    if (extIt != material.extensions.end()) {
+        const tinygltf::Value &ext = extIt->second;
+        auto sIt = ext.Get("emissiveStrength");
+        if (sIt.IsNumber()) {
+            outMat.emissionStrength = static_cast<float>(sIt.GetNumberAsDouble());
+        }
+    }
+
+    // transmissionFactor (GLTF extension)
+    extIt = material.extensions.find("KHR_materials_transmission");
+    if (extIt != material.extensions.end()) {
+        const tinygltf::Value &ext = extIt->second;
+        auto sIt = ext.Get("transmissionFactor");
+        if (sIt.IsNumber()) {
+            outMat.transmission = static_cast<float>(sIt.GetNumberAsDouble());
+        }
+    }
+
+    extIt = material.extensions.find("KHR_materials_ior");
+    if (extIt != material.extensions.end()) {
+        const tinygltf::Value &ext = extIt->second;
+        if (ext.Has("ior")) {
+            outMat.ior = static_cast<float>(ext.Get("ior").Get<double>());
+        }
+    }
+    return outMat;
+}
+
+MeshData Model::LoadMeshData(std::string modelPath) {
+    tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    std::string err;
+    std::string warn;
+
+    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, modelPath);
+
+    if (!warn.empty()) std::cout << "Warn: " << warn << '\n';
+    if (!err.empty()) std::cerr << "Err: " << err << '\n';
+    if (!ret) {
+        std::cerr << "Failed to load " << modelPath << '\n';
+        std::cout << "You may try the models in res/models.7z" << '\n';
+        return {};
+    }
+
+    std::cout << "Load " << modelPath << " successfully!\n";
     MeshData meshData;
 
     int sceneIndex = model.defaultScene > -1 ? model.defaultScene : 0;
@@ -252,35 +346,130 @@ MeshData Model::LocalMeshData(const tinygltf::TinyGLTF &loader, const tinygltf::
         }
     }
 
+    meshData.materials.reserve(model.materials.size());
+    for (const auto &material : model.materials) {
+        meshData.materials.push_back(process_material(model, material));
+    }
+
     return meshData;
 }
 
-Model::Model(const MeshData &meshData)
+Model::Model(std::string modelPath)
     : TraceableObject(TraceableType::Model)
+    , meshData(Model::LoadMeshData(modelPath))
     , bvh(meshData)
 {
-    if (meshData.triangles.size() > 0) {
-        boundingBox = meshData.triangles.front().getAABB();
-        for (auto &triangle : meshData.triangles) {
-            boundingBox = AABB(boundingBox, triangle.getAABB());
+    if (meshData.identifiers.size() > 0) {
+        boundingBox = MeshData::GetTriangleFromIdentifier(meshData, 0).getAABB();
+        for (int i = 1; i < meshData.identifiers.size(); ++i) {
+            boundingBox = AABB(boundingBox, MeshData::GetTriangleFromIdentifier(meshData, i).getAABB());
         }
     }
+
+    // Height Info
+    i32 maxHeight = 0;
+    i32 minHeight = INT_MAX;
+    i32 totalHeight = 0;
+
+    // Leaf Node Info
+    i32 leafNodeCount = 0;
+    i32 emptyLeaf = 0;
+    i32 maxTri = INT_MIN;
+    i32 minTri = INT_MAX;
+
+    auto &m_nodes = bvh.getNodes();
+
+    std::stack<glm::ivec2> s;
+    s.push({ 0, 1 });
+    while (!s.empty()) {
+        auto track = s.top();
+        auto currentIndex = track[0];
+        s.pop();
+
+        maxHeight = std::max(maxHeight, track[1]);
+        minHeight = std::min(minHeight, track[1]);
+
+        auto current = m_nodes[currentIndex];
+        if (current.isLeaf) {
+            leafNodeCount++;
+            emptyLeaf += current.leftIndex == current.rightIndex;
+            totalHeight += track[1];
+
+            maxTri = std::max(maxTri, current.rightIndex - current.leftIndex);
+            minTri = std::min(minTri, current.rightIndex - current.leftIndex);
+
+            for (i32 i = current.leftIndex; i < current.rightIndex; ++i) {
+                if (!MeshData::GetTriangleFromIdentifier(meshData, i).inAABB(current.box)) {
+                    std::cout << "Invalid BVH\n";
+                    return;
+                }
+            }
+            continue;
+        }
+
+        s.push({ current.rightIndex, track[1] + 1 });
+        s.push({ current.leftIndex, track[1] + 1 });
+    }
+
+    glm::ivec2 nodesUsage = { m_nodes.size() * sizeof(BVHNode), m_nodes.size() * 3 * sizeof(glm::vec4) };
+    glm::ivec2 trianglesUsage = { meshData.identifiers.size() * sizeof(Triangle) / 3, meshData.identifiers.size() * 6 * sizeof(glm::vec4) };
+
+    glm::ivec2 bvhUsage = nodesUsage + trianglesUsage;
+
+    const char *gaps = "\t";
+
+    std::cout
+        << "\nBVH Constructed Successfully!\n"
+        << "\tNodes Count: " << gaps << gaps <<m_nodes.size() << '\n'
+            << "\t\tCPU Usage: " << gaps << nodesUsage[0] / 1024.0f << " (KB)\n"
+            << "\t\tGPU Usage: " << gaps << nodesUsage[1] / 1024.0f << " (KB)\n"
+
+        << "\tTriangles Count: " << gaps << meshData.identifiers.size() << '\n'
+            << "\t\tCPU Usage: " << gaps << trianglesUsage[0] / 1024.0f << " (KB)\n"
+            << "\t\tGPU Usage: " << gaps << trianglesUsage[1] / 1024.0f << " (KB)\n"
+
+        << "\tBVH Memory Usage: " << '\n'
+            << "\t\tCPU Usage: "  << gaps << bvhUsage[0] / 1024.0f<< " (KB)\n"
+            << "\t\tGPU Usage: "  << gaps << bvhUsage[1] / 1024.0f << " (KB)\n"
+
+        << "\tBVH Min Height: " << gaps << minHeight << '\n'
+        << "\tBVH Max Height: " << gaps << maxHeight << '\n'
+        << "\tBVH Avg Height: " << gaps << totalHeight / (f32)leafNodeCount << '\n'
+
+        << "\tMin Triangles Leaf: " << gaps << minTri << '\n'
+        << "\tMax Triangles Leaf: " << gaps << maxTri << '\n'
+        << "\tAvg Triangles Leaf: " << gaps << meshData.identifiers.size() / (f32)leafNodeCount << '\n'
+        << "\tEmpty Leaf: " << gaps << gaps << emptyLeaf  << "\n\n";
 }
 
 void Model::write(std::vector<f32> &buffer) const {
     const auto &nodes = bvh.getNodes();
-    const auto &triangles = bvh.getTriangles();
-    buffer.insert(buffer.end(), &boundingBox.min.x, &boundingBox.min.x + 3);
-    buffer.insert(buffer.end(), &boundingBox.max.x, &boundingBox.max.x + 3);
-    buffer.push_back(triangles.size());
+    buffer.push_back(meshData.identifiers.size());
+    buffer.push_back(meshData.vertices.size());
     buffer.push_back(nodes.size());
 
-    for (auto &node : nodes) {
+    std::cout << "Wrote nodesCount: " << nodes.size() << std::endl;
+    std::cout << "Wrote verticesCount: " << meshData.vertices.size() << std::endl;
+    std::cout << "Wrote identifiersCount: " << meshData.identifiers.size() << std::endl;
+    for (const auto &node : nodes) {
         buffer.insert(buffer.end(), &node.box.min.x, &node.box.min.x + 3);
         buffer.insert(buffer.end(), &node.box.max.x, &node.box.max.x + 3);
         buffer.push_back(node.leftIndex);
         buffer.push_back(node.rightIndex);
         buffer.push_back(static_cast<bool>(node.isLeaf));
+    }
+
+    for (const auto &iden : meshData.identifiers) {
+        buffer.insert(buffer.end(), &iden.indices.x, &iden.indices.x + 3);
+        buffer.push_back(iden.materialIndex);
+    }
+
+    for (const auto &vertex : meshData.vertices) {
+        buffer.insert(buffer.end(), &vertex.x, &vertex.x + 3);
+    }
+
+    for (const auto &normal : meshData.normals) {
+        buffer.insert(buffer.end(), &normal.x, &normal.x + 3);
     }
 }
 

@@ -39,22 +39,16 @@ private:
 
     // Models
     std::vector<std::unique_ptr<Model>> m_modelObjects;
-    std::unique_ptr<gl::TextureBuffer> m_modelMeshesDataTexBuffer;
-    std::vector<f32> m_modelMeshesDataBuffer;
-
     std::unique_ptr<gl::TextureBuffer> m_modelObjectsTexBuffer;
     std::vector<f32> m_modelObjectsBuffer;
 
     void load_material(const Material &material);
-
-    MeshData load_model(std::string modelPath);
 
 public:
     explicit RayScene() = default;
 
     void initialize();
     void bindObjects(i32 slot) const;
-    void bindModelMeshesData(i32 slot) const;
     void bindModelObjects(i32 slot) const;
     void bindMaterials(i32 slot) const;
     void submit();
