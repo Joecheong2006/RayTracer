@@ -83,13 +83,15 @@ glm::vec3 RayScene::getSkyColor() const {
 }
 
 void RayScene::addModel(const std::string &modelPath) {
-    Model localModel = Model(modelPath);
+    {
+        Model localModel = Model(modelPath);
 
-    if (localModel.meshData.vertices.empty()) {
-        return;
+        if (localModel.meshData.vertices.empty()) {
+            return;
+        }
+
+        m_modelObjects.push_back(std::make_unique<Model>(localModel));
     }
-
-    m_modelObjects.push_back(std::make_unique<Model>(localModel));
     auto &model = m_modelObjects.back();
     MeshData &meshData = model->meshData;
 
