@@ -60,7 +60,7 @@ cmake --build . --config Release
 ![Transmissive Dragon2](screenshots/transmissive_dragon2.png)
 
 ## Transmissive teapot under sea
-![Transmissive Dragon2](screenshots/transmissive_teapot_in_sea.png)
+![Transmissive teapot under sea](screenshots/transmissive_teapot_in_sea.png)
 
 ### Dragon 2
 ![Dragon 2](screenshots/dragon2.jpeg)
