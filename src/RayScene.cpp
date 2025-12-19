@@ -27,8 +27,17 @@ void RayCamera::updateDirection() {
 
 void RayScene::load_material(const Material &material) {
     m_materialsBuffer.insert(m_materialsBuffer.end(),
-            reinterpret_cast<const f32*>(&material),
-            reinterpret_cast<const f32*>(&material) + sizeof(Material) / sizeof(f32));
+            &material.emissionColor.x, &material.emissionColor.x + 3);
+    m_materialsBuffer.push_back(material.emissionStrength);
+    m_materialsBuffer.insert(m_materialsBuffer.end(),
+            &material.albedo.x, &material.albedo.x + 3);
+    m_materialsBuffer.push_back(material.subsurface);
+    m_materialsBuffer.push_back(material.roughness);
+    m_materialsBuffer.push_back(material.metallic);
+    m_materialsBuffer.push_back(material.specular);
+    m_materialsBuffer.push_back(material.specularTint);
+    m_materialsBuffer.push_back(material.transmission);
+    m_materialsBuffer.push_back(material.ior);
 }
 
 void RayScene::initialize() {

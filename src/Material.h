@@ -5,7 +5,7 @@
 
 using GVec3 = glm::vec<3, f32, glm::packed>;
 
-struct alignas(4) Material {
+struct Material {
     GVec3 emissionColor = { 0, 0, 0 };
     f32 emissionStrength = 0;
 
