@@ -28,18 +28,9 @@ static void construct_bvh(std::vector<BVHNode> &m_nodes, std::vector<MeshData::I
 
     i32 mid = start + (end - start) * 0.5f;
     std::nth_element(meshData.identifiers.begin() + start, meshData.identifiers.begin() + mid, meshData.identifiers.begin() + end,
-    // std::sort(meshData.identifiers.begin() + start, meshData.identifiers.begin() + end,
             [&meshData, axis](const auto &iden1, const auto &iden2) {
-                auto &idx1 = iden1.indices;
-                auto &idx2 = iden2.indices;
-                Triangle tri1 {
-                            meshData.vertices[idx1.x], meshData.vertices[idx1.y], meshData.vertices[idx1.z],
-                            meshData.normals[idx1.x], meshData.normals[idx1.y], meshData.normals[idx1.z]
-                        };
-                Triangle tri2 {
-                            meshData.vertices[idx2.x], meshData.vertices[idx2.y], meshData.vertices[idx2.z],
-                            meshData.normals[idx2.x], meshData.normals[idx2.y], meshData.normals[idx2.z]
-                        };
+                Triangle tri1 = MeshData::GetTriangleFromIdentifier(meshData, iden1);
+                Triangle tri2 = MeshData::GetTriangleFromIdentifier(meshData, iden2);
                 glm::vec3 c1 = (tri1.posA + tri1.posB + tri1.posC) / 3.0f;
                 glm::vec3 c2 = (tri2.posA + tri2.posB + tri2.posC) / 3.0f;
                 return c1[axis] < c2[axis];

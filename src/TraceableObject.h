@@ -102,6 +102,14 @@ struct MeshData {
             meshData.normals[idx.x], meshData.normals[idx.y], meshData.normals[idx.z]
         };
     }
+
+    inline static Triangle GetTriangleFromIdentifier(const MeshData &meshData, const Identifier &iden) {
+        GVec3I idx = iden.indices;
+        return Triangle {
+            meshData.vertices[idx.x], meshData.vertices[idx.y], meshData.vertices[idx.z],
+            meshData.normals[idx.x], meshData.normals[idx.y], meshData.normals[idx.z]
+        };
+    }
 };
 
 #include "BVHTree.h"
