@@ -5,6 +5,7 @@
 #include "glUtilities/TextureBuffer.h"
 #include "glUtilities/util.h"
 
+#include <string> // std::string
 #include <vector> // std::vector
 #include <memory> // std::unique_ptr
 
@@ -59,7 +60,7 @@ public:
     inline u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
     inline u32 getModelsCount() const { return static_cast<u32>(m_modelObjects.size()); }
 
-    void addModel(std::string modelPath);
+    void addModel(const std::string &modelPath);
 
     template <typename T, typename... Args>
     void addObject(const Material &material, Args&&... args) {

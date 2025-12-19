@@ -73,7 +73,7 @@ glm::vec3 RayScene::getSkyColor() const {
     return m_skyColor;
 }
 
-void RayScene::addModel(std::string modelPath) {
+void RayScene::addModel(const std::string &modelPath) {
     Model localModel = Model(modelPath);
 
     if (localModel.meshData.vertices.empty()) {
