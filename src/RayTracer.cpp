@@ -79,8 +79,7 @@ struct Quad {
 };
 
 struct Triangle {
-    vec3 posA, posB, posC;
-    vec3 normA, normB, normC;
+    vec3[3] vertices, normals;
     int materialIndex;
 };
 
@@ -408,20 +407,20 @@ bool hitQuad(in Quad quad, in Ray r, float max, inout HitInfo info) {
 Triangle loadTriangle(in samplerBuffer buffer, inout int objectIndex) {
     Triangle result;
 
-    result.posA = samplerLoadVec3(buffer, objectIndex);
-    result.posB = samplerLoadVec3(buffer, objectIndex);
-    result.posC = samplerLoadVec3(buffer, objectIndex);
+    result.vertices[0] = samplerLoadVec3(buffer, objectIndex);
+    result.vertices[1] = samplerLoadVec3(buffer, objectIndex);
+    result.vertices[2] = samplerLoadVec3(buffer, objectIndex);
 
-    result.normA = samplerLoadVec3(buffer, objectIndex);
-    result.normB = samplerLoadVec3(buffer, objectIndex);
-    result.normC = samplerLoadVec3(buffer, objectIndex);
+    result.normals[0] = samplerLoadVec3(buffer, objectIndex);
+    result.normals[1] = samplerLoadVec3(buffer, objectIndex);
+    result.normals[2] = samplerLoadVec3(buffer, objectIndex);
 
     return result;
 }
 
 bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
-    vec3 edgeAB = tri.posB - tri.posA;
-    vec3 edgeAC = tri.posC - tri.posA;
+    vec3 edgeAB = tri.vertices[1] - tri.vertices[0];
+    vec3 edgeAC = tri.vertices[2] - tri.vertices[0];
     vec3 normal = cross(edgeAB, edgeAC);
 
     // if (dot(normal, r.direction) >= 0) return false;
@@ -429,7 +428,7 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
     float determinant = -dot(r.direction, normal);
     if (abs(determinant) < 1e-8) return false; // parallel
 
-    vec3 ao = r.origin - tri.posA;
+    vec3 ao = r.origin - tri.vertices[0];
     vec3 dao = cross(ao, r.direction);
 
     float invDet = 1.0 / determinant;
@@ -444,12 +443,12 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
     info.t = t;
     info.point = rayAt(r, t);
 
-    if (dot(tri.normA, tri.normA) > 0) {
+    if (dot(tri.normals[0], tri.normals[0]) > 0) {
         float w = 1.0 - u - v;
         vec3 smoothNormal = normalize(
-              tri.normA * w +
-              tri.normB * u +
-              tri.normC * v
+              tri.normals[0] * w +
+              tri.normals[1] * u +
+              tri.normals[2] * v
         );
         info.normal = smoothNormal;
     }
@@ -520,17 +519,11 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
 
                 // Looking for positions
                 index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4;
-                vec3 bufs[3] = loadVec3FromIndices(modelObjectsBuffer, idx, index);
-                tri.posA = bufs[0];
-                tri.posB = bufs[1];
-                tri.posC = bufs[2];
+                tri.vertices = loadVec3FromIndices(modelObjectsBuffer, idx, index);
 
                 // Looking for normals
                 index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4 + model.verticesCount * 3;
-                bufs = loadVec3FromIndices(modelObjectsBuffer, idx, index);
-                tri.normA = bufs[0];
-                tri.normB = bufs[1];
-                tri.normC = bufs[2];
+                tri.normals = loadVec3FromIndices(modelObjectsBuffer, idx, index);
 
                 if (hitTriangle(tri, r, max, hInfo)) {
                     max = hInfo.t;
