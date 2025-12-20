@@ -99,12 +99,12 @@ bool Triangle::inAABB(const AABB &box) const {
 Model::Model(std::string modelPath)
     : TraceableObject(TraceableType::Model)
     , meshData(MeshData::LoadMeshData(modelPath))
-    , bvh(meshData)
+    , bvh(*this)
 {
     if (meshData.identifiers.size() > 0) {
-        boundingBox = Model::GetTriangleFromIdentifier(meshData, 0).getAABB();
+        boundingBox = getTriangleFromIdentifier(0).getAABB();
         for (int i = 1; i < meshData.identifiers.size(); ++i) {
-            boundingBox = AABB(boundingBox, Model::GetTriangleFromIdentifier(meshData, i).getAABB());
+            boundingBox = AABB(boundingBox, getTriangleFromIdentifier(i).getAABB());
         }
     }
 
@@ -141,7 +141,7 @@ Model::Model(std::string modelPath)
             minTri = std::min(minTri, current.rightIndex - current.leftIndex);
 
             for (i32 i = current.leftIndex; i < current.rightIndex; ++i) {
-                if (!Model::GetTriangleFromIdentifier(meshData, i).inAABB(current.box)) {
+                if (!getTriangleFromIdentifier(i).inAABB(current.box)) {
                     std::cout << "Invalid BVH\n";
                     return;
                 }

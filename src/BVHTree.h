@@ -12,12 +12,12 @@ struct BVHNode {
 };
 
 class Triangle;
-struct MeshData;
+struct Model;
 class BVHTree {
     std::vector<BVHNode> m_nodes;
 
 public:
-    BVHTree(MeshData &meshData);
+    BVHTree(Model &model);
 
     const std::vector<BVHNode>& getNodes() const { return m_nodes; }
 

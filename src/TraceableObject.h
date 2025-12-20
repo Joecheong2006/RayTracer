@@ -85,7 +85,7 @@ namespace tinygltf {
 #include "MeshData.h"
 
 struct Model : public TraceableObject {
-    inline static Triangle GetTriangleFromIdentifier(const MeshData &meshData, int index) {
+    inline Triangle getTriangleFromIdentifier(int index) {
         GVec3I idx = meshData.identifiers[index].indices;
         return Triangle {
             meshData.vertices[idx.x], meshData.vertices[idx.y], meshData.vertices[idx.z],
@@ -93,7 +93,7 @@ struct Model : public TraceableObject {
         };
     }
 
-    inline static Triangle GetTriangleFromIdentifier(const MeshData &meshData, const MeshData::Identifier &iden) {
+    inline Triangle getTriangleFromIdentifier(const MeshData::Identifier &iden) {
         GVec3I idx = iden.indices;
         return Triangle {
             meshData.vertices[idx.x], meshData.vertices[idx.y], meshData.vertices[idx.z],
