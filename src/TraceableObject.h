@@ -102,6 +102,7 @@ struct Model : public TraceableObject {
     }
 
     Model(std::string modelPath);
+    Model(Model&&) = default;
 
     virtual void write(std::vector<f32> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;

@@ -90,7 +90,7 @@ void RayScene::addModel(const std::string &modelPath) {
             return;
         }
 
-        m_modelObjects.push_back(std::make_unique<Model>(localModel));
+        m_modelObjects.push_back(std::make_unique<Model>(std::move(localModel)));
     }
     auto &model = m_modelObjects.back();
     MeshData &meshData = model->meshData;
