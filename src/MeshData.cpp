@@ -85,7 +85,45 @@ static void load_mesh_data_gltf(MeshData &meshData, const tinygltf::Primitive &p
         // Default normals if not provided
         for (size_t i = 0; i < vertexCount; ++i) {
             meshData.normals.push_back(glm::normalize(normalMatrix * glm::vec3(0, 1, 0)));
+
         }
+    }
+
+    // ================= Load UVs coordinates =================
+    meshData.UVs.reserve(meshData.UVs.size() + vertexCount);
+    if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
+        const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+        const tinygltf::BufferView &view = model.bufferViews[accessor.bufferView];
+        const tinygltf::Buffer &buffer = model.buffers[view.buffer];
+
+        const u8 *dataPtr = buffer.data.data() + 
+                                    view.byteOffset + 
+                                    accessor.byteOffset;
+
+        size_t stride = accessor.ByteStride(view);
+        
+        // Load based on component type
+        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+            std::cout << "TINYGLTF_COMPONENT_TYPE_FLOAT\n";
+            for (size_t i = 0; i < vertexCount; i++) {
+                const float* uv = reinterpret_cast<const float*>(dataPtr + i * stride);
+                meshData.UVs.push_back(glm::vec2(uv[0], uv[1]));
+            }
+        }
+        else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
+            for (size_t i = 0; i < vertexCount; i++) {
+                const u8* uv = dataPtr + i * stride;
+                meshData.UVs.push_back(glm::vec2(uv[0] / 255.0f, uv[1] / 255.0f));
+            }
+        }
+        else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+            for (size_t i = 0; i < vertexCount; i++) {
+                const u16* uv = reinterpret_cast<const uint16_t*>(dataPtr + i * stride);
+                meshData.UVs.push_back(glm::vec2(uv[0] / 65535.0f, uv[1] / 65535.0f));
+            }
+        }
+        
+        std::cout << "  ✓ Loaded UVs (TEXCOORD_0)" << std::endl;
     }
 
     // ================= Load indices =================
@@ -102,27 +140,27 @@ static void load_mesh_data_gltf(MeshData &meshData, const tinygltf::Primitive &p
 
         // ================= Generate identifiers =================
         for (u32 i = 0; i < indicesCount; ++i) {
-            GVec3I index;
+            glm::ivec3 index;
             switch (accessor.componentType) {
                 case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE: {
                     const u8* buf = reinterpret_cast<const uint8_t*>(dataPtr);
-                    index = GVec3I(buf[i * 3 + 0], buf[i * 3 + 1], buf[i * 3 + 2]);
+                    index = glm::ivec3(buf[i * 3 + 0], buf[i * 3 + 1], buf[i * 3 + 2]);
                     break;
                 }
                 case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT: {
                     const u16* buf = reinterpret_cast<const uint16_t*>(dataPtr);
-                    index = GVec3I(buf[i * 3 + 0], buf[i * 3 + 1], buf[i * 3 + 2]);
+                    index = glm::ivec3(buf[i * 3 + 0], buf[i * 3 + 1], buf[i * 3 + 2]);
                     break;
                 }
                 case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT: {
                     const u32* buf = reinterpret_cast<const uint32_t*>(dataPtr);
-                    index = GVec3I(buf[i * 3 + 0], buf[i * 3 + 1], buf[i * 3 + 2]);
+                    index = glm::ivec3(buf[i * 3 + 0], buf[i * 3 + 1], buf[i * 3 + 2]);
                     break;
                 }
                 default:
                     ASSERT(false); // Unsupported index component type
             }
-            index += GVec3I(verticesOffset);
+            index += glm::ivec3(verticesOffset);
             meshData.identifiers.push_back({ index, materialIndex });
         }
     }
@@ -150,6 +188,16 @@ inline static void process_node(const tinygltf::Model &model, int nodeIndex, con
 
 static Material process_material(const tinygltf::Model &model, const tinygltf::Material &material) {
     Material outMat;
+
+    auto &pbr = material.pbrMetallicRoughness;
+    outMat.texture.baseColorTexture = pbr.baseColorTexture.index;
+    outMat.texture.metallicRoughnessTexture = pbr.metallicRoughnessTexture.index;
+    outMat.texture.normalTexture = material.normalTexture.index;
+    outMat.texture.normalScale = material.normalTexture.scale;
+
+    std::cout << "ColorTexture: " << outMat.texture.baseColorTexture << std::endl;
+    std::cout << "RoughnessTexture: " << outMat.texture.metallicRoughnessTexture << std::endl;
+    std::cout << "NormalTexture: " << outMat.texture.normalTexture << std::endl;
 
     auto it = material.values.find("baseColorFactor");
     if (it != material.values.end()) {
@@ -223,6 +271,65 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
     return outMat;
 }
 
+#include <fstream>
+#include <vector>
+#include <cstdint>
+#include <algorithm>
+
+void writeBMP(
+    const std::string &filename,
+    const std::vector<float>& data, // RGB32F
+    int width,
+    int height
+) {
+    const int bytesPerPixel = 3;
+    const int rowStride = width * bytesPerPixel;
+    const int paddedStride = (rowStride + 3) & ~3; // 4-byte alignment
+    const int imageSize = paddedStride * height;
+    const int fileSize = 54 + imageSize;
+
+    std::ofstream file(filename, std::ios::binary);
+
+    // --- BMP header ---
+    u8 header[54] = {
+        'B','M',
+        (u8)fileSize, u8(fileSize >> 8), u8(fileSize >> 16), u8(fileSize >> 24),
+        0,0,0,0,
+        54,0,0,0,
+        40,0,0,0,
+        (u8)width, u8(width >> 8), u8(width >> 16), u8(width >> 24),
+        (u8)height, u8(height >> 8), u8(height >> 16), u8(height >> 24),
+        1,0,
+        24,0
+    };
+
+    file.write((char*)header, 54);
+
+    std::vector<uint8_t> row(paddedStride);
+
+    // BMP is bottom-up
+    for (int y = height - 1; y >= 0; --y) {
+        for (int x = 0; x < width; ++x) {
+            int src = (y * width + x) * 3;
+
+            float r = data[src + 0];
+            float g = data[src + 1];
+            float b = data[src + 2];
+
+            // Clamp + convert to 8-bit
+            row[x * 3 + 0] = (uint8_t)(glm::clamp(b, 0.0f, 1.0f) * 255.0f);
+            row[x * 3 + 1] = (uint8_t)(glm::clamp(g, 0.0f, 1.0f) * 255.0f);
+            row[x * 3 + 2] = (uint8_t)(glm::clamp(r, 0.0f, 1.0f) * 255.0f);
+        }
+
+        // zero padding
+        std::fill(row.begin() + rowStride, row.end(), 0);
+        file.write((char*)row.data(), paddedStride);
+    }
+}
+
+#include <tinygltf/stb_image_write.h>
+
 MeshData MeshData::LoadMeshData(std::string modelPath) {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
@@ -254,6 +361,109 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
     meshData.materials.reserve(model.materials.size());
     for (const auto &material : model.materials) {
         meshData.materials.push_back(process_material(model, material));
+    }
+
+    meshData.textures.resize(model.textures.size());
+    for (size_t i = 0; i < meshData.textures.size(); ++i) {
+        auto &image = model.images[model.textures[i].source];
+
+        auto &texture = meshData.textures[i];
+        texture.width = image.width;
+        texture.height = image.height;
+        texture.channelSize = image.bits / 8;
+        texture.pixelType = image.pixel_type;
+
+        std::cout << image.name << "(" << i << ")" << ": " << image.width << "x" << image.height << std::endl;
+        if (!image.image.empty()) {
+            std::cout << "\tUsing pre-loaded image data" << std::endl;
+
+            texture.channels = image.component;
+            int pixelCount = texture.width * texture.height;
+            texture.data.resize(pixelCount * 3);
+
+            if (image.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
+                const u8* src = image.image.data();
+                
+                for (size_t i = 0; i < pixelCount; i++) {
+                    size_t srcIdx = i * image.component;
+                    size_t dstIdx = i * 3;
+                    
+                    switch (image.component) {
+                        case 1:
+                            texture.data[dstIdx + 0] = src[srcIdx] / 255.0f;
+                            break;
+                        case 2:
+                            texture.data[dstIdx + 0] =
+                            texture.data[dstIdx + 1] = src[srcIdx] / 255.0f;
+                            break;
+                        case 3:
+                        case 4:
+                            texture.data[dstIdx + 0] = src[srcIdx + 0] / 255.0f;
+                            texture.data[dstIdx + 1] = src[srcIdx + 1] / 255.0f;
+                            texture.data[dstIdx + 2] = src[srcIdx + 2] / 255.0f;
+                            break;
+                    }
+                }
+                std::string filename = std::string("output") + std::to_string(i) + std::string(".bmp");
+                writeBMP(filename, texture.data, texture.width, texture.height);
+            }
+            else if (image.pixel_type == TINYGLTF_COMPONENT_TYPE_FLOAT) {
+                const f32* src = reinterpret_cast<const f32*>(image.image.data());
+                
+                for (size_t i = 0; i < pixelCount; i++) {
+                    size_t srcIdx = i * image.component;
+                    size_t dstIdx = i * 3;
+                    
+                    if (image.component == 1) {
+                        texture.data[dstIdx] = texture.data[dstIdx + 1] = 
+                            texture.data[dstIdx + 2] = src[srcIdx];
+                    }
+                    else if (image.component >= 3) {
+                        texture.data[dstIdx + 0] = src[srcIdx + 0];
+                        texture.data[dstIdx + 1] = src[srcIdx + 1];
+                        texture.data[dstIdx + 2] = src[srcIdx + 2];
+                    }
+                }
+            }           
+        }
+        else if (image.bufferView >= 0) {
+            std::cout << "\tLoading image data using stb_image" << std::endl;
+            auto &view = model.bufferViews[image.bufferView];
+            auto &buffer = model.buffers[view.buffer];
+            const unsigned char* imageData = buffer.data.data() + view.byteOffset;
+
+            int width, height, channels;
+            u8 *decodedData = stbi_load_from_memory(
+                    imageData, 
+                    view.byteLength, 
+                    &width, 
+                    &height, 
+                    &channels,
+                    0
+                );
+
+            if (decodedData) {
+                texture.channels = channels;
+                texture.data.resize(width * height * channels);
+                std::copy(decodedData, decodedData + texture.data.size(), texture.data.begin());
+
+                stbi_image_free(decodedData);
+            }
+        }
+        else {
+            continue;
+        }
+
+        std::cout << "\tChannels: " << texture.channels << std::endl;
+
+        stbi_write_jpg(
+            "output.jpg",
+            texture.width,
+            texture.height,
+            texture.channels,
+            texture.data.data(),
+            90  // quality (90 is good)
+        );
     }
 
     return meshData;

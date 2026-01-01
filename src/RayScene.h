@@ -43,7 +43,12 @@ private:
     std::unique_ptr<gl::TextureBuffer> m_modelObjectsTexBuffer;
     std::vector<f32> m_modelObjectsBuffer;
 
-    void load_material(const Material &material);
+    // Textures
+    std::vector<MeshData::Texture*> m_textures;
+    std::unique_ptr<gl::TextureBuffer> m_texturesTexBuffer;
+    std::vector<f32> m_texturesBuffer;
+
+    void load_material(std::vector<f32> &buffer, const Material &material);
 
 public:
     explicit RayScene() = default;
@@ -51,6 +56,7 @@ public:
     void initialize();
     void bindObjects(i32 slot) const;
     void bindModelObjects(i32 slot) const;
+    void bindTextures(i32 slot) const;
     void bindMaterials(i32 slot) const;
     void submit();
 
@@ -73,7 +79,7 @@ public:
         object->write(m_objectsBuffer);
 
         m_materials.push_back(material);
-        load_material(material);
+        load_material(m_materialsBuffer, material);
     }
 
     template <typename T, typename... Args>

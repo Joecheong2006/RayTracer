@@ -35,20 +35,19 @@ struct Camera {
     int bounces, rayPerPixel;
 };
 
-struct HitInfo {
-    vec3 point, normal;
-    float t;
-    int materialIndex;
-    bool front_face;
-    int tests;
-};
-
 struct Ray {
     vec3 origin, direction;
 };
 
 struct AABB {
     vec3 min, max;
+};
+
+struct MaterialTexture {
+    int normalTexture;
+    float normalScale;
+    int baseColorTexture;
+    int metallicRoughnessTexture;
 };
 
 struct Material {
@@ -64,6 +63,18 @@ struct Material {
 
     float transmission;
     float ior;
+
+    MaterialTexture texture;
+};
+
+struct HitInfo {
+    vec3 point, normal, tangent, bitangent;
+    float t;
+    vec2 uv;
+    int materialIndex;
+    Material mat;
+    bool front_face;
+    int tests;
 };
 
 struct Sphere {
@@ -80,6 +91,7 @@ struct Quad {
 
 struct Triangle {
     vec3[3] vertices, normals;
+    vec2[3] UVs;
     int materialIndex;
 };
 
@@ -90,13 +102,14 @@ struct BVHNode {
 };
 
 struct Model {
-    int identifiersCount, verticesCount, nodesCount;
+    int identifiersCount, verticesCount, UVsCount, nodesCount;
     int materialIndex;
 };
 
 uniform sampler2D previousFrame;
 uniform samplerBuffer objectsBuffer;
 uniform samplerBuffer modelObjectsBuffer;
+uniform samplerBuffer texturesBuffer;
 uniform samplerBuffer materialsBuffer;
 
 uniform int objectCount;
@@ -105,6 +118,50 @@ uniform uint frameCount;
 uniform vec3 skyColor;
 
 uniform Camera camera;
+
+// === Buffer Utilities ===
+float samplerLoadFloat(samplerBuffer buffer, inout int index) {
+    float x = texelFetch(buffer, index).r;
+    index++;
+    return x;
+}
+
+vec2 samplerLoadVec2(samplerBuffer buffer, inout int index) {
+    float x = texelFetch(buffer, index + 0).r;
+    float y = texelFetch(buffer, index + 1).r;
+    index += 2;
+    return vec2(x, y);
+}
+
+vec3 samplerLoadVec3(samplerBuffer buffer, inout int index) {
+    float x = texelFetch(buffer, index + 0).r;
+    float y = texelFetch(buffer, index + 1).r;
+    float z = texelFetch(buffer, index + 2).r;
+    index += 3;
+    return vec3(x, y, z);
+}
+
+vec3[3] loadVec3FromIndices(samplerBuffer buffer, ivec3 indices, int offset) {
+    vec3 result[3];
+    int index = offset + indices[0] * 3;
+    result[0] = samplerLoadVec3(buffer, index);
+    index = offset + indices[1] * 3;
+    result[1] = samplerLoadVec3(buffer, index);
+    index = offset + indices[2] * 3;
+    result[2] = samplerLoadVec3(buffer, index);
+    return result;
+}
+
+vec2[3] loadVec2FromIndices(samplerBuffer buffer, ivec3 indices, int offset) {
+    vec2 result[3];
+    int index = offset + indices[0] * 2;
+    result[0] = samplerLoadVec2(buffer, index);
+    index = offset + indices[1] * 2;
+    result[1] = samplerLoadVec2(buffer, index);
+    index = offset + indices[2] * 2;
+    result[2] = samplerLoadVec2(buffer, index);
+    return result;
+}
 
 // Utility
 uint pcg(uint v) {
@@ -179,23 +236,37 @@ vec3 sampleGGXVNDF(in vec3 N, in vec3 V, float roughness, inout SeedType seed) {
     return dot(N, L) > 0.0 ? L : vec3(0.0); // Ensure valid bounce
 }
 
-vec3 computeF0(in Material mat) {
-    float specular = clamp(mat.specular, 0.0, 1.0);        // user control
-    float tintAmount = clamp(mat.specularTint, 0.0, 1.0);  // influence of albedo
+vec3 getAlbedo(in HitInfo info) {
+    return info.mat.albedo;
+    if (info.mat.texture.baseColorTexture == -1) {
+        return info.mat.albedo;
+    }
+    int width = int(samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture));
+    int height = int(samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture));
+
+    info.uv.x = clamp(info.uv.x, 0.0f, 0.999999f);
+    info.uv.y = clamp(info.uv.y, 0.0f, 0.999999f);
+    info.mat.texture.baseColorTexture += (int(info.uv.x * width) + int(info.uv.y * height) * width) * 3;
+    return samplerLoadVec3(texturesBuffer, info.mat.texture.baseColorTexture);
+}
+
+vec3 computeF0(in HitInfo info) {
+    float specular = clamp(info.mat.specular, 0.0, 1.0);        // user control
+    float tintAmount = clamp(info.mat.specularTint, 0.0, 1.0);  // influence of albedo
 
     vec3 f0 = vec3(0.16 * specular * specular);
-    return mix(f0, mat.albedo, mat.metallic);
+    return mix(f0, getAlbedo(info), info.mat.metallic);
 
     vec3 baseTint = vec3(1.0);
-    if (dot(mat.albedo, mat.albedo) > 0.0) {
-        baseTint = normalize(mat.albedo);
+    if (dot(getAlbedo(info), getAlbedo(info)) > 0.0) {
+        baseTint = normalize(getAlbedo(info));
     }
 
     vec3 tint = mix(vec3(1.0), baseTint, tintAmount);  // weighted albedo tint
     vec3 dielectricF0 = 0.08 * specular * tint;        // 0.08 ~ empirical fit
 
-    vec3 metalF0 = clamp(mat.albedo, vec3(0.0), vec3(1.0));
-    return mix(dielectricF0, metalF0, mat.metallic);
+    vec3 metalF0 = clamp(getAlbedo(info), vec3(0.0), vec3(1.0));
+    return mix(dielectricF0, metalF0, info.mat.metallic);
 }
 
 vec3 fresnelSchlick(float cosTheta, in vec3 F0) {
@@ -229,19 +300,19 @@ float specularPdf(float NoH, float VoH, float roughness) {
     return D * NoH / max(4.0 * VoH, MIN_DENOMINATOR);
 }
 
-vec3 shadeSpecular(in Material mat, float NoV, float NoL, float NoH, float VoH) {
-    vec3 F0 = computeF0(mat);
+vec3 shadeSpecular(in HitInfo info, float NoV, float NoL, float NoH, float VoH) {
+    vec3 F0 = computeF0(info);
     vec3 F = fresnelSchlick(VoH, F0);
-    float D = NDF_GGX(NoH, mat.roughness);
-    float G = geometrySmith(NoV, NoL, mat.roughness);
+    float D = NDF_GGX(NoH, info.mat.roughness);
+    float G = geometrySmith(NoV, NoL, info.mat.roughness);
     return (D * G * F) / max(4.0 * NoV * NoL, MIN_DENOMINATOR);
 }
 
 // === Diffuse ===
-vec3 shadeDiffuse(in Material mat, float NoL, float NoV, float VoH) {
-    vec3 F0 = computeF0(mat);
+vec3 shadeDiffuse(in HitInfo info, float NoL, float NoV, float VoH) {
+    vec3 F0 = computeF0(info);
     vec3 F = fresnelSchlick(VoH, F0);
-    vec3 kd = (vec3(1.0) - F) * (1.0 - mat.metallic);
+    vec3 kd = (vec3(1.0) - F) * (1.0 - info.mat.metallic);
 
     float FD90 = 0.5 + 2.0 * dot(F0, vec3(1.0)); // can tweak this
     float FL = fresnelSchlick(NoL, vec3(1.0)).x;
@@ -249,7 +320,7 @@ vec3 shadeDiffuse(in Material mat, float NoL, float NoV, float VoH) {
 
     float fresnelDiffuse = (1.0 + (FD90 - 1.0) * pow(1.0 - NoL, 5.0)) *
                            (1.0 + (FD90 - 1.0) * pow(1.0 - NoV, 5.0));
-    return kd * mat.albedo * INV_PI;
+    return kd * getAlbedo(info) * INV_PI;
 }
 
 float diffusePdf(float NoL) {
@@ -257,28 +328,13 @@ float diffusePdf(float NoL) {
 }
 
 // === Subsurface (approximate Burley diffusion model) ===
-vec3 shadeSubsurface(in Material mat, float NoL, float NoV, float LoV) {
+vec3 shadeSubsurface(in HitInfo info, float NoL, float NoV, float LoV) {
     float FL = pow(1.0 - NoL, 5.0);
     float FV = pow(1.0 - NoV, 5.0);
-    float Fd90 = 0.5 + 2.0 * LoV * mat.roughness;
+    float Fd90 = 0.5 + 2.0 * LoV * info.mat.roughness;
     float Fd = mix(1.0, Fd90, FL) * mix(1.0, Fd90, FV);
 
-    return mat.albedo * Fd * INV_PI * mat.subsurface;
-}
-
-// === Buffer Utilities ===
-float samplerLoadFloat(samplerBuffer buffer, inout int index) {
-    float x = texelFetch(buffer, index).r;
-    index++;
-    return x;
-}
-
-vec3 samplerLoadVec3(samplerBuffer buffer, inout int index) {
-    float x = texelFetch(buffer, index + 0).r;
-    float y = texelFetch(buffer, index + 1).r;
-    float z = texelFetch(buffer, index + 2).r;
-    index += 3;
-    return vec3(x, y, z);
+    return getAlbedo(info) * Fd * INV_PI * info.mat.subsurface;
 }
 
 // Material
@@ -286,7 +342,12 @@ Material loadMaterial(int materialIndex) {
     Material result;
 
     // Offset = (byteof Material / byteof f32) -> how many floats from Material
-    int offset = materialIndex * (56 / 4);
+    int offset = materialIndex * (72 / 4);
+
+    result.texture.normalTexture = int(samplerLoadFloat(materialsBuffer, offset));
+    result.texture.normalScale = samplerLoadFloat(materialsBuffer, offset);
+    result.texture.baseColorTexture = int(samplerLoadFloat(materialsBuffer, offset));
+    result.texture.metallicRoughnessTexture = int(samplerLoadFloat(materialsBuffer, offset));
 
     result.emissionColor = samplerLoadVec3(materialsBuffer, offset);
     result.emissionStrength = samplerLoadFloat(materialsBuffer, offset);
@@ -456,6 +517,25 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
         info.normal = normalize(normal);
     }
 
+    // Compute tangent from texture coordinates (for normal mapping)
+    vec2 deltaUV1 = tri.UVs[1] - tri.UVs[0];
+    vec2 deltaUV2 = tri.UVs[2] - tri.UVs[0];
+    
+    float f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+    
+    vec3 tangent = vec3(
+        f * (deltaUV2.y * edgeAB.x - deltaUV1.y * edgeAC.x),
+        f * (deltaUV2.y * edgeAB.y - deltaUV1.y * edgeAC.y),
+        f * (deltaUV2.y * edgeAB.z - deltaUV1.y * edgeAC.z)
+    );
+    
+    // Gram-Schmidt orthogonalize
+    tangent = normalize(tangent - dot(tangent, info.normal) * info.normal);
+    vec3 bitangent = cross(info.normal, tangent);
+    
+    info.tangent = tangent;
+    info.bitangent = bitangent;
+
     info.front_face = dot(r.direction, info.normal) < 0;
     return true;
 }
@@ -466,6 +546,7 @@ Model loadModel(samplerBuffer buffer, inout int objectIndex) {
 
     result.identifiersCount = int(samplerLoadFloat(buffer, objectIndex));
     result.verticesCount = int(samplerLoadFloat(buffer, objectIndex));
+    result.UVsCount = int(samplerLoadFloat(buffer, objectIndex));
     result.nodesCount = int(samplerLoadFloat(buffer, objectIndex));
 
     return result;
@@ -484,18 +565,7 @@ BVHNode loadBVHNodeAt(samplerBuffer buffer, int objectIndex) {
     return result;
 }
 
-vec3[3] loadVec3FromIndices(samplerBuffer buffer, ivec3 indices, int offset) {
-    vec3 result[3];
-    int index = offset + indices[0] * 3;
-    result[0] = samplerLoadVec3(buffer, index);
-    index = offset + indices[1] * 3;
-    result[1] = samplerLoadVec3(buffer, index);
-    index = offset + indices[2] * 3;
-    result[2] = samplerLoadVec3(buffer, index);
-    return result;
-}
-
-bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex) {
+bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex, inout Triangle triangle) {
     int stack[32];
     int stackIndex = 0;
     stack[stackIndex++] = 0;
@@ -525,9 +595,14 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
                 index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4 + model.verticesCount * 3;
                 tri.normals = loadVec3FromIndices(modelObjectsBuffer, idx, index);
 
+                // Looking for UVs
+                index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4 + model.verticesCount * 6;
+                tri.UVs = loadVec2FromIndices(modelObjectsBuffer, idx, index);
+
                 if (hitTriangle(tri, r, max, hInfo)) {
                     max = hInfo.t;
                     hInfo.materialIndex = tri.materialIndex;
+                    triangle = tri;
                 }
             }
             continue;
@@ -556,17 +631,20 @@ void hitModels(in Ray r, inout HitInfo track) {
     HitInfo tmp = track;
 
     float closest = tmp.t;
+    float startClosest = closest;
 
     int modelObjectIndex = 0;
 
+    Triangle tri;
     for (int i = 0; i < modelsCount; ++i) {
         bool hitted = false;
 
         Model model = loadModel(modelObjectsBuffer, modelObjectIndex);
-        hitted = hitModel(model, r, closest, tmp, modelObjectIndex);
+        hitted = hitModel(model, r, closest, tmp, modelObjectIndex, tri);
         modelObjectIndex += model.nodesCount * 9
                         + model.identifiersCount * 4 // For identifiers
-                        + model.verticesCount * 6; // For vertices and normals
+                        + model.verticesCount * 6 // For vertices and normals
+                        + model.UVsCount * 2; // For UVs
 
         if (hitted) {
             closest = tmp.t;
@@ -574,12 +652,71 @@ void hitModels(in Ray r, inout HitInfo track) {
         }
         track.tests++;
     }
+
+    if (startClosest > closest) {
+        track.mat = loadMaterial(track.materialIndex);
+        vec3 e0 = tri.vertices[1] - tri.vertices[0];
+        vec3 e1 = tri.vertices[2] - tri.vertices[0];
+        vec3 vp = rayAt(r, track.t)  - tri.vertices[0];
+
+        float d00 = dot(e0, e0);
+        float d01 = dot(e0, e1);
+        float d11 = dot(e1, e1);
+        float d20 = dot(vp, e0);
+        float d21 = dot(vp, e1);
+
+        float denom = d00 * d11 - d01 * d01;
+
+        float v = (d11 * d20 - d01 * d21) / denom;
+        float w = (d00 * d21 - d01 * d20) / denom;
+        float u = 1.0 - v - w;
+
+        track.uv = u * tri.UVs[0] + v * tri.UVs[1] + w * tri.UVs[2];
+
+        if (track.mat.texture.baseColorTexture != -1) {
+            int width = int(samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture));
+            int height = int(samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture));
+
+            track.uv.x = clamp(track.uv.x, 0.0f, 0.999999f);
+            track.uv.y = clamp(track.uv.y, 0.0f, 0.999999f);
+            track.mat.texture.baseColorTexture += (int(track.uv.x * width) + int(track.uv.y * height) * width) * 3;
+            track.mat.albedo = samplerLoadVec3(texturesBuffer, track.mat.texture.baseColorTexture);
+        }
+
+        if (track.mat.texture.metallicRoughnessTexture != -1) {
+            int width = int(samplerLoadFloat(texturesBuffer, track.mat.texture.metallicRoughnessTexture));
+            int height = int(samplerLoadFloat(texturesBuffer, track.mat.texture.metallicRoughnessTexture));
+
+            track.uv.x = clamp(track.uv.x, 0.0f, 0.999999f);
+            track.uv.y = clamp(track.uv.y, 0.0f, 0.999999f);
+            track.mat.texture.metallicRoughnessTexture += (int(track.uv.x * width) + int(track.uv.y * height) * width) * 3;
+            vec3 metallicRoughness = samplerLoadVec3(texturesBuffer, track.mat.texture.metallicRoughnessTexture);
+            track.mat.roughness *= metallicRoughness.g;
+            track.mat.metallic *= metallicRoughness.b;
+        }
+
+        if (track.mat.texture.normalTexture != -1) {
+            int width = int(samplerLoadFloat(texturesBuffer, track.mat.texture.normalTexture));
+            int height = int(samplerLoadFloat(texturesBuffer, track.mat.texture.normalTexture));
+
+            track.uv.x = clamp(track.uv.x, 0.0f, 0.999999f);
+            track.uv.y = clamp(track.uv.y, 0.0f, 0.999999f);
+            track.mat.texture.normalTexture += (int(track.uv.x * width) + int(track.uv.y * height) * width) * 3;
+            vec3 tangentNormal = samplerLoadVec3(texturesBuffer, track.mat.texture.normalTexture);
+            tangentNormal = normalize(tangentNormal * 2.0 - 1.0);
+            
+            mat3 TBN = mat3(track.tangent, track.bitangent, track.normal);
+            track.normal = normalize(TBN * tangentNormal);
+            track.front_face = dot(r.direction, track.normal) < 0;
+        }
+    }
 }
 
 void hit(in Ray r, inout HitInfo track) {
     HitInfo tmp = track;
 
     float closest = tmp.t;
+    float startClosest = closest;
 
     int objectIndex = 0;
 
@@ -619,6 +756,10 @@ void hit(in Ray r, inout HitInfo track) {
             track = tmp;
         }
         track.tests++;
+    }
+
+    if (startClosest > closest) {
+        track.mat = loadMaterial(track.materialIndex);
     }
 
     hitModels(r, track);
@@ -674,7 +815,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 
         tests += info.tests;
 
-        Material mat = loadMaterial(info.materialIndex);
+        // Material mat = info.mat;
+        // mat.triangleLocation = info.triangleLocation;
+        // mat.uvLocation = info.uvLocation;
         vec3 N = normalize(info.normal);
         vec3 V = normalize(-r.direction);
 
@@ -682,10 +825,10 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
             N = -N;
         }
 
-        float transmissionProb = mat.transmission;
-        float subsurfaceProb = mat.subsurface * (1.0 - transmissionProb);
-        float diffuseProb = (1.0 - mat.metallic) * (1.0 - transmissionProb);
-        float specularProb = (0.5 + 0.5 * mat.metallic) * (1.0 - transmissionProb);
+        float transmissionProb = info.mat.transmission;
+        float subsurfaceProb = info.mat.subsurface * (1.0 - transmissionProb);
+        float diffuseProb = (1.0 - info.mat.metallic) * (1.0 - transmissionProb);
+        float specularProb = (0.5 + 0.5 * info.mat.metallic) * (1.0 - transmissionProb);
 
         float totalProb = subsurfaceProb + diffuseProb + specularProb + transmissionProb;
         subsurfaceProb /= totalProb;
@@ -700,10 +843,10 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
             L = sampleHemisphereCosine(N, seed);
             diff = 1;
         } else if (Xi < diffuseProb + specularProb) {
-            L = sampleGGXVNDF(N, V, mat.roughness, seed);
+            L = sampleGGXVNDF(N, V, info.mat.roughness, seed);
             spec = 1;
         } else if (Xi < diffuseProb + specularProb + transmissionProb) {
-            L = sampleTransmission(N, V, info.front_face, mat, seed);
+            L = sampleTransmission(N, V, info.front_face, info.mat, seed);
             trans = 1;
         } else { // Subsurface — also treated diffuse-like
             L = sampleHemisphereCosine(N, seed);
@@ -724,11 +867,11 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         r.direction = L;
 
         if (trans == 1) {
-            float eta = info.front_face ? (1.0 / mat.ior) : mat.ior;
+            float eta = info.front_face ? (1.0 / info.mat.ior) : info.mat.ior;
             float cos_theta = min(dot(V, N), 1);
             float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
             if (!info.front_face) {
-                vec3 albedo = pow(mat.albedo, vec3(2.2));
+                vec3 albedo = pow(getAlbedo(info), vec3(2.2));
                 vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
                 float R = reflectance(cos_theta, eta);
                 rayColor *= (1.0 - R) * transmittance;
@@ -741,9 +884,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         }
 
         // Always evaluate both BRDFs and PDFs for MIS
-        vec3 brdf_sss = shadeSubsurface(mat, NoL, NoV, LoV);
-        vec3 brdf_spec = shadeSpecular(mat, NoV, NoL, NoH, VoH);
-        vec3 brdf_diff = shadeDiffuse(mat, NoL, NoV, VoH);
+        vec3 brdf_sss = shadeSubsurface(info, NoL, NoV, LoV);
+        vec3 brdf_spec = shadeSpecular(info, NoV, NoL, NoH, VoH);
+        vec3 brdf_diff = shadeDiffuse(info, NoL, NoV, VoH);
 
         float p_surf = 1.0 - transmissionProb;
 
@@ -752,7 +895,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
 
         float pdf_sss = NoL * INV_PI * subsurfaceProb * subsurface * surfaceNormalization;
-        float pdf_spec = specularPdf(NoH, VoH, mat.roughness) * specularProb * spec * surfaceNormalization;
+        float pdf_spec = specularPdf(NoH, VoH, info.mat.roughness) * specularProb * spec * surfaceNormalization;
         float pdf_diff = diffusePdf(NoL) * diffuseProb * diff * surfaceNormalization;
 
         float pdf_used = pdf_sss + pdf_spec + pdf_diff;
@@ -769,8 +912,8 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         vec3 contribution = (brdf_total * NoL) / max(pdf_used, MIN_DENOMINATOR);
 
         // Emission (add before rayColor is updated)
-        if (mat.emissionStrength > 0.0)
-            incomingLight += rayColor * mat.emissionColor * mat.emissionStrength;
+        if (info.mat.emissionStrength > 0.0)
+            incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
 
         rayColor *= contribution;
         if (dot(rayColor, vec3(1)) < 1e-4) break;
@@ -805,7 +948,7 @@ void main() {
 
     vec3 color = vec3(0.0);
 
-#if 0
+#if 1
     int ssq = int(sqrt(camera.rayPerPixel));
     float rssq = 1.0 / ssq;
     for (int i = 0; i < ssq; ++i) {
@@ -881,6 +1024,9 @@ void RayTracer::renderToTexture(const RayCamera &camera, const RayScene &scene) 
 
     scene.bindModelObjects(3);
     m_shader->setUniform1i("modelObjectsBuffer", 3);
+
+    scene.bindTextures(4);
+    m_shader->setUniform1i("texturesBuffer", 4);
 
     m_shader->setUniform1i("objectCount", scene.getObjectsCount());
     m_shader->setUniform1i("modelsCount", scene.getModelsCount());

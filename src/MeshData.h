@@ -6,20 +6,25 @@
 #include <vector> // std::vector
 #include <string> // std::string
 
-using GVec3 = glm::vec<3, f32, glm::packed>;
-using GVec3I = glm::vec<3, u32, glm::packed>;
-
 struct MeshData {
-    std::vector<GVec3> vertices;
-    std::vector<GVec3> normals;
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
+    std::vector<glm::vec2> UVs;
 
     struct Identifier {
-        GVec3I indices;
+        glm::ivec3 index;
         i32 materialIndex;
     };
 
     std::vector<Identifier> identifiers;
     std::vector<Material> materials;
+
+    struct Texture {
+        i32 width, height, channels, channelSize, pixelType;
+        std::vector<f32> data;
+    };
+
+    std::vector<Texture> textures;
 
     static MeshData LoadMeshData(std::string modelPath);
 };

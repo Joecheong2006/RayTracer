@@ -5,6 +5,14 @@
 
 using GVec3 = glm::vec<3, f32, glm::packed>;
 
+struct MaterialTexture {
+    i32 normalTexture;
+    f32 normalScale;
+    i32 baseColorTexture;
+    i32 metallicRoughnessTexture;
+
+};
+
 struct Material {
     GVec3 emissionColor = { 0, 0, 0 };
     f32 emissionStrength = 0;
@@ -18,6 +26,8 @@ struct Material {
 
     f32 transmission = 0;
     f32 ior = 1.5;
+
+    MaterialTexture texture;
 
 };
 

@@ -8,8 +8,6 @@
 #include <vector> // std::vector
 #include <string> // std::string
 
-using GVec3 = glm::vec<3, f32, glm::packed>;
-
 enum class TraceableType {
     Sphere,
     Quad,
@@ -45,35 +43,35 @@ public:
 };
 
 struct Sphere : public TraceableObject {
-    Sphere(GVec3 center, f32 radius);
+    Sphere(glm::vec3 center, f32 radius);
 
     virtual void write(std::vector<f32> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
 
-    GVec3 center = { 0, 0, 0 };
+    glm::vec3 center = { 0, 0, 0 };
     f32 radius = 1.0;
 
 };
 
 struct Quad : public TraceableObject {
-    Quad(GVec3 q, GVec3 u, GVec3 v, bool cullFace = false);
+    Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v, bool cullFace = false);
 
     virtual void write(std::vector<f32> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
 
-    GVec3 q, u, v;
+    glm::vec3 q, u, v;
     bool cullFace;
 };
 
 struct Triangle : public TraceableObject {
-    Triangle(GVec3 posA, GVec3 posB, GVec3 posC,
-             GVec3 normA = {}, GVec3 normB = {}, GVec3 normC = {});
+    Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC,
+             glm::vec3 normA = {}, glm::vec3 normB = {}, glm::vec3 normC = {});
 
     virtual void write(std::vector<f32> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
 
-    GVec3 posA, posB, posC;
-    GVec3 normA, normB, normC;
+    glm::vec3 posA, posB, posC;
+    glm::vec3 normA, normB, normC;
 };
 
 namespace tinygltf {
@@ -85,8 +83,8 @@ namespace tinygltf {
 #include "MeshData.h"
 
 struct Model : public TraceableObject {
-    inline Triangle getTriangleFromIdentifier(int index) {
-        GVec3I idx = meshData.identifiers[index].indices;
+    inline Triangle getTriangleFromIdentifier(int idenIndex) {
+        glm::ivec3 idx = meshData.identifiers[idenIndex].index;
         return Triangle {
             meshData.vertices[idx.x], meshData.vertices[idx.y], meshData.vertices[idx.z],
             meshData.normals[idx.x], meshData.normals[idx.y], meshData.normals[idx.z]
@@ -94,7 +92,7 @@ struct Model : public TraceableObject {
     }
 
     inline Triangle getTriangleFromIdentifier(const MeshData::Identifier &iden) {
-        GVec3I idx = iden.indices;
+        glm::ivec3 idx = iden.index;
         return Triangle {
             meshData.vertices[idx.x], meshData.vertices[idx.y], meshData.vertices[idx.z],
             meshData.normals[idx.x], meshData.normals[idx.y], meshData.normals[idx.z]
