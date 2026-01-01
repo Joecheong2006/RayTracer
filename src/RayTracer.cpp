@@ -48,6 +48,7 @@ struct MaterialTexture {
     float normalScale;
     int baseColorTexture;
     int metallicRoughnessTexture;
+    int emissiveTexture;
 };
 
 struct Material {
@@ -342,12 +343,13 @@ Material loadMaterial(int materialIndex) {
     Material result;
 
     // Offset = (byteof Material / byteof f32) -> how many floats from Material
-    int offset = materialIndex * (72 / 4);
+    int offset = materialIndex * (76 / 4);
 
     result.texture.normalTexture = int(samplerLoadFloat(materialsBuffer, offset));
     result.texture.normalScale = samplerLoadFloat(materialsBuffer, offset);
     result.texture.baseColorTexture = int(samplerLoadFloat(materialsBuffer, offset));
     result.texture.metallicRoughnessTexture = int(samplerLoadFloat(materialsBuffer, offset));
+    result.texture.emissiveTexture = int(samplerLoadFloat(materialsBuffer, offset));
 
     result.emissionColor = samplerLoadVec3(materialsBuffer, offset);
     result.emissionStrength = samplerLoadFloat(materialsBuffer, offset);
@@ -708,6 +710,18 @@ void hitModels(in Ray r, inout HitInfo track) {
             mat3 TBN = mat3(track.tangent, track.bitangent, track.normal);
             track.normal = normalize(TBN * tangentNormal);
             track.front_face = dot(r.direction, track.normal) < 0;
+        }
+
+        if (track.mat.texture.emissiveTexture != -1) {
+            int width = int(samplerLoadFloat(texturesBuffer, track.mat.texture.emissiveTexture));
+            int height = int(samplerLoadFloat(texturesBuffer, track.mat.texture.emissiveTexture));
+
+            track.uv.x = clamp(track.uv.x, 0.0f, 0.999999f);
+            track.uv.y = clamp(track.uv.y, 0.0f, 0.999999f);
+            track.mat.texture.emissiveTexture += (int(track.uv.x * width) + int(track.uv.y * height) * width) * 3;
+            vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.emissiveTexture);
+            float strength = samplerLoadFloat(texturesBuffer, track.mat.texture.emissiveTexture);
+            track.mat.emissionColor *= textureColor;
         }
     }
 }

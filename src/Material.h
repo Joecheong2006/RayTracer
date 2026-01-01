@@ -10,6 +10,7 @@ struct MaterialTexture {
     f32 normalScale;
     i32 baseColorTexture;
     i32 metallicRoughnessTexture;
+    i32 emissiveTexture;
 
 };
 

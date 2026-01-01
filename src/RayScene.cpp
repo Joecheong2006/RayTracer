@@ -39,6 +39,7 @@ void RayScene::load_material(std::vector<f32> &buffer, const Material &material)
     buffer.push_back(material.texture.normalScale);
     buffer.push_back(material.texture.baseColorTexture);
     buffer.push_back(material.texture.metallicRoughnessTexture);
+    buffer.push_back(material.texture.emissiveTexture);
 
     // Load material
     buffer.insert(buffer.end(),
@@ -144,6 +145,11 @@ void RayScene::addModel(const std::string &modelPath) {
         if (material.texture.metallicRoughnessTexture != -1) {
             material.texture.metallicRoughnessTexture
                 = indexLocationMap[material.texture.metallicRoughnessTexture];
+        }
+
+        if (material.texture.emissiveTexture != -1) {
+            material.texture.emissiveTexture
+                = indexLocationMap[material.texture.emissiveTexture];
         }
 
         load_material(m_materialsBuffer, material);

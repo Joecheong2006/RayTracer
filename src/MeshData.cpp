@@ -194,10 +194,12 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
     outMat.texture.metallicRoughnessTexture = pbr.metallicRoughnessTexture.index;
     outMat.texture.normalTexture = material.normalTexture.index;
     outMat.texture.normalScale = material.normalTexture.scale;
+    outMat.texture.emissiveTexture = material.emissiveTexture.index;
 
     std::cout << "ColorTexture: " << outMat.texture.baseColorTexture << std::endl;
     std::cout << "RoughnessTexture: " << outMat.texture.metallicRoughnessTexture << std::endl;
     std::cout << "NormalTexture: " << outMat.texture.normalTexture << std::endl;
+    std::cout << "EmissiveTexture: " << outMat.texture.emissiveTexture << std::endl;
 
     auto it = material.values.find("baseColorFactor");
     if (it != material.values.end()) {
@@ -232,6 +234,7 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
         outMat.roughness = static_cast<float>(itRough->second.number_value);
     }
 
+    outMat.emissionColor = glm::vec3(0);
     it = material.additionalValues.find("emissiveFactor");
     if (it != material.additionalValues.end() && it->second.number_array.size() == 3) {
         outMat.emissionColor = glm::vec3(
@@ -242,6 +245,7 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
     }
 
     // emissiveStrength  (GLTF extension)
+    outMat.emissionStrength = 1;
     extIt = material.extensions.find("KHR_materials_emissive_strength");
     if (extIt != material.extensions.end()) {
         const tinygltf::Value &ext = extIt->second;
@@ -404,8 +408,10 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
                             break;
                     }
                 }
+
                 std::string filename = std::string("output") + std::to_string(i) + std::string(".bmp");
                 writeBMP(filename, texture.data, texture.width, texture.height);
+                std::cout << "\tDebug output: " << filename << std::endl;
             }
             else if (image.pixel_type == TINYGLTF_COMPONENT_TYPE_FLOAT) {
                 const f32* src = reinterpret_cast<const f32*>(image.image.data());
