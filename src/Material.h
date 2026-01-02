@@ -11,6 +11,7 @@ struct MaterialTexture {
     i32 baseColorTexture;
     i32 metallicRoughnessTexture;
     i32 emissiveTexture;
+    i32 transmissionTexture;
 
 };
 

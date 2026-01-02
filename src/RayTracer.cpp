@@ -43,12 +43,17 @@ struct AABB {
     vec3 min, max;
 };
 
+struct TextureInfo {
+    int width, height, channels, index;
+};
+
 struct MaterialTexture {
     int normalTexture;
     float normalScale;
     int baseColorTexture;
     int metallicRoughnessTexture;
     int emissiveTexture;
+    int transmissionTexture;
 };
 
 struct Material {
@@ -338,18 +343,33 @@ vec3 shadeSubsurface(in HitInfo info, float NoL, float NoV, float LoV) {
     return getAlbedo(info) * Fd * INV_PI * info.mat.subsurface;
 }
 
+// TextureInfo
+TextureInfo loadTextureInfo(int textureInfoIndex) {
+    TextureInfo info;
+    info.width = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
+    info.height = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
+    info.channels = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
+    info.index = textureInfoIndex;
+    return info;
+}
+
+int getTextureItemIndex(in TextureInfo info, vec2 uv) {
+    return info.index + (int(uv.x * info.width) + int(uv.y * info.height) * info.width) * info.channels;
+}
+
 // Material
 Material loadMaterial(int materialIndex) {
     Material result;
 
     // Offset = (byteof Material / byteof f32) -> how many floats from Material
-    int offset = materialIndex * (76 / 4);
+    int offset = materialIndex * (80 / 4);
 
     result.texture.normalTexture = int(samplerLoadFloat(materialsBuffer, offset));
     result.texture.normalScale = samplerLoadFloat(materialsBuffer, offset);
     result.texture.baseColorTexture = int(samplerLoadFloat(materialsBuffer, offset));
     result.texture.metallicRoughnessTexture = int(samplerLoadFloat(materialsBuffer, offset));
     result.texture.emissiveTexture = int(samplerLoadFloat(materialsBuffer, offset));
+    result.texture.transmissionTexture = int(samplerLoadFloat(materialsBuffer, offset));
 
     result.emissionColor = samplerLoadVec3(materialsBuffer, offset);
     result.emissionStrength = samplerLoadFloat(materialsBuffer, offset);
@@ -674,36 +694,25 @@ void hitModels(in Ray r, inout HitInfo track) {
         float u = 1.0 - v - w;
 
         track.uv = u * tri.UVs[0] + v * tri.UVs[1] + w * tri.UVs[2];
+        track.uv = clamp(track.uv, vec2(0.0f), vec2(0.999999f));
 
         if (track.mat.texture.baseColorTexture != -1) {
-            int width = int(samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture));
-            int height = int(samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture));
-
-            track.uv.x = clamp(track.uv.x, 0.0f, 0.999999f);
-            track.uv.y = clamp(track.uv.y, 0.0f, 0.999999f);
-            track.mat.texture.baseColorTexture += (int(track.uv.x * width) + int(track.uv.y * height) * width) * 3;
+            TextureInfo texInfo = loadTextureInfo(track.mat.texture.baseColorTexture);
+            track.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, track.uv);
             track.mat.albedo = samplerLoadVec3(texturesBuffer, track.mat.texture.baseColorTexture);
         }
 
         if (track.mat.texture.metallicRoughnessTexture != -1) {
-            int width = int(samplerLoadFloat(texturesBuffer, track.mat.texture.metallicRoughnessTexture));
-            int height = int(samplerLoadFloat(texturesBuffer, track.mat.texture.metallicRoughnessTexture));
-
-            track.uv.x = clamp(track.uv.x, 0.0f, 0.999999f);
-            track.uv.y = clamp(track.uv.y, 0.0f, 0.999999f);
-            track.mat.texture.metallicRoughnessTexture += (int(track.uv.x * width) + int(track.uv.y * height) * width) * 3;
+            TextureInfo texInfo = loadTextureInfo(track.mat.texture.metallicRoughnessTexture);
+            track.mat.texture.metallicRoughnessTexture = getTextureItemIndex(texInfo, track.uv);
             vec3 metallicRoughness = samplerLoadVec3(texturesBuffer, track.mat.texture.metallicRoughnessTexture);
             track.mat.roughness *= metallicRoughness.g;
             track.mat.metallic *= metallicRoughness.b;
         }
 
         if (track.mat.texture.normalTexture != -1) {
-            int width = int(samplerLoadFloat(texturesBuffer, track.mat.texture.normalTexture));
-            int height = int(samplerLoadFloat(texturesBuffer, track.mat.texture.normalTexture));
-
-            track.uv.x = clamp(track.uv.x, 0.0f, 0.999999f);
-            track.uv.y = clamp(track.uv.y, 0.0f, 0.999999f);
-            track.mat.texture.normalTexture += (int(track.uv.x * width) + int(track.uv.y * height) * width) * 3;
+            TextureInfo texInfo = loadTextureInfo(track.mat.texture.normalTexture);
+            track.mat.texture.normalTexture = getTextureItemIndex(texInfo, track.uv);
             vec3 tangentNormal = samplerLoadVec3(texturesBuffer, track.mat.texture.normalTexture);
             tangentNormal = normalize(tangentNormal * 2.0 - 1.0);
             
@@ -713,15 +722,18 @@ void hitModels(in Ray r, inout HitInfo track) {
         }
 
         if (track.mat.texture.emissiveTexture != -1) {
-            int width = int(samplerLoadFloat(texturesBuffer, track.mat.texture.emissiveTexture));
-            int height = int(samplerLoadFloat(texturesBuffer, track.mat.texture.emissiveTexture));
-
-            track.uv.x = clamp(track.uv.x, 0.0f, 0.999999f);
-            track.uv.y = clamp(track.uv.y, 0.0f, 0.999999f);
-            track.mat.texture.emissiveTexture += (int(track.uv.x * width) + int(track.uv.y * height) * width) * 3;
+            TextureInfo texInfo = loadTextureInfo(track.mat.texture.emissiveTexture);
+            track.mat.texture.emissiveTexture = getTextureItemIndex(texInfo, track.uv);
             vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.emissiveTexture);
             float strength = samplerLoadFloat(texturesBuffer, track.mat.texture.emissiveTexture);
             track.mat.emissionColor *= textureColor;
+        }
+
+        if (track.mat.texture.transmissionTexture != -1) {
+            TextureInfo texInfo = loadTextureInfo(track.mat.texture.transmissionTexture);
+            track.mat.texture.transmissionTexture = getTextureItemIndex(texInfo, track.uv);
+            vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.transmissionTexture);
+            track.mat.transmission *= textureColor.r;
         }
     }
 }

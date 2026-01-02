@@ -28,7 +28,7 @@ void RayCamera::updateDirection() {
 void load_meshdata_texture(std::vector<f32> &buffer, MeshData::Texture &texture) {
     buffer.push_back(texture.width);
     buffer.push_back(texture.height);
-    // buffer.push_back(texture.channels);
+    buffer.push_back(texture.channels);
     buffer.insert(buffer.end(), texture.data.begin(), texture.data.end());
 }
 
@@ -40,6 +40,7 @@ void RayScene::load_material(std::vector<f32> &buffer, const Material &material)
     buffer.push_back(material.texture.baseColorTexture);
     buffer.push_back(material.texture.metallicRoughnessTexture);
     buffer.push_back(material.texture.emissiveTexture);
+    buffer.push_back(material.texture.transmissionTexture);
 
     // Load material
     buffer.insert(buffer.end(),

@@ -195,6 +195,7 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
     outMat.texture.normalTexture = material.normalTexture.index;
     outMat.texture.normalScale = material.normalTexture.scale;
     outMat.texture.emissiveTexture = material.emissiveTexture.index;
+    outMat.texture.transmissionTexture = -1;
 
     std::cout << "ColorTexture: " << outMat.texture.baseColorTexture << std::endl;
     std::cout << "RoughnessTexture: " << outMat.texture.metallicRoughnessTexture << std::endl;
@@ -262,6 +263,14 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
         auto sIt = ext.Get("transmissionFactor");
         if (sIt.IsNumber()) {
             outMat.transmission = static_cast<float>(sIt.GetNumberAsDouble());
+        }
+
+        if (ext.Has("transmissionTexture")) {
+            auto& texInfo = ext.Get("transmissionTexture");
+            if (texInfo.Has("index")) {
+                outMat.texture.transmissionTexture = texInfo.Get("index").GetNumberAsInt();
+                std::cout << "TransmissionTexture: " << outMat.texture.transmissionTexture << std::endl;
+            }
         }
     }
 
@@ -383,28 +392,31 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
 
             texture.channels = image.component;
             int pixelCount = texture.width * texture.height;
-            texture.data.resize(pixelCount * 3);
 
             if (image.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
                 const u8* src = image.image.data();
                 
                 for (size_t i = 0; i < pixelCount; i++) {
                     size_t srcIdx = i * image.component;
-                    size_t dstIdx = i * 3;
                     
                     switch (image.component) {
                         case 1:
-                            texture.data[dstIdx + 0] = src[srcIdx] / 255.0f;
+                            texture.data.push_back(src[srcIdx + 0] / 255.0f);
                             break;
                         case 2:
-                            texture.data[dstIdx + 0] =
-                            texture.data[dstIdx + 1] = src[srcIdx] / 255.0f;
+                            texture.data.push_back(src[srcIdx + 0] / 255.0f);
+                            texture.data.push_back(src[srcIdx + 1] / 255.0f);
                             break;
                         case 3:
+                            texture.data.push_back(src[srcIdx + 0] / 255.0f);
+                            texture.data.push_back(src[srcIdx + 1] / 255.0f);
+                            texture.data.push_back(src[srcIdx + 2] / 255.0f);
+                            break;
                         case 4:
-                            texture.data[dstIdx + 0] = src[srcIdx + 0] / 255.0f;
-                            texture.data[dstIdx + 1] = src[srcIdx + 1] / 255.0f;
-                            texture.data[dstIdx + 2] = src[srcIdx + 2] / 255.0f;
+                            texture.data.push_back(src[srcIdx + 0] / 255.0f);
+                            texture.data.push_back(src[srcIdx + 1] / 255.0f);
+                            texture.data.push_back(src[srcIdx + 2] / 255.0f);
+                            texture.data.push_back(src[srcIdx + 3] / 255.0f);
                             break;
                     }
                 }
