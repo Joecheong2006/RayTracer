@@ -6,12 +6,12 @@
 using GVec3 = glm::vec<3, f32, glm::packed>;
 
 struct MaterialTexture {
-    i32 normalTexture;
-    f32 normalScale;
-    i32 baseColorTexture;
-    i32 metallicRoughnessTexture;
-    i32 emissiveTexture;
-    i32 transmissionTexture;
+    i32 normalTexture = -1;
+    f32 normalScale = -1;
+    i32 baseColorTexture = -1;
+    i32 metallicRoughnessTexture = -1;
+    i32 emissiveTexture = -1;
+    i32 transmissionTexture = -1;
 
 };
 
