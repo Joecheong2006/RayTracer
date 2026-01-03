@@ -291,54 +291,89 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
 
 void writeBMP(
     const std::string &filename,
-    const std::vector<float>& data, // RGB32F
+    const std::vector<float>& data, // RGB32F or RGBA32F
     int width,
-    int height
+    int height,
+    int channels  // Must be 3 or 4
 ) {
-    const int bytesPerPixel = 3;
+    if (channels != 3 && channels != 4) {
+        std::cerr << "Error: BMP only supports 3 (RGB) or 4 (RGBA) channels!" << std::endl;
+        return;
+    }
+
+    const int bytesPerPixel = (channels == 3) ? 3 : 4;  // 24-bit or 32-bit BMP
     const int rowStride = width * bytesPerPixel;
-    const int paddedStride = (rowStride + 3) & ~3; // 4-byte alignment
+
+    // BMP rows must be aligned to 4 bytes
+    const int paddedStride = (rowStride + 3) & ~3;
+
     const int imageSize = paddedStride * height;
     const int fileSize = 54 + imageSize;
 
     std::ofstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "Error: Could not open file " << filename << std::endl;
+        return;
+    }
 
-    // --- BMP header ---
+    // --- BMP header (14 bytes) + DIB header (40 bytes) = 54 bytes ---
     u8 header[54] = {
-        'B','M',
-        (u8)fileSize, u8(fileSize >> 8), u8(fileSize >> 16), u8(fileSize >> 24),
-        0,0,0,0,
-        54,0,0,0,
-        40,0,0,0,
-        (u8)width, u8(width >> 8), u8(width >> 16), u8(width >> 24),
-        (u8)height, u8(height >> 8), u8(height >> 16), u8(height >> 24),
-        1,0,
-        24,0
+        // BMP Header (14 bytes)
+        'B', 'M',                                           // Signature
+        (u8)fileSize, (u8)(fileSize >> 8),
+        (u8)(fileSize >> 16), (u8)(fileSize >> 24),        // File size
+        0, 0, 0, 0,                                         // Reserved
+        54, 0, 0, 0,                                        // Pixel data offset
+        // DIB Header (BITMAPINFOHEADER, 40 bytes)
+        40, 0, 0, 0,                                        // DIB header size
+        (u8)width, (u8)(width >> 8),
+        (u8)(width >> 16), (u8)(width >> 24),              // Width
+        (u8)height, (u8)(height >> 8),
+        (u8)(height >> 16), (u8)(height >> 24),            // Height
+        1, 0,                                               // Color planes (must be 1)
+        (u8)(bytesPerPixel * 8), 0,                        // Bits per pixel
+        0, 0, 0, 0,                                         // Compression (0 = none)
+        (u8)imageSize, (u8)(imageSize >> 8),
+        (u8)(imageSize >> 16), (u8)(imageSize >> 24),      // Image size
+        0, 0, 0, 0,                                         // X pixels per meter
+        0, 0, 0, 0,                                         // Y pixels per meter
+        0, 0, 0, 0,                                         // Colors in palette
+        0, 0, 0, 0                                          // Important colors
     };
 
     file.write((char*)header, 54);
 
     std::vector<uint8_t> row(paddedStride);
 
-    // BMP is bottom-up
+    // BMP is stored bottom-up (last row first)
     for (int y = height - 1; y >= 0; --y) {
         for (int x = 0; x < width; ++x) {
-            int src = (y * width + x) * 3;
+            int srcIdx = (y * width + x) * channels;  // Index into input data
 
-            float r = data[src + 0];
-            float g = data[src + 1];
-            float b = data[src + 2];
+            // Read RGB (always present)
+            float r = data[srcIdx + 0];
+            float g = data[srcIdx + 1];
+            float b = data[srcIdx + 2];
 
-            // Clamp + convert to 8-bit
-            row[x * 3 + 0] = (uint8_t)(glm::clamp(b, 0.0f, 1.0f) * 255.0f);
-            row[x * 3 + 1] = (uint8_t)(glm::clamp(g, 0.0f, 1.0f) * 255.0f);
-            row[x * 3 + 2] = (uint8_t)(glm::clamp(r, 0.0f, 1.0f) * 255.0f);
+            // BMP stores as BGR (or BGRA)
+            row[x * bytesPerPixel + 0] = (uint8_t)(glm::clamp(b, 0.0f, 1.0f) * 255.0f);
+            row[x * bytesPerPixel + 1] = (uint8_t)(glm::clamp(g, 0.0f, 1.0f) * 255.0f);
+            row[x * bytesPerPixel + 2] = (uint8_t)(glm::clamp(r, 0.0f, 1.0f) * 255.0f);
+
+            // Alpha (only if channels == 4)
+            if (channels == 4) {
+                float a = data[srcIdx + 3];
+                row[x * bytesPerPixel + 3] = (uint8_t)(glm::clamp(a, 0.0f, 1.0f) * 255.0f);
+            }
         }
 
-        // zero padding
+        // Zero-fill padding bytes (if any)
         std::fill(row.begin() + rowStride, row.end(), 0);
+
         file.write((char*)row.data(), paddedStride);
     }
+
+    file.close();
 }
 
 #include <tinygltf/stb_image_write.h>
@@ -422,7 +457,7 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
                 }
 
                 std::string filename = std::string("output") + std::to_string(i) + std::string(".bmp");
-                writeBMP(filename, texture.data, texture.width, texture.height);
+                writeBMP(filename, texture.data, texture.width, texture.height, texture.channels);
                 std::cout << "\tDebug output: " << filename << std::endl;
             }
             else if (image.pixel_type == TINYGLTF_COMPONENT_TYPE_FLOAT) {

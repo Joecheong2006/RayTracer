@@ -25,7 +25,7 @@ void RayCamera::updateDirection() {
 
 #include <glm/gtc/type_ptr.hpp>
 
-void load_meshdata_texture(std::vector<f32> &buffer, MeshData::Texture &texture) {
+static void load_meshdata_texture(std::vector<f32> &buffer, MeshData::Texture &texture) {
     buffer.push_back(texture.width);
     buffer.push_back(texture.height);
     buffer.push_back(texture.channels);
@@ -130,27 +130,46 @@ void RayScene::addModel(const std::string &modelPath) {
     for (size_t i = 0; i < indexLocationMap.size(); ++i) {
         indexLocationMap[i] = m_texturesBuffer.size();
         load_meshdata_texture(m_texturesBuffer, meshData.textures[i]);
+
+        // Added padding for int float conversion
+        int padding = std::abs((int)m_texturesBuffer.size() - (int)(float)(m_texturesBuffer.size()));
+        m_texturesBuffer.resize(m_texturesBuffer.size() + padding);
     }
 
     for (auto &material : meshData.materials) {
         if (material.texture.normalTexture != -1) {
+            std::cout << "Load normalTexture index: " << material.texture.normalTexture;
             material.texture.normalTexture
                 = indexLocationMap[material.texture.normalTexture];
+            std::cout << " at " << material.texture.normalTexture << std::endl;
         }
 
         if (material.texture.baseColorTexture != -1) {
+            std::cout << "Load baseColorTexture index: " << material.texture.baseColorTexture;
             material.texture.baseColorTexture
                 = indexLocationMap[material.texture.baseColorTexture];
+            std::cout << " at " << material.texture.baseColorTexture << std::endl;
         }
 
         if (material.texture.metallicRoughnessTexture != -1) {
+            std::cout << "Load metallicRoughnessTexture index: " << material.texture.metallicRoughnessTexture;
             material.texture.metallicRoughnessTexture
                 = indexLocationMap[material.texture.metallicRoughnessTexture];
+            std::cout << " at " << material.texture.metallicRoughnessTexture << std::endl;
         }
 
         if (material.texture.emissiveTexture != -1) {
+            std::cout << "Load emissiveTexture index: " << material.texture.emissiveTexture;
             material.texture.emissiveTexture
                 = indexLocationMap[material.texture.emissiveTexture];
+            std::cout << " at " << material.texture.emissiveTexture << std::endl;
+        }
+
+        if (material.texture.transmissionTexture != -1) {
+            std::cout << "Load transmissionTexture index: " << material.texture.transmissionTexture;
+            material.texture.transmissionTexture
+                = indexLocationMap[material.texture.transmissionTexture];
+            std::cout << " at " << material.texture.transmissionTexture << std::endl;
         }
 
         load_material(m_materialsBuffer, material);

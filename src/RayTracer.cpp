@@ -559,6 +559,33 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
     info.bitangent = bitangent;
 
     info.front_face = dot(r.direction, info.normal) < 0;
+
+    info.mat = loadMaterial(tri.materialIndex);
+    if (info.mat.texture.baseColorTexture != -1) {
+        vec3 vp = info.point - tri.vertices[0];
+
+        float d00 = dot(edgeAB, edgeAB);
+        float d01 = dot(edgeAB, edgeAC);
+        float d11 = dot(edgeAC, edgeAC);
+        float d20 = dot(vp, edgeAB);
+        float d21 = dot(vp, edgeAC);
+
+        float denom = d00 * d11 - d01 * d01;
+
+        v = (d11 * d20 - d01 * d21) / denom;
+        float w = (d00 * d21 - d01 * d20) / denom;
+        u = 1.0 - v - w;
+
+        info.uv = u * tri.UVs[0] + v * tri.UVs[1] + w * tri.UVs[2];
+        info.uv = clamp(info.uv, vec2(0.0f), vec2(0.999999f));
+
+        TextureInfo texInfo = loadTextureInfo(info.mat.texture.baseColorTexture);
+        info.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, info.uv) + 3;
+        float a = samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture);
+        if (a < 0.5) {
+            return false;
+        }
+    }
     return true;
 }
 
@@ -700,6 +727,7 @@ void hitModels(in Ray r, inout HitInfo track) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.baseColorTexture);
             track.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, track.uv);
             track.mat.albedo = samplerLoadVec3(texturesBuffer, track.mat.texture.baseColorTexture);
+            track.mat.transmission = samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
         }
 
         if (track.mat.texture.metallicRoughnessTexture != -1) {
