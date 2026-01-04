@@ -12,6 +12,8 @@ struct MaterialTexture {
     i32 metallicRoughnessTexture = -1;
     i32 emissiveTexture = -1;
     i32 transmissionTexture = -1;
+    i32 occlusionTexture = -1;
+    f32 occlusionStrength = 1.0;
 
 };
 
@@ -28,6 +30,8 @@ struct Material {
 
     f32 transmission = 0;
     f32 ior = 1.5;
+
+    f32 alphaCut = 0;
 
     MaterialTexture texture;
 

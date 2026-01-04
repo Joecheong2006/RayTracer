@@ -41,6 +41,8 @@ void RayScene::load_material(std::vector<f32> &buffer, const Material &material)
     buffer.push_back(material.texture.metallicRoughnessTexture);
     buffer.push_back(material.texture.emissiveTexture);
     buffer.push_back(material.texture.transmissionTexture);
+    buffer.push_back(material.texture.occlusionTexture);
+    buffer.push_back(material.texture.occlusionStrength);
 
     // Load material
     buffer.insert(buffer.end(),
@@ -55,6 +57,8 @@ void RayScene::load_material(std::vector<f32> &buffer, const Material &material)
     buffer.push_back(material.specularTint);
     buffer.push_back(material.transmission);
     buffer.push_back(material.ior);
+
+    buffer.push_back(material.alphaCut);
 }
 
 void RayScene::initialize() {
@@ -132,7 +136,7 @@ void RayScene::addModel(const std::string &modelPath) {
         load_meshdata_texture(m_texturesBuffer, meshData.textures[i]);
 
         // Added padding for int float conversion
-        int padding = std::abs((int)m_texturesBuffer.size() - (int)(float)(m_texturesBuffer.size()));
+        int padding = (int)(float)(m_texturesBuffer.size()) - (int)m_texturesBuffer.size();
         m_texturesBuffer.resize(m_texturesBuffer.size() + padding);
     }
 
@@ -170,6 +174,13 @@ void RayScene::addModel(const std::string &modelPath) {
             material.texture.transmissionTexture
                 = indexLocationMap[material.texture.transmissionTexture];
             std::cout << " at " << material.texture.transmissionTexture << std::endl;
+        }
+
+        if (material.texture.occlusionTexture != -1) {
+            std::cout << "Load occlusionTexture index: " << material.texture.occlusionTexture;
+            material.texture.occlusionTexture
+                = indexLocationMap[material.texture.occlusionTexture];
+            std::cout << " at " << material.texture.occlusionTexture << std::endl;
         }
 
         load_material(m_materialsBuffer, material);

@@ -54,6 +54,8 @@ struct MaterialTexture {
     int metallicRoughnessTexture;
     int emissiveTexture;
     int transmissionTexture;
+    int occlusionTexture;
+    float occlusionStrength;
 };
 
 struct Material {
@@ -69,6 +71,8 @@ struct Material {
 
     float transmission;
     float ior;
+
+    float alphaCut;
 
     MaterialTexture texture;
 };
@@ -362,7 +366,7 @@ Material loadMaterial(int materialIndex) {
     Material result;
 
     // Offset = (byteof Material / byteof f32) -> how many floats from Material
-    int offset = materialIndex * (80 / 4);
+    int offset = materialIndex * (92 / 4);
 
     result.texture.normalTexture = int(samplerLoadFloat(materialsBuffer, offset));
     result.texture.normalScale = samplerLoadFloat(materialsBuffer, offset);
@@ -370,6 +374,8 @@ Material loadMaterial(int materialIndex) {
     result.texture.metallicRoughnessTexture = int(samplerLoadFloat(materialsBuffer, offset));
     result.texture.emissiveTexture = int(samplerLoadFloat(materialsBuffer, offset));
     result.texture.transmissionTexture = int(samplerLoadFloat(materialsBuffer, offset));
+    result.texture.occlusionTexture = int(samplerLoadFloat(materialsBuffer, offset));
+    result.texture.occlusionStrength = samplerLoadFloat(materialsBuffer, offset);
 
     result.emissionColor = samplerLoadVec3(materialsBuffer, offset);
     result.emissionStrength = samplerLoadFloat(materialsBuffer, offset);
@@ -384,6 +390,8 @@ Material loadMaterial(int materialIndex) {
 
     result.transmission = samplerLoadFloat(materialsBuffer, offset);
     result.ior = samplerLoadFloat(materialsBuffer, offset);
+
+    result.alphaCut = samplerLoadFloat(materialsBuffer, offset);
 
     return result;
 }
@@ -561,7 +569,7 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
     info.front_face = dot(r.direction, info.normal) < 0;
 
     info.mat = loadMaterial(tri.materialIndex);
-    if (info.mat.texture.baseColorTexture != -1) {
+    if (info.mat.texture.baseColorTexture != -1 && info.mat.alphaCut > 0) {
         vec3 vp = info.point - tri.vertices[0];
 
         float d00 = dot(edgeAB, edgeAB);
@@ -582,7 +590,7 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
         TextureInfo texInfo = loadTextureInfo(info.mat.texture.baseColorTexture);
         info.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, info.uv) + 3;
         float a = samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture);
-        if (a < 0.5) {
+        if (a < info.mat.alphaCut) {
             return false;
         }
     }
@@ -727,7 +735,7 @@ void hitModels(in Ray r, inout HitInfo track) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.baseColorTexture);
             track.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, track.uv);
             track.mat.albedo = samplerLoadVec3(texturesBuffer, track.mat.texture.baseColorTexture);
-            track.mat.transmission = samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
+            // track.mat.transmission = 1.0 - samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
         }
 
         if (track.mat.texture.metallicRoughnessTexture != -1) {
@@ -762,6 +770,13 @@ void hitModels(in Ray r, inout HitInfo track) {
             track.mat.texture.transmissionTexture = getTextureItemIndex(texInfo, track.uv);
             vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.transmissionTexture);
             track.mat.transmission *= textureColor.r;
+        }
+
+        if (track.mat.texture.occlusionTexture != -1) {
+            TextureInfo texInfo = loadTextureInfo(track.mat.texture.occlusionTexture);
+            track.mat.texture.occlusionTexture = getTextureItemIndex(texInfo, track.uv);
+            vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.occlusionTexture);
+            track.mat.transmission *= 1.0 - (1.0 - textureColor.r) * (1.0 - track.mat.texture.occlusionStrength);
         }
     }
 }
@@ -925,7 +940,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
             float cos_theta = min(dot(V, N), 1);
             float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
             if (!info.front_face) {
-                vec3 albedo = pow(getAlbedo(info), vec3(2.2));
+                vec3 albedo = pow(getAlbedo(info), vec3(1.0));
                 vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
                 float R = reflectance(cos_theta, eta);
                 rayColor *= (1.0 - R) * transmittance;

@@ -195,12 +195,17 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
     outMat.texture.normalTexture = material.normalTexture.index;
     outMat.texture.normalScale = material.normalTexture.scale;
     outMat.texture.emissiveTexture = material.emissiveTexture.index;
-    outMat.texture.transmissionTexture = -1;
+    outMat.texture.occlusionTexture = material.occlusionTexture.index;
+    outMat.texture.occlusionStrength = material.occlusionTexture.strength;
 
     std::cout << "ColorTexture: " << outMat.texture.baseColorTexture << std::endl;
     std::cout << "RoughnessTexture: " << outMat.texture.metallicRoughnessTexture << std::endl;
     std::cout << "NormalTexture: " << outMat.texture.normalTexture << std::endl;
     std::cout << "EmissiveTexture: " << outMat.texture.emissiveTexture << std::endl;
+
+    outMat.alphaCut = material.alphaMode == "CUTOFF" ? material.alphaCutoff : 0;
+    std::cout << "AlphaCut: " << outMat.alphaCut << std::endl;
+    std::cout << "AlphaMode: " << material.alphaMode << std::endl;
 
     auto it = material.values.find("baseColorFactor");
     if (it != material.values.end()) {
