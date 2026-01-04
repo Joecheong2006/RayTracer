@@ -33,32 +33,32 @@ static void load_meshdata_texture(std::vector<f32> &buffer, MeshData::Texture &t
 }
 
 // TODO: changed this to static hepler function
-void RayScene::load_material(std::vector<f32> &buffer, const Material &material) {
+void RayScene::load_material(const Material &material) {
     // Load material texture
-    buffer.push_back(material.texture.normalTexture);
-    buffer.push_back(material.texture.normalScale);
-    buffer.push_back(material.texture.baseColorTexture);
-    buffer.push_back(material.texture.metallicRoughnessTexture);
-    buffer.push_back(material.texture.emissiveTexture);
-    buffer.push_back(material.texture.transmissionTexture);
-    buffer.push_back(material.texture.occlusionTexture);
-    buffer.push_back(material.texture.occlusionStrength);
+    m_materialTexturesBuffer.push_back(material.texture.normalTexture);
+    m_materialTexturesBuffer.push_back(material.texture.baseColorTexture);
+    m_materialTexturesBuffer.push_back(material.texture.metallicRoughnessTexture);
+    m_materialTexturesBuffer.push_back(material.texture.emissiveTexture);
+    m_materialTexturesBuffer.push_back(material.texture.transmissionTexture);
+    m_materialTexturesBuffer.push_back(material.texture.occlusionTexture);
 
     // Load material
-    buffer.insert(buffer.end(),
+    m_materialsBuffer.insert(m_materialsBuffer.end(),
             &material.emissionColor.x, &material.emissionColor.x + 3);
-    buffer.push_back(material.emissionStrength);
-    buffer.insert(buffer.end(),
+    m_materialsBuffer.push_back(material.emissionStrength);
+    m_materialsBuffer.insert(m_materialsBuffer.end(),
             &material.albedo.x, &material.albedo.x + 3);
-    buffer.push_back(material.subsurface);
-    buffer.push_back(material.roughness);
-    buffer.push_back(material.metallic);
-    buffer.push_back(material.specular);
-    buffer.push_back(material.specularTint);
-    buffer.push_back(material.transmission);
-    buffer.push_back(material.ior);
+    m_materialsBuffer.push_back(material.subsurface);
+    m_materialsBuffer.push_back(material.roughness);
+    m_materialsBuffer.push_back(material.metallic);
+    m_materialsBuffer.push_back(material.specular);
+    m_materialsBuffer.push_back(material.specularTint);
+    m_materialsBuffer.push_back(material.transmission);
+    m_materialsBuffer.push_back(material.ior);
 
-    buffer.push_back(material.alphaCut);
+    m_materialsBuffer.push_back(material.alphaCut);
+    m_materialsBuffer.push_back(material.normalScale);
+    m_materialsBuffer.push_back(material.occlusionStrength);
 }
 
 void RayScene::initialize() {
@@ -71,19 +71,23 @@ void RayScene::initialize() {
     m_texturesTexBuffer = std::make_unique<gl::TextureBuffer>(
             nullptr, 0, GL_STATIC_DRAW, GL_R32F);
 
+    m_materialTexturesTexBuffer = std::make_unique<gl::TextureBuffer>(
+            nullptr, 0, GL_STATIC_DRAW, GL_R32I);
+
     m_materialsTexBuffer = std::make_unique<gl::TextureBuffer>(
             nullptr, 0, GL_STATIC_DRAW, GL_R32F);
 
     // Added default material
     Material defaultMat;
     m_materials.push_back(defaultMat);
-    load_material(m_materialsBuffer, defaultMat);
+    load_material(defaultMat);
 }
 
 void RayScene::submit() {
     m_objectsTexBuffer->setBuffer(m_objectsBuffer.data(), m_objectsBuffer.size() * sizeof(f32));
     m_modelObjectsTexBuffer->setBuffer(m_modelObjectsBuffer.data(), m_modelObjectsBuffer.size() * sizeof(f32));
     m_texturesTexBuffer->setBuffer(m_texturesBuffer.data(), m_texturesBuffer.size() * sizeof(f32));
+    m_materialTexturesTexBuffer->setBuffer(m_materialTexturesBuffer.data(), m_materialTexturesBuffer.size() * sizeof(i32));
     m_materialsTexBuffer->setBuffer(m_materialsBuffer.data(), m_materialsBuffer.size() * sizeof(f32));
 }
 
@@ -101,6 +105,10 @@ void RayScene::bindTextures(i32 slot) const {
 
 void RayScene::bindMaterials(i32 slot) const {
     m_materialsTexBuffer->bind(slot);
+}
+
+void RayScene::bindMaterialTextures(i32 slot) const {
+    m_materialTexturesTexBuffer->bind(slot);
 }
 
 void RayScene::setSkyColor(glm::vec3 skyColor) {
@@ -134,10 +142,6 @@ void RayScene::addModel(const std::string &modelPath) {
     for (size_t i = 0; i < indexLocationMap.size(); ++i) {
         indexLocationMap[i] = m_texturesBuffer.size();
         load_meshdata_texture(m_texturesBuffer, meshData.textures[i]);
-
-        // Added padding for int float conversion
-        int padding = (int)(float)(m_texturesBuffer.size()) - (int)m_texturesBuffer.size();
-        m_texturesBuffer.resize(m_texturesBuffer.size() + padding);
     }
 
     for (auto &material : meshData.materials) {
@@ -183,7 +187,7 @@ void RayScene::addModel(const std::string &modelPath) {
             std::cout << " at " << material.texture.occlusionTexture << std::endl;
         }
 
-        load_material(m_materialsBuffer, material);
+        load_material(material);
     }
     m_materials.insert(m_materials.end(), meshData.materials.begin(), meshData.materials.end());
 

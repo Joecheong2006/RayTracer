@@ -193,10 +193,10 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
     outMat.texture.baseColorTexture = pbr.baseColorTexture.index;
     outMat.texture.metallicRoughnessTexture = pbr.metallicRoughnessTexture.index;
     outMat.texture.normalTexture = material.normalTexture.index;
-    outMat.texture.normalScale = material.normalTexture.scale;
+    outMat.normalScale = material.normalTexture.scale;
     outMat.texture.emissiveTexture = material.emissiveTexture.index;
     outMat.texture.occlusionTexture = material.occlusionTexture.index;
-    outMat.texture.occlusionStrength = material.occlusionTexture.strength;
+    outMat.occlusionStrength = material.occlusionTexture.strength;
 
     std::cout << "ColorTexture: " << outMat.texture.baseColorTexture << std::endl;
     std::cout << "RoughnessTexture: " << outMat.texture.metallicRoughnessTexture << std::endl;

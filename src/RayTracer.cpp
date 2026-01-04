@@ -49,13 +49,11 @@ struct TextureInfo {
 
 struct MaterialTexture {
     int normalTexture;
-    float normalScale;
     int baseColorTexture;
     int metallicRoughnessTexture;
     int emissiveTexture;
     int transmissionTexture;
     int occlusionTexture;
-    float occlusionStrength;
 };
 
 struct Material {
@@ -73,6 +71,9 @@ struct Material {
     float ior;
 
     float alphaCut;
+
+    float normalScale;
+    float occlusionStrength;
 
     MaterialTexture texture;
 };
@@ -121,6 +122,7 @@ uniform samplerBuffer objectsBuffer;
 uniform samplerBuffer modelObjectsBuffer;
 uniform samplerBuffer texturesBuffer;
 uniform samplerBuffer materialsBuffer;
+uniform isamplerBuffer materialTexturesBuffer;
 
 uniform int objectCount;
 uniform int modelsCount;
@@ -366,16 +368,7 @@ Material loadMaterial(int materialIndex) {
     Material result;
 
     // Offset = (byteof Material / byteof f32) -> how many floats from Material
-    int offset = materialIndex * (92 / 4);
-
-    result.texture.normalTexture = int(samplerLoadFloat(materialsBuffer, offset));
-    result.texture.normalScale = samplerLoadFloat(materialsBuffer, offset);
-    result.texture.baseColorTexture = int(samplerLoadFloat(materialsBuffer, offset));
-    result.texture.metallicRoughnessTexture = int(samplerLoadFloat(materialsBuffer, offset));
-    result.texture.emissiveTexture = int(samplerLoadFloat(materialsBuffer, offset));
-    result.texture.transmissionTexture = int(samplerLoadFloat(materialsBuffer, offset));
-    result.texture.occlusionTexture = int(samplerLoadFloat(materialsBuffer, offset));
-    result.texture.occlusionStrength = samplerLoadFloat(materialsBuffer, offset);
+    int offset = materialIndex * (68 / 4);
 
     result.emissionColor = samplerLoadVec3(materialsBuffer, offset);
     result.emissionStrength = samplerLoadFloat(materialsBuffer, offset);
@@ -392,6 +385,17 @@ Material loadMaterial(int materialIndex) {
     result.ior = samplerLoadFloat(materialsBuffer, offset);
 
     result.alphaCut = samplerLoadFloat(materialsBuffer, offset);
+
+    result.normalScale = samplerLoadFloat(materialsBuffer, offset);
+    result.occlusionStrength = samplerLoadFloat(materialsBuffer, offset);
+
+    offset = materialIndex * (24 / 4);
+    result.texture.normalTexture = texelFetch(materialTexturesBuffer, offset + 0).r;
+    result.texture.baseColorTexture = texelFetch(materialTexturesBuffer, offset + 1).r;
+    result.texture.metallicRoughnessTexture = texelFetch(materialTexturesBuffer, offset + 2).r;
+    result.texture.emissiveTexture = texelFetch(materialTexturesBuffer, offset + 3).r;
+    result.texture.transmissionTexture = texelFetch(materialTexturesBuffer, offset + 4).r;
+    result.texture.occlusionTexture = texelFetch(materialTexturesBuffer, offset + 5).r;
 
     return result;
 }
@@ -735,7 +739,8 @@ void hitModels(in Ray r, inout HitInfo track) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.baseColorTexture);
             track.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, track.uv);
             track.mat.albedo = samplerLoadVec3(texturesBuffer, track.mat.texture.baseColorTexture);
-            // track.mat.transmission = 1.0 - samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
+            // float a = samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
+            // track.mat.transmission *= 1.0 - a;
         }
 
         if (track.mat.texture.metallicRoughnessTexture != -1) {
@@ -776,7 +781,7 @@ void hitModels(in Ray r, inout HitInfo track) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.occlusionTexture);
             track.mat.texture.occlusionTexture = getTextureItemIndex(texInfo, track.uv);
             vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.occlusionTexture);
-            track.mat.transmission *= 1.0 - (1.0 - textureColor.r) * (1.0 - track.mat.texture.occlusionStrength);
+            track.mat.transmission *= 1.0 - (1.0 - textureColor.r) * (1.0 - track.mat.occlusionStrength);
         }
     }
 }
@@ -1091,11 +1096,14 @@ void RayTracer::renderToTexture(const RayCamera &camera, const RayScene &scene) 
     scene.bindMaterials(2);
     m_shader->setUniform1i("materialsBuffer", 2);
 
-    scene.bindModelObjects(3);
-    m_shader->setUniform1i("modelObjectsBuffer", 3);
+    scene.bindMaterialTextures(3);
+    m_shader->setUniform1i("materialTexturesBuffer", 3);
 
-    scene.bindTextures(4);
-    m_shader->setUniform1i("texturesBuffer", 4);
+    scene.bindModelObjects(4);
+    m_shader->setUniform1i("modelObjectsBuffer", 4);
+
+    scene.bindTextures(5);
+    m_shader->setUniform1i("texturesBuffer", 5);
 
     m_shader->setUniform1i("objectCount", scene.getObjectsCount());
     m_shader->setUniform1i("modelsCount", scene.getModelsCount());

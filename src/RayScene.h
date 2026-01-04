@@ -29,6 +29,9 @@ private:
     glm::vec3 m_skyColor = { 0.5, 0.7, 1.0 };
 
     // Materials
+    std::unique_ptr<gl::TextureBuffer> m_materialTexturesTexBuffer;
+    std::vector<i32> m_materialTexturesBuffer;
+
     std::vector<Material> m_materials;
     std::unique_ptr<gl::TextureBuffer> m_materialsTexBuffer;
     std::vector<f32> m_materialsBuffer;
@@ -48,7 +51,7 @@ private:
     std::unique_ptr<gl::TextureBuffer> m_texturesTexBuffer;
     std::vector<f32> m_texturesBuffer;
 
-    void load_material(std::vector<f32> &buffer, const Material &material);
+    void load_material(const Material &material);
 
 public:
     explicit RayScene() = default;
@@ -58,6 +61,7 @@ public:
     void bindModelObjects(i32 slot) const;
     void bindTextures(i32 slot) const;
     void bindMaterials(i32 slot) const;
+    void bindMaterialTextures(i32 slot) const;
     void submit();
 
     void setSkyColor(glm::vec3 skyColor);
@@ -79,7 +83,7 @@ public:
         object->write(m_objectsBuffer);
 
         m_materials.push_back(material);
-        load_material(m_materialsBuffer, material);
+        load_material(material);
     }
 
     template <typename T, typename... Args>
