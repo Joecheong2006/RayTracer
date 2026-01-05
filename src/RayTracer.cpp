@@ -248,36 +248,22 @@ vec3 sampleGGXVNDF(in vec3 N, in vec3 V, float roughness, inout SeedType seed) {
     return dot(N, L) > 0.0 ? L : vec3(0.0); // Ensure valid bounce
 }
 
-vec3 getAlbedo(in HitInfo info) {
-    return info.mat.albedo;
-    if (info.mat.texture.baseColorTexture == -1) {
-        return info.mat.albedo;
-    }
-    int width = int(samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture));
-    int height = int(samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture));
-
-    info.uv.x = clamp(info.uv.x, 0.0f, 0.999999f);
-    info.uv.y = clamp(info.uv.y, 0.0f, 0.999999f);
-    info.mat.texture.baseColorTexture += (int(info.uv.x * width) + int(info.uv.y * height) * width) * 3;
-    return samplerLoadVec3(texturesBuffer, info.mat.texture.baseColorTexture);
-}
-
 vec3 computeF0(in HitInfo info) {
     float specular = clamp(info.mat.specular, 0.0, 1.0);        // user control
     float tintAmount = clamp(info.mat.specularTint, 0.0, 1.0);  // influence of albedo
 
     vec3 f0 = vec3(0.16 * specular * specular);
-    return mix(f0, getAlbedo(info), info.mat.metallic);
+    return mix(f0, info.mat.albedo, info.mat.metallic);
 
     vec3 baseTint = vec3(1.0);
-    if (dot(getAlbedo(info), getAlbedo(info)) > 0.0) {
-        baseTint = normalize(getAlbedo(info));
+    if (dot(info.mat.albedo, info.mat.albedo) > 0.0) {
+        baseTint = normalize(info.mat.albedo);
     }
 
     vec3 tint = mix(vec3(1.0), baseTint, tintAmount);  // weighted albedo tint
     vec3 dielectricF0 = 0.08 * specular * tint;        // 0.08 ~ empirical fit
 
-    vec3 metalF0 = clamp(getAlbedo(info), vec3(0.0), vec3(1.0));
+    vec3 metalF0 = clamp(info.mat.albedo, vec3(0.0), vec3(1.0));
     return mix(dielectricF0, metalF0, info.mat.metallic);
 }
 
@@ -332,7 +318,7 @@ vec3 shadeDiffuse(in HitInfo info, float NoL, float NoV, float VoH) {
 
     float fresnelDiffuse = (1.0 + (FD90 - 1.0) * pow(1.0 - NoL, 5.0)) *
                            (1.0 + (FD90 - 1.0) * pow(1.0 - NoV, 5.0));
-    return kd * getAlbedo(info) * INV_PI;
+    return kd * info.mat.albedo * INV_PI;
 }
 
 float diffusePdf(float NoL) {
@@ -346,7 +332,7 @@ vec3 shadeSubsurface(in HitInfo info, float NoL, float NoV, float LoV) {
     float Fd90 = 0.5 + 2.0 * LoV * info.mat.roughness;
     float Fd = mix(1.0, Fd90, FL) * mix(1.0, Fd90, FV);
 
-    return getAlbedo(info) * Fd * INV_PI * info.mat.subsurface;
+    return info.mat.albedo * Fd * INV_PI * info.mat.subsurface;
 }
 
 // TextureInfo
@@ -657,8 +643,10 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
                 tri.normals = loadVec3FromIndices(modelObjectsBuffer, idx, index);
 
                 // Looking for UVs
-                index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4 + model.verticesCount * 6;
-                tri.UVs = loadVec2FromIndices(modelObjectsBuffer, idx, index);
+                if (model.UVsCount > 0) {
+                    index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4 + model.verticesCount * 6;
+                    tri.UVs = loadVec2FromIndices(modelObjectsBuffer, idx, index);
+                }
 
                 if (hitTriangle(tri, r, max, hInfo)) {
                     max = hInfo.t;
@@ -739,7 +727,7 @@ void hitModels(in Ray r, inout HitInfo track) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.baseColorTexture);
             track.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, track.uv);
             track.mat.albedo = samplerLoadVec3(texturesBuffer, track.mat.texture.baseColorTexture);
-            // float a = samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
+            float a = samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
             // track.mat.transmission *= 1.0 - a;
         }
 
@@ -945,7 +933,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
             float cos_theta = min(dot(V, N), 1);
             float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
             if (!info.front_face) {
-                vec3 albedo = pow(getAlbedo(info), vec3(1.0));
+                vec3 albedo = pow(info.mat.albedo, vec3(1.0));
                 vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
                 float R = reflectance(cos_theta, eta);
                 rayColor *= (1.0 - R) * transmittance;
