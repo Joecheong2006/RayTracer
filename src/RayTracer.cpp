@@ -728,7 +728,7 @@ void hitModels(in Ray r, inout HitInfo track) {
             track.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, track.uv);
             track.mat.albedo = samplerLoadVec3(texturesBuffer, track.mat.texture.baseColorTexture);
             float a = samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
-            // track.mat.transmission *= 1.0 - a;
+            track.mat.transmission *= 1.0 - a;
         }
 
         if (track.mat.texture.metallicRoughnessTexture != -1) {
