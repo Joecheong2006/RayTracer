@@ -122,8 +122,6 @@ static void load_mesh_data_gltf(MeshData &meshData, const tinygltf::Primitive &p
                 meshData.UVs.push_back(glm::vec2(uv[0] / 65535.0f, uv[1] / 65535.0f));
             }
         }
-        
-        std::cout << "  ✓ Loaded UVs (TEXCOORD_0)" << std::endl;
     }
 
     // ================= Load indices =================
@@ -174,9 +172,7 @@ inline static void process_node(const tinygltf::Model &model, int nodeIndex, con
     if (node.mesh >= 0) {
         const tinygltf::Mesh &mesh = model.meshes[node.mesh];
         for (const tinygltf::Primitive &primitive : mesh.primitives) {
-            if (primitive.mode != TINYGLTF_MODE_TRIANGLES) {
-                std::cout << "Only TRIANGLES mode supported\n";
-            }
+            ASSERT(primitive.mode == TINYGLTF_MODE_TRIANGLES);
             load_mesh_data_gltf(meshData, primitive, model, worldTransform);
         }
     }
@@ -198,10 +194,25 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
     outMat.texture.occlusionTexture = material.occlusionTexture.index;
     outMat.occlusionStrength = material.occlusionTexture.strength;
 
-    std::cout << "ColorTexture: " << outMat.texture.baseColorTexture << std::endl;
-    std::cout << "RoughnessTexture: " << outMat.texture.metallicRoughnessTexture << std::endl;
-    std::cout << "NormalTexture: " << outMat.texture.normalTexture << std::endl;
-    std::cout << "EmissiveTexture: " << outMat.texture.emissiveTexture << std::endl;
+    if (outMat.texture.baseColorTexture >= 0) {
+        std::cout << "ColorTexture: " << outMat.texture.baseColorTexture << std::endl;
+    }
+
+    if (outMat.texture.metallicRoughnessTexture >= 0) {
+        std::cout << "RoughnessTexture: " << outMat.texture.metallicRoughnessTexture << std::endl;
+    }
+
+    if (outMat.texture.normalTexture>= 0) {
+        std::cout << "NormalTexture: " << outMat.texture.normalTexture << std::endl;
+    }
+
+    if (outMat.texture.emissiveTexture >= 0) {
+        std::cout << "EmissiveTexture: " << outMat.texture.emissiveTexture << std::endl;
+    }
+
+    if (outMat.texture.occlusionTexture >= 0) {
+        std::cout << "OcclusionTexture: " << outMat.texture.occlusionTexture << std::endl;
+    }
 
     outMat.alphaCut = material.alphaMode == "CUTOFF" ? material.alphaCutoff : 0;
     std::cout << "AlphaCut: " << outMat.alphaCut << std::endl;
@@ -470,16 +481,26 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
                 
                 for (size_t i = 0; i < pixelCount; i++) {
                     size_t srcIdx = i * image.component;
-                    size_t dstIdx = i * 3;
-                    
-                    if (image.component == 1) {
-                        texture.data[dstIdx] = texture.data[dstIdx + 1] = 
-                            texture.data[dstIdx + 2] = src[srcIdx];
-                    }
-                    else if (image.component >= 3) {
-                        texture.data[dstIdx + 0] = src[srcIdx + 0];
-                        texture.data[dstIdx + 1] = src[srcIdx + 1];
-                        texture.data[dstIdx + 2] = src[srcIdx + 2];
+
+                    switch (image.component) {
+                        case 1:
+                            texture.data.push_back(src[srcIdx + 0]);
+                            break;
+                        case 2:
+                            texture.data.push_back(src[srcIdx + 0]);
+                            texture.data.push_back(src[srcIdx + 1]);
+                            break;
+                        case 3:
+                            texture.data.push_back(src[srcIdx + 0]);
+                            texture.data.push_back(src[srcIdx + 1]);
+                            texture.data.push_back(src[srcIdx + 2]);
+                            break;
+                        case 4:
+                            texture.data.push_back(src[srcIdx + 0]);
+                            texture.data.push_back(src[srcIdx + 1]);
+                            texture.data.push_back(src[srcIdx + 2]);
+                            texture.data.push_back(src[srcIdx + 3]);
+                            break;
                     }
                 }
             }           
