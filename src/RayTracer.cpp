@@ -537,53 +537,34 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
         info.normal = normalize(normal);
     }
 
-    // Compute tangent from texture coordinates (for normal mapping)
-    vec2 deltaUV1 = tri.UVs[1] - tri.UVs[0];
-    vec2 deltaUV2 = tri.UVs[2] - tri.UVs[0];
-    
-    float f = 1.0 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-    
-    vec3 tangent = vec3(
-        f * (deltaUV2.y * edgeAB.x - deltaUV1.y * edgeAC.x),
-        f * (deltaUV2.y * edgeAB.y - deltaUV1.y * edgeAC.y),
-        f * (deltaUV2.y * edgeAB.z - deltaUV1.y * edgeAC.z)
-    );
-    
-    // Gram-Schmidt orthogonalize
-    tangent = normalize(tangent - dot(tangent, info.normal) * info.normal);
-    vec3 bitangent = cross(info.normal, tangent);
-    
-    info.tangent = tangent;
-    info.bitangent = bitangent;
-
     info.front_face = dot(r.direction, info.normal) < 0;
 
-    info.mat = loadMaterial(tri.materialIndex);
-    if (info.mat.texture.baseColorTexture != -1 && info.mat.alphaCut > 0) {
-        vec3 vp = info.point - tri.vertices[0];
+    // === Tangent calculation ===
+    vec3 tangent;
 
-        float d00 = dot(edgeAB, edgeAB);
-        float d01 = dot(edgeAB, edgeAC);
-        float d11 = dot(edgeAC, edgeAC);
-        float d20 = dot(vp, edgeAB);
-        float d21 = dot(vp, edgeAC);
+    // Try UV-based calculation first
+    vec2 deltaUV1 = tri.UVs[1] - tri.UVs[0];
+    vec2 deltaUV2 = tri.UVs[2] - tri.UVs[0];
+    float uvDet = deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y;
 
-        float denom = d00 * d11 - d01 * d01;
+    if (abs(uvDet) > MIN_DENOMINATOR) {
+        float f = 1.0 / uvDet;
 
-        v = (d11 * d20 - d01 * d21) / denom;
-        float w = (d00 * d21 - d01 * d20) / denom;
-        u = 1.0 - v - w;
+        tangent = vec3(
+            f * (deltaUV2.y * edgeAB.x - deltaUV1.y * edgeAC.x),
+            f * (deltaUV2.y * edgeAB.y - deltaUV1.y * edgeAC.y),
+            f * (deltaUV2.y * edgeAB.z - deltaUV1.y * edgeAC.z)
+        );
 
-        info.uv = u * tri.UVs[0] + v * tri.UVs[1] + w * tri.UVs[2];
-        info.uv = clamp(info.uv, vec2(0.0f), vec2(0.999999f));
+        // Gram-Schmidt orthogonalize
+        tangent = tangent - dot(tangent, info.normal) * info.normal;
 
-        TextureInfo texInfo = loadTextureInfo(info.mat.texture.baseColorTexture);
-        info.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, info.uv) + 3;
-        float a = samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture);
-        if (a < info.mat.alphaCut) {
-            return false;
+        if (length(tangent) > MIN_DENOMINATOR) {
+            info.tangent = normalize(tangent);
+            info.bitangent = cross(info.normal, info.tangent);
         }
     }
+
     return true;
 }
 
