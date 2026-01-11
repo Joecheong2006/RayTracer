@@ -373,7 +373,8 @@ vec2 getTextureUV(in TextureInfo info, vec2 uv) {
         float t = fract(uv.y * 0.5) * 2.0;
         uv.y = t > 1.0 ? 2.0 - t : t;
     }
-    return uv;
+
+    return clamp(uv, vec2(0.0), vec2(0.999999));
 }
 
 int getTextureItemIndex(in TextureInfo info, vec2 uv) {
