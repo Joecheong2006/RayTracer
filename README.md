@@ -54,7 +54,7 @@ cmake --build . --config Release
 ## Gallery
 
 ## Salle de Bain by Benedikt Bitterli
-![Salle de Bain by Benedikt Bitterli](screenshots/Salle_da_bain_by_Benedikt_Bitterli.png)
+![Salle de Bain by Benedikt Bitterli](screenshots/Salle_de_Bain_by_Benedikt_Bitterli.png)
 
 ## Transmissive dragon1
 ![Transmissive Dragon1](screenshots/transmissive_dragon1.png)
