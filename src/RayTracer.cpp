@@ -773,7 +773,7 @@ void hitModels(in Ray r, inout HitInfo track) {
             vec2 uv = getTextureUV(texInfo, track.uv);
             track.mat.texture.emissiveTexture = getTextureItemIndex(texInfo, uv);
             vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.emissiveTexture);
-            track.mat.emissionColor = textureColor;
+            track.mat.emissionColor *= textureColor;
         }
 
         if (track.mat.texture.transmissionTexture != -1) {
