@@ -430,12 +430,17 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
     meshData.textures.resize(model.textures.size());
     for (size_t i = 0; i < meshData.textures.size(); ++i) {
         auto &image = model.images[model.textures[i].source];
+        auto &sampler = model.samplers[model.textures[i].sampler];
 
         auto &texture = meshData.textures[i];
         texture.width = image.width;
         texture.height = image.height;
         texture.channelSize = image.bits / 8;
-        texture.pixelType = image.pixel_type;
+
+        texture.wrapS = sampler.wrapS;
+        texture.wrapT = sampler.wrapT;
+
+        std::cout << "wrapS: " << texture.wrapT << " wrapT: " << texture.wrapS << std::endl;
 
         std::cout << image.name << "(" << i << ")" << ": " << image.width << "x" << image.height << std::endl;
         if (!image.image.empty()) {

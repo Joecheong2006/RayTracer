@@ -20,7 +20,7 @@ struct MeshData {
     std::vector<Material> materials;
 
     struct Texture {
-        i32 width, height, channels, channelSize, pixelType;
+        i32 width, height, channels, channelSize, wrapS, wrapT;
         std::vector<f32> data;
     };
 

@@ -44,7 +44,7 @@ struct AABB {
 };
 
 struct TextureInfo {
-    int width, height, channels, index;
+    int width, height, channels, wrapS, wrapT, index;
 };
 
 struct MaterialTexture {
@@ -341,6 +341,8 @@ TextureInfo loadTextureInfo(int textureInfoIndex) {
     info.width = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
     info.height = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
     info.channels = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
+    info.wrapS = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
+    info.wrapT  = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
     info.index = textureInfoIndex;
     return info;
 }
@@ -735,8 +737,7 @@ void hitModels(in Ray r, inout HitInfo track) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.emissiveTexture);
             track.mat.texture.emissiveTexture = getTextureItemIndex(texInfo, track.uv);
             vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.emissiveTexture);
-            float strength = samplerLoadFloat(texturesBuffer, track.mat.texture.emissiveTexture);
-            track.mat.emissionColor *= textureColor;
+            track.mat.emissionColor = textureColor;
         }
 
         if (track.mat.texture.transmissionTexture != -1) {

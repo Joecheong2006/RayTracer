@@ -29,6 +29,9 @@ static void load_meshdata_texture(std::vector<f32> &buffer, MeshData::Texture &t
     buffer.push_back(texture.width);
     buffer.push_back(texture.height);
     buffer.push_back(texture.channels);
+
+    buffer.push_back(texture.wrapS);
+    buffer.push_back(texture.wrapT);
     buffer.insert(buffer.end(), texture.data.begin(), texture.data.end());
 }
 
