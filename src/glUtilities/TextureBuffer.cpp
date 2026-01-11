@@ -3,7 +3,7 @@
 #include "util.h"
 
 namespace gl {
-    TextureBuffer::TextureBuffer(const void *data, i32 size, i32 usage, i32 internalFormat)
+    TextureBuffer::TextureBuffer(const void *data, i64 size, i32 usage, i32 internalFormat)
         : m_size(size), m_usage(usage), m_internalFormat(internalFormat)
     {
         GLCALL(glGenBuffers(1, &m_tbo));
@@ -20,7 +20,7 @@ namespace gl {
         GLCALL(glDeleteTextures(1, &m_tboTexture));
     }
 
-    void TextureBuffer::setBuffer(const void *data, i32 size, i32 usage, i32 internalFormat) {
+    void TextureBuffer::setBuffer(const void *data, i64 size, i32 usage, i32 internalFormat) {
         GLCALL(glBindBuffer(GL_TEXTURE_BUFFER, m_tbo));
 
         if (usage) {
@@ -37,7 +37,7 @@ namespace gl {
         m_size = size;
     }
 
-    void TextureBuffer::updateBuffer(const void *data, i32 offset, i32 size) {
+    void TextureBuffer::updateBuffer(const void *data, i32 offset, i64 size) {
         GLCALL(glBindBuffer(GL_TEXTURE_BUFFER, m_tbo));
         GLCALL(glBufferSubData(GL_TEXTURE_BUFFER, offset, size, data));
         m_size = size;
