@@ -347,6 +347,35 @@ TextureInfo loadTextureInfo(int textureInfoIndex) {
     return info;
 }
 
+vec2 getTextureUV(in TextureInfo info, vec2 uv) {
+    // Apply horizontal wrap (S/U)
+    if (info.wrapS == 10497) {
+        // REPEAT
+        uv.x = fract(uv.x);
+    } else if (info.wrapS == 33071) {
+        // CLAMP_TO_EDGE
+        uv.x = clamp(uv.x, 0.0, 1.0);
+    } else if (info.wrapS == 33648) {
+        // MIRRORED_REPEAT
+        float t = fract(uv.x * 0.5) * 2.0;
+        uv.x = t > 1.0 ? 2.0 - t : t;
+    }
+
+    // Apply vertical wrap (T/V)
+    if (info.wrapT == 10497) {
+        // REPEAT
+        uv.y = fract(uv.y);
+    } else if (info.wrapT == 33071) {
+        // CLAMP_TO_EDGE
+        uv.y = clamp(uv.y, 0.0, 1.0);
+    } else if (info.wrapT == 33648) {
+        // MIRRORED_REPEAT
+        float t = fract(uv.y * 0.5) * 2.0;
+        uv.y = t > 1.0 ? 2.0 - t : t;
+    }
+    return uv;
+}
+
 int getTextureItemIndex(in TextureInfo info, vec2 uv) {
     return info.index + (int(uv.x * info.width) + int(uv.y * info.height) * info.width) * info.channels;
 }
@@ -704,11 +733,12 @@ void hitModels(in Ray r, inout HitInfo track) {
         float u = 1.0 - v - w;
 
         track.uv = u * tri.UVs[0] + v * tri.UVs[1] + w * tri.UVs[2];
-        track.uv = clamp(track.uv, vec2(0.0f), vec2(0.999999f));
 
         if (track.mat.texture.baseColorTexture != -1) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.baseColorTexture);
-            track.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, track.uv);
+
+            vec2 uv = getTextureUV(texInfo, track.uv);
+            track.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, uv);
             track.mat.albedo = samplerLoadVec3(texturesBuffer, track.mat.texture.baseColorTexture);
             float a = samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
             track.mat.transmission *= 1.0 - a;
@@ -716,7 +746,9 @@ void hitModels(in Ray r, inout HitInfo track) {
 
         if (track.mat.texture.metallicRoughnessTexture != -1) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.metallicRoughnessTexture);
-            track.mat.texture.metallicRoughnessTexture = getTextureItemIndex(texInfo, track.uv);
+
+            vec2 uv = getTextureUV(texInfo, track.uv);
+            track.mat.texture.metallicRoughnessTexture = getTextureItemIndex(texInfo, uv);
             vec3 metallicRoughness = samplerLoadVec3(texturesBuffer, track.mat.texture.metallicRoughnessTexture);
             track.mat.roughness *= metallicRoughness.g;
             track.mat.metallic *= metallicRoughness.b;
@@ -724,7 +756,9 @@ void hitModels(in Ray r, inout HitInfo track) {
 
         if (track.mat.texture.normalTexture != -1) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.normalTexture);
-            track.mat.texture.normalTexture = getTextureItemIndex(texInfo, track.uv);
+
+            vec2 uv = getTextureUV(texInfo, track.uv);
+            track.mat.texture.normalTexture = getTextureItemIndex(texInfo, uv);
             vec3 tangentNormal = samplerLoadVec3(texturesBuffer, track.mat.texture.normalTexture);
             tangentNormal = normalize(tangentNormal * 2.0 - 1.0);
             
@@ -735,21 +769,27 @@ void hitModels(in Ray r, inout HitInfo track) {
 
         if (track.mat.texture.emissiveTexture != -1) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.emissiveTexture);
-            track.mat.texture.emissiveTexture = getTextureItemIndex(texInfo, track.uv);
+
+            vec2 uv = getTextureUV(texInfo, track.uv);
+            track.mat.texture.emissiveTexture = getTextureItemIndex(texInfo, uv);
             vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.emissiveTexture);
             track.mat.emissionColor = textureColor;
         }
 
         if (track.mat.texture.transmissionTexture != -1) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.transmissionTexture);
-            track.mat.texture.transmissionTexture = getTextureItemIndex(texInfo, track.uv);
+
+            vec2 uv = getTextureUV(texInfo, track.uv);
+            track.mat.texture.transmissionTexture = getTextureItemIndex(texInfo, uv);
             vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.transmissionTexture);
             track.mat.transmission *= textureColor.r;
         }
 
         if (track.mat.texture.occlusionTexture != -1) {
             TextureInfo texInfo = loadTextureInfo(track.mat.texture.occlusionTexture);
-            track.mat.texture.occlusionTexture = getTextureItemIndex(texInfo, track.uv);
+
+            vec2 uv = getTextureUV(texInfo, track.uv);
+            track.mat.texture.occlusionTexture = getTextureItemIndex(texInfo, uv);
             vec3 textureColor = samplerLoadVec3(texturesBuffer, track.mat.texture.occlusionTexture);
             track.mat.transmission *= 1.0 - (1.0 - textureColor.r) * (1.0 - track.mat.occlusionStrength);
         }
