@@ -761,7 +761,9 @@ void hitModels(in Ray r, inout HitInfo track) {
             vec2 uv = getTextureUV(texInfo, track.uv);
             track.mat.texture.normalTexture = getTextureItemIndex(texInfo, uv);
             vec3 tangentNormal = samplerLoadVec3(texturesBuffer, track.mat.texture.normalTexture);
-            tangentNormal = normalize(tangentNormal * 2.0 - 1.0);
+            tangentNormal = tangentNormal * 2.0 - 1.0;
+            tangentNormal.xy *= track.mat.normalScale;
+            tangentNormal = normalize(tangentNormal);
             
             mat3 TBN = mat3(track.tangent, track.bitangent, track.normal);
             track.normal = normalize(TBN * tangentNormal);
