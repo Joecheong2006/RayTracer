@@ -56,20 +56,14 @@ cmake --build . --config Release
 ## Salle de Bain by Benedikt Bitterli
 ![Salle de Bain by Benedikt Bitterli](screenshots/Salle_de_Bain_by_Benedikt_Bitterli.png)
 
-## Transmissive dragon1
-![Transmissive Dragon1](screenshots/transmissive_dragon1.png)
-
-## Transmissive dragon2
-![Transmissive Dragon2](screenshots/transmissive_dragon2.png)
+## Mordern Kitchen
+![Modern Kitchen by dylanheyes](screenshots/Modern_Kitchen_By_dylanheyes.png)
 
 ## Transmissive teapot under sea
 ![Transmissive teapot under sea](screenshots/transmissive_teapot_in_sea.png)
 
-### Dragon 2
-![Dragon 2](screenshots/dragon2.jpeg)
-
-### Hercules Beetle
-![Hercules Beetle](screenshots/herculesBeetle.jpeg)
+## Transmissive dragon2
+![Transmissive Dragon2](screenshots/transmissive_dragon2.png)
 
 ## Roadmap
 
