@@ -958,7 +958,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
             float cos_theta = min(dot(V, N), 1);
             float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
             if (!info.front_face) {
-                vec3 albedo = pow(info.mat.albedo, vec3(1.0));
+                vec3 albedo = max(info.mat.albedo, vec3(MIN_DENOMINATOR));
                 vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
                 float R = reflectance(cos_theta, eta);
                 rayColor *= (1.0 - R) * transmittance;
