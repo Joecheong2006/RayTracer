@@ -1,2 +1,2 @@
 # Exclude library directory from language stats
-lib/**
+lib/** linguist-vendored
