@@ -228,7 +228,8 @@ vec3 sampleGGXVNDF_H(in vec3 N, in vec3 V, float roughness, inout SeedType seed)
     float r2 = randFloat(seed);
 
     float phi = 2.0 * PI * r1;
-    float cosTheta = sqrt((1.0 - r2) / (1.0 + (a * a - 1.0) * r2));
+    float d = max(1.0 + (a * a - 1.0) * r2, MIN_DENOMINATOR;
+    float cosTheta = sqrt((1.0 - r2) / d;
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
 
     vec3 T = normalize(cross(N, perpendicular(N)));
