@@ -1069,7 +1069,7 @@ void main() {
 }
 )";
 
-static const char *WavelengthRayTracerFragShaderSource = R"(
+static const char *SpectralRayTracerFragShaderSource = R"(
 #version 330 core
 out vec4 fragColor;
 
@@ -2161,7 +2161,7 @@ vec3 traceColorWavelength(in Ray r, inout SeedType seed, inout vec3 totalAlbedo)
             spec = 1;
         } else if (Xi < diffuseProb + specularProb + transmissionProb) {
             float dispersion = 0.03;
-            float wavelengthRef = 550.0
+            float wavelengthRef = 550.0;
 
             float dispersed_ior = info.mat.ior + dispersion * (pow(wavelengthRef / lambda, 2.0) - 1.0);
             info.mat.ior = dispersed_ior;
@@ -2321,7 +2321,7 @@ bool RayTracer::initialize(glm::ivec2 resolution, Type type) {
         m_shader->attachShaderCode(GL_FRAGMENT_SHADER, RGBRayTracerFragShaderSource);
     }
     else if (type == Type::Spectral) {
-        m_shader->attachShaderCode(GL_FRAGMENT_SHADER, WavelengthRayTracerFragShaderSource);
+        m_shader->attachShaderCode(GL_FRAGMENT_SHADER, SpectralRayTracerFragShaderSource);
     }
     else {
         std::cout << "Unsupported raytracer type: " << static_cast<int>(type) << std::endl;
