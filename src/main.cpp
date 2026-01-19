@@ -88,7 +88,7 @@ int main() {
     f32 xScale, yScale;
     getDPIScaler(&xScale, &yScale);
 
-    const std::string title= "Ray Tracer Demo - Transmission Test";
+    const std::string title= "Spectral Ray Tracer";
     std::printf("Retina Sacler [%.2g, %.2g]\n", xScale, yScale);
 
     GLFWwindow *window = glfwCreateWindow(width / xScale, height / yScale, title.c_str(), NULL, NULL);
@@ -119,7 +119,7 @@ int main() {
 
         // Initialize RayEngine
         RayEngine rayEngine;
-        rayEngine.initialize(camera);
+        ASSERT(rayEngine.initialize(camera, RayTracer::Type::Spectral));
         rayEngine.changeResolution({ width * 0.5f, height * 0.5f });
 
         // Set up Scene
