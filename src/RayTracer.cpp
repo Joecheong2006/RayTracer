@@ -2160,6 +2160,12 @@ vec3 traceColorWavelength(in Ray r, inout SeedType seed, inout vec3 totalAlbedo)
             L = sampleGGXVNDF(N, V, info.mat.roughness, seed);
             spec = 1;
         } else if (Xi < diffuseProb + specularProb + transmissionProb) {
+            float dispersion = 0.03;
+            float wavelengthRef = 550.0
+
+            float dispersed_ior = info.mat.ior + dispersion * (pow(wavelengthRef / lambda, 2.0) - 1.0);
+            info.mat.ior = dispersed_ior;
+
             L = sampleTransmission(N, V, info.front_face, info.mat, seed);
             trans = 1;
         } else { // Subsurface — also treated diffuse-like
