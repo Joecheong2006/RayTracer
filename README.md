@@ -56,6 +56,9 @@ cmake --build . --config Release
 ## Prism Test1
 ![Prism Test1](screenshots/prism_test1.png)
 
+## Transmissive Dragon2
+![Transmissive Dragon2](screenshots/spectral_transmissive_dragon2.png)
+
 ## Roadmap
 
 - [x] Static BVH acceleration structure
