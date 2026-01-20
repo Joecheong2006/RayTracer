@@ -2119,9 +2119,7 @@ float get_reflectance(float lambda, vec3 targetLinear) {
     return clamp(dot(targetLinear, vec3(r, g, b)), 0.0, 1.0);
 }
 
-vec3 traceColorWavelength(in Ray r, inout SeedType seed) {
-    float lambda = rand(seed) * 400.0 + 380.0;
-
+vec3 traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
     vec3 radiance = vec3(0.0);
     float spectral_throughout = 1.0;
 
@@ -2273,35 +2271,26 @@ void main() {
     SeedType seed;
 
     vec3 color = vec3(0.0);
-
-#if 1
     int ssq = int(sqrt(camera.rayPerPixel));
+    float WL_DT = WL_RANGE / camera.rayPerPixel;
+
     float rssq = 1.0 / ssq;
     for (int i = 0; i < ssq; ++i) {
         for (int j = 0; j < ssq; ++j) {
             seed = SeedType(hashSeed(uint(fragCoord.x), uint(fragCoord.y), frameCount, uint(j + i * ssq)));
             Ray r;
             r.origin = cameraCenter;
-            r.direction = uv + ((j + randFloat(seed)) * rssq) * rImgSize.x * camera.right + ((i + randFloat(seed)) * rssq) * rImgSize.y * camera.up;
+            r.direction = uv
+                + ((j + randFloat(seed)) * rssq) * rImgSize.x * camera.right
+                + ((i + randFloat(seed)) * rssq) * rImgSize.y * camera.up;
             r.direction = normalize(r.direction - cameraCenter);
 
-            color += traceColorWavelength(r, seed);
+            float lambda = (randFloat(seed) + i * ssq + j) * WL_DT + WL_MIN;
+            color += traceColorWavelength(r, lambda, seed);
         }
     }
+
     color *= rssq * rssq;
-
-#else
-    for (int i = 0; i < camera.rayPerPixel; ++i) {
-        seed = SeedType(hashSeed(uint(fragCoord.x), uint(fragCoord.y), frameCount, uint(i)));
-        Ray r;
-        r.origin = cameraCenter;
-        r.direction = uv + randFloat(seed) * rImgSize.x * camera.right + randFloat(seed) * rImgSize.y * camera.up;
-        r.direction = normalize(r.direction - cameraCenter);
-        color += traceColor(r, seed);
-    }
-    color /= camera.rayPerPixel;
-#endif
-
     color = (texture(previousFrame, vec2(gl_FragCoord.xy) * rImgSize).rgb * (frameCount - 1.0) + color) / float(frameCount);
 
     fragColor = vec4(color, 1.0);
