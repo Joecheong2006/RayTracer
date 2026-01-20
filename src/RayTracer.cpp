@@ -2103,7 +2103,9 @@ vec3 spectral_to_linear_rgb(float lambda) {
     return max(XYZ_TO_RGB * xyz, 0.0) * 12.0;
 }
 
-// Convert RGB to Spectrum (Uplifting)
+// Convert RGB to Spectrum (Uplifting) 
+// using Gaussian peaks may switch to 
+// polynomial-based method in the future
 float get_reflectance(float lambda, vec3 targetLinear) {
     // We must ensure that for a targetLinear of vec3(1.0), 
     // the AVERAGE value across the spectrum is 1.0.
