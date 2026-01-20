@@ -2117,7 +2117,7 @@ float get_reflectance(float lambda, vec3 targetLinear) {
     return clamp(dot(targetLinear, vec3(r, g, b)), 0.0, 1.0);
 }
 
-vec3 traceColorWavelength(in Ray r, inout SeedType seed, inout vec3 totalAlbedo) {
+vec3 traceColorWavelength(in Ray r, inout SeedType seed) {
     float lambda = rand(seed) * 400.0 + 380.0;
 
     vec3 radiance = vec3(0.0);
@@ -2196,7 +2196,6 @@ vec3 traceColorWavelength(in Ray r, inout SeedType seed, inout vec3 totalAlbedo)
                 // rayColor *= (1.0 - R) * transmittance;
                 float reflectance = get_reflectance(lambda, transmittance);
                 spectral_throughout *= (1.0 - R) * reflectance;
-                totalAlbedo += transmittance * spectral_throughout;
             }
             continue;
         }
@@ -2242,7 +2241,6 @@ vec3 traceColorWavelength(in Ray r, inout SeedType seed, inout vec3 totalAlbedo)
 
         float reflectance = get_reflectance(lambda, contribution);
         spectral_throughout *= reflectance;
-        totalAlbedo += contribution * spectral_throughout;
     }
 
     return radiance;
@@ -2275,7 +2273,6 @@ void main() {
     vec3 color = vec3(0.0);
 
 #if 1
-    vec3 totalAlbedo = vec3(0, 0, 0);
     int ssq = int(sqrt(camera.rayPerPixel));
     float rssq = 1.0 / ssq;
     for (int i = 0; i < ssq; ++i) {
@@ -2286,7 +2283,7 @@ void main() {
             r.direction = uv + ((j + randFloat(seed)) * rssq) * rImgSize.x * camera.right + ((i + randFloat(seed)) * rssq) * rImgSize.y * camera.up;
             r.direction = normalize(r.direction - cameraCenter);
 
-            color += traceColorWavelength(r, seed, totalAlbedo);
+            color += traceColorWavelength(r, seed);
         }
     }
     color *= rssq * rssq;
