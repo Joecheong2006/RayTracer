@@ -690,6 +690,17 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
     return info.t < 1e20;
 }
 
+float srgb_to_linear_c(float c) {
+    if (c <= 0.04045)
+        return c / 12.92;
+    else
+        return pow((c + 0.055) / 1.055, 2.4);
+}
+
+vec3 srgb_to_linear(vec3 srgb) {
+    return vec3(srgb_to_linear_c(srgb.x), srgb_to_linear_c(srgb.y), srgb_to_linear_c(srgb.z));
+}
+
 void hitModels(in Ray r, inout HitInfo track) {
     HitInfo tmp = track;
 
@@ -742,6 +753,7 @@ void hitModels(in Ray r, inout HitInfo track) {
             vec2 uv = getTextureUV(texInfo, track.uv);
             track.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, uv);
             track.mat.albedo = samplerLoadVec3(texturesBuffer, track.mat.texture.baseColorTexture);
+            track.mat.albedo = srgb_to_linear(track.mat.albedo);
             float a = samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
             track.mat.transmission *= 1.0 - a;
         }
@@ -1744,6 +1756,17 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
     return info.t < 1e20;
 }
 
+float srgb_to_linear_c(float c) {
+    if (c <= 0.04045)
+        return c / 12.92;
+    else
+        return pow((c + 0.055) / 1.055, 2.4);
+}
+
+vec3 srgb_to_linear(vec3 srgb) {
+    return vec3(srgb_to_linear_c(srgb.x), srgb_to_linear_c(srgb.y), srgb_to_linear_c(srgb.z));
+}
+
 void hitModels(in Ray r, inout HitInfo track) {
     HitInfo tmp = track;
 
@@ -1796,6 +1819,7 @@ void hitModels(in Ray r, inout HitInfo track) {
             vec2 uv = getTextureUV(texInfo, track.uv);
             track.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, uv);
             track.mat.albedo = samplerLoadVec3(texturesBuffer, track.mat.texture.baseColorTexture);
+            track.mat.albedo = srgb_to_linear(track.mat.albedo);
             float a = samplerLoadFloat(texturesBuffer, track.mat.texture.baseColorTexture);
             track.mat.transmission *= 1.0 - a;
         }
