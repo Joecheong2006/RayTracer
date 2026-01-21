@@ -2002,7 +2002,13 @@ vec3 traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
         hit(r, info);
 
         if (info.t >= 1e20) {
-            break;
+            float t = r.direction.y * 0.5 + 0.5;
+            vec3 envColor = (1.0 - t) * vec3(1) + t * skyColor;
+            if (dot(skyColor, skyColor) > 0) {
+                float reflectance = get_reflectance(lambda, envColor);
+                radiance += envColor * reflectance * spectral_throughout;
+            }
+            return radiance;
         }
 
         vec3 N = normalize(info.normal);
@@ -2066,7 +2072,6 @@ vec3 traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
                 vec3 albedo = max(info.mat.albedo, vec3(MIN_DENOMINATOR));
                 vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
                 float R = reflectance(cos_theta, eta);
-                // rayColor *= (1.0 - R) * transmittance;
                 float reflectance = get_reflectance(lambda, transmittance);
                 spectral_throughout *= (1.0 - R) * reflectance;
             }
