@@ -2005,9 +2005,9 @@ vec3 traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
             float t = r.direction.y * 0.5 + 0.5;
             vec3 envColor = (1.0 - t) * vec3(1) + t * skyColor;
             if (dot(skyColor, skyColor) > 0) {
-                float reflectance = get_reflectance(lambda, envColor);
-                vec3 colorContribution = spectral_to_linear_rgb(lambda);
-                radiance += colorContribution * reflectance * spectral_throughout;
+                // float reflectance = get_reflectance(lambda, envColor);
+                // vec3 colorContribution = spectral_to_linear_rgb(lambda);
+                // radiance += colorContribution * reflectance * spectral_throughout;
             }
             return radiance;
         }
