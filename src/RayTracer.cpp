@@ -2162,6 +2162,31 @@ float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
     return radiance;
 }
 
+const int NUM_HERO_WAVELENGTHS = 4;
+
+vec4 get_hero_wavelengths(float base_offset) {
+    float stride = WL_RANGE / float(NUM_HERO_WAVELENGTHS);
+
+    vec4 lambdas;
+    lambdas.x = WL_MIN + stride * (0.0 + base_offset);
+    lambdas.y = WL_MIN + stride * (1.0 + base_offset);
+    lambdas.z = WL_MIN + stride * (2.0 + base_offset);
+    lambdas.w = WL_MIN + stride * (3.0 + base_offset);
+
+    // Wrap wavelengths that exceed bounds
+    lambdas = mod(lambdas - WL_MIN, WL_RANGE) + WL_MIN;
+
+    return lambdas;
+}
+
+vec3 hero_wavelengths_to_rgb(vec4 lambdas, vec4 radiances, float pdf) {
+    vec3 rgb = vec3(0.0);
+    for (int k = 0; k < 4; k++) {
+        rgb += wavelength_to_rgb(lambdas[k], radiances[k], pdf);
+    }
+    return rgb / float(NUM_HERO_WAVELENGTHS);
+}
+
 void main() {
     ivec2 fragCoord = ivec2(gl_FragCoord.xy);
     vec2 imgSize = camera.resolution;
@@ -2202,9 +2227,17 @@ void main() {
                 + ((i + randFloat(seed)) * rssq) * rImgSize.y * camera.up;
             r.direction = normalize(r.direction - cameraCenter);
 
-            float lambda = (randFloat(seed) + i * ssq + j) * wl_dt + WL_MIN;
-            float radiance = traceColorWavelength(r, lambda, seed);
-            color += wavelength_to_rgb(lambda, radiance, wl_pdf);
+            // float lambda = (randFloat(seed) + i * ssq + j) * wl_dt + WL_MIN;
+            // float radiance = traceColorWavelength(r, lambda, seed);
+            // color += wavelength_to_rgb(lambda, radiance, wl_pdf);
+
+            float base_offset = (randFloat(seed) + i * ssq + j) * wl_dt;
+            vec4 lambdas = get_hero_wavelengths(base_offset);
+            vec4 radiances;
+            for (int k = 0; k < 4; k++) {
+                radiances[k] = traceColorWavelength(r, lambdas[k], seed);
+            }
+            color += hero_wavelengths_to_rgb(lambdas, radiances, wl_pdf);
         }
     }
 
