@@ -33,8 +33,21 @@ in vec2 uv;
 
 uniform sampler2D screenTexture;
 
+// ACES Filmic
+vec3 tonemap_aces(vec3 color) {
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    vec3 result = (color * (a * color + b)) / (color * (c * color + d) + e);
+    return clamp(result, 0.0, 1.0);
+}
+
 void main() {
     vec3 color = texture(screenTexture, uv).rgb;
+
+    color = tonemap_aces(color);
 
     if (any(isnan(color))) {
         fragColor = vec4(1.0, 0.0, 0.0, 1.0);
