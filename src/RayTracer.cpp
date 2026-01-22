@@ -1965,6 +1965,8 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
 const float WL_MIN = 380.0;
 const float WL_MAX = 780.0;
 const float WL_RANGE = WL_MAX - WL_MIN;
+const float CIE_Y_INTEGRAL = 106.856895;
+
 const mat3 XYZ_TO_RGB = mat3(
     3.2406, -0.9689,  0.0557,
    -1.5372,  1.8758, -0.2040,
@@ -1991,13 +1993,23 @@ vec3 get_cie_xyz(float lambda) {
 }
 
 // Convert Spectrum back to RGB
-vec3 spectral_to_linear_rgb(float lambda) {
+vec3 wavelength_to_rgb(float lambda, float radiance, float pdf) {
+    // Get XYZ response (human eye)
     vec3 xyz = get_cie_xyz(lambda);
-    
-    // We treat the "12.0" as the integral of the observer (the eye).
-    // By multiplying here, we say: "This wavelength contributes its share 
-    // of the total visible energy."
-    return max(XYZ_TO_RGB * xyz, 0.0) * 12.0;
+
+    // Convert to linear RGB
+    vec3 linear_rgb = XYZ_TO_RGB * xyz;
+    linear_rgb = max(linear_rgb, vec3(0.0));
+
+    // Apply radiance
+    linear_rgb *= radiance;
+
+    // Monte Carlo normalization
+    // Divide by PDF (wavelength sampling density)
+    // Divide by CIE_Y_INTEGRAL (photometric normalization)
+    linear_rgb /= (pdf * CIE_Y_INTEGRAL);
+
+    return linear_rgb;  // Returns LINEAR RGB (for accumulation)
 }
 
 // Convert RGB to Spectrum (Uplifting) 
@@ -2013,11 +2025,11 @@ float get_reflectance(float lambda, vec3 targetLinear) {
 
     // The key is to avoid over-amplifying here. 
     // Simply sum the peaks. For white, the peaks overlap to roughly 1.0.
-    return clamp(dot(targetLinear, vec3(r, g, b)), 0.0, 1.0);
+    return max(dot(targetLinear, vec3(r, g, b)), 0.0);
 }
 
-vec3 traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
-    vec3 radiance = vec3(0.0);
+float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
+    float radiance = 0.0;
     float spectral_throughout = 1.0;
 
     for (int i = 0; i <= camera.bounces; ++i) {
@@ -2029,9 +2041,8 @@ vec3 traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
             float t = r.direction.y * 0.5 + 0.5;
             vec3 envColor = (1.0 - t) * vec3(1) + t * skyColor;
             if (dot(skyColor, skyColor) > 0) {
-                // float reflectance = get_reflectance(lambda, envColor);
-                // vec3 colorContribution = spectral_to_linear_rgb(lambda);
-                // radiance += colorContribution * reflectance * spectral_throughout;
+                float reflectance = get_reflectance(lambda, envColor);
+                radiance += reflectance * spectral_throughout;
             }
             return radiance;
         }
@@ -2138,8 +2149,7 @@ vec3 traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
         // Emission (add before rayColor is updated)
         if (info.mat.emissionStrength > 0.0) {
             float energy = get_reflectance(lambda, info.mat.emissionColor);
-            vec3 colorContribution = spectral_to_linear_rgb(lambda);
-            radiance += colorContribution * energy * spectral_throughout * info.mat.emissionStrength;
+            radiance += energy * spectral_throughout * info.mat.emissionStrength;
         }
 
         float reflectance = get_reflectance(lambda, contribution);
@@ -2175,7 +2185,8 @@ void main() {
 
     vec3 color = vec3(0.0);
     int ssq = int(sqrt(camera.rayPerPixel));
-    float WL_DT = WL_RANGE / camera.rayPerPixel;
+    float wl_dt = WL_RANGE / camera.rayPerPixel;
+    float wl_pdf = 1.0 / WL_RANGE;
 
     float rssq = 1.0 / ssq;
     for (int i = 0; i < ssq; ++i) {
@@ -2188,8 +2199,9 @@ void main() {
                 + ((i + randFloat(seed)) * rssq) * rImgSize.y * camera.up;
             r.direction = normalize(r.direction - cameraCenter);
 
-            float lambda = (randFloat(seed) + i * ssq + j) * WL_DT + WL_MIN;
-            color += traceColorWavelength(r, lambda, seed);
+            float lambda = (randFloat(seed) + i * ssq + j) * wl_dt + WL_MIN;
+            float radiance = traceColorWavelength(r, lambda, seed);
+            color += wavelength_to_rgb(lambda, radiance, wl_pdf);
         }
     }
 
