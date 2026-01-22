@@ -2029,7 +2029,7 @@ float shadeSubsurfaceSpectral(in HitInfo info, float lambda, float NoL, float No
 
 float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
     float radiance = 0.0;
-    float spectral_throughout = 1.0;
+    float spectral_throughput = 1.0;
 
     for (int i = 0; i <= camera.bounces; ++i) {
         HitInfo info;
@@ -2041,7 +2041,7 @@ float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
             vec3 envColor = (1.0 - t) * vec3(1) + t * skyColor;
             if (dot(skyColor, skyColor) > 0) {
                 float reflectance = get_reflectance(lambda, envColor);
-                radiance += reflectance * spectral_throughout;
+                radiance += reflectance * spectral_throughput;
             }
             return radiance;
         }
@@ -2108,7 +2108,7 @@ float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
                 vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
                 float R = reflectance(cos_theta, eta);
                 float reflectance = get_reflectance(lambda, transmittance);
-                spectral_throughout *= (1.0 - R) * reflectance;
+                spectral_throughput *= (1.0 - R) * reflectance;
             }
             continue;
         }
@@ -2148,10 +2148,10 @@ float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
         // Emission (add before rayColor is updated)
         if (info.mat.emissionStrength > 0.0) {
             float energy = get_reflectance(lambda, info.mat.emissionColor);
-            radiance += energy * spectral_throughout * info.mat.emissionStrength;
+            radiance += energy * spectral_throughput * info.mat.emissionStrength;
         }
 
-        spectral_throughout *= contribution;
+        spectral_throughput *= contribution;
     }
 
     return radiance;
