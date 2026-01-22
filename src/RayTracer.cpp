@@ -1315,23 +1315,8 @@ vec3 sampleGGXVNDF(in vec3 N, in vec3 V, float roughness, inout SeedType seed) {
     return dot(N, L) > 0.0 ? L : vec3(0.0); // Ensure valid bounce
 }
 
-vec3 computeF0(in HitInfo info) {
-    float specular = clamp(info.mat.specular, 0.0, 1.0);        // user control
-    float tintAmount = clamp(info.mat.specularTint, 0.0, 1.0);  // influence of albedo
-
-    vec3 f0 = vec3(0.16 * specular * specular);
-    return mix(f0, info.mat.albedo, info.mat.metallic);
-
-    vec3 baseTint = vec3(1.0);
-    if (dot(info.mat.albedo, info.mat.albedo) > 0.0) {
-        baseTint = normalize(info.mat.albedo);
-    }
-
-    vec3 tint = mix(vec3(1.0), baseTint, tintAmount);  // weighted albedo tint
-    vec3 dielectricF0 = 0.08 * specular * tint;        // 0.08 ~ empirical fit
-
-    vec3 metalF0 = clamp(info.mat.albedo, vec3(0.0), vec3(1.0));
-    return mix(dielectricF0, metalF0, info.mat.metallic);
+float fresnelSchlickScalar(float cosTheta, float F0) {
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 vec3 fresnelSchlick(float cosTheta, in vec3 F0) {
@@ -1356,50 +1341,6 @@ float geometrySmith(float NoV, float NoL, float roughness) {
     float ggx1 = geometrySchlickGGX(NoV, roughness);
     float ggx2 = geometrySchlickGGX(NoL, roughness);
     return ggx1 * ggx2;
-}
-
-// === Specular ===
-float specularPdf(float NoH, float VoH, float roughness) {
-    float a = roughness * roughness;
-    float D = NDF_GGX(NoH, roughness);
-    return D * NoH / max(4.0 * VoH, MIN_DENOMINATOR);
-}
-
-vec3 shadeSpecular(in HitInfo info, float NoV, float NoL, float NoH, float VoH) {
-    vec3 F0 = computeF0(info);
-    vec3 F = fresnelSchlick(VoH, F0);
-    float D = NDF_GGX(NoH, info.mat.roughness);
-    float G = geometrySmith(NoV, NoL, info.mat.roughness);
-    return (D * G * F) / max(4.0 * NoV * NoL, MIN_DENOMINATOR);
-}
-
-// === Diffuse ===
-vec3 shadeDiffuse(in HitInfo info, float NoL, float NoV, float VoH) {
-    vec3 F0 = computeF0(info);
-    vec3 F = fresnelSchlick(VoH, F0);
-    vec3 kd = (vec3(1.0) - F) * (1.0 - info.mat.metallic);
-
-    float FD90 = 0.5 + 2.0 * dot(F0, vec3(1.0)); // can tweak this
-    float FL = fresnelSchlick(NoL, vec3(1.0)).x;
-    float FV = fresnelSchlick(NoV, vec3(1.0)).x;
-
-    float fresnelDiffuse = (1.0 + (FD90 - 1.0) * pow(1.0 - NoL, 5.0)) *
-                           (1.0 + (FD90 - 1.0) * pow(1.0 - NoV, 5.0));
-    return kd * info.mat.albedo * INV_PI;
-}
-
-float diffusePdf(float NoL) {
-    return NoL * INV_PI;
-}
-
-// === Subsurface (approximate Burley diffusion model) ===
-vec3 shadeSubsurface(in HitInfo info, float NoL, float NoV, float LoV) {
-    float FL = pow(1.0 - NoL, 5.0);
-    float FV = pow(1.0 - NoV, 5.0);
-    float Fd90 = 0.5 + 2.0 * LoV * info.mat.roughness;
-    float Fd = mix(1.0, Fd90, FL) * mix(1.0, Fd90, FV);
-
-    return info.mat.albedo * Fd * INV_PI * info.mat.subsurface;
 }
 
 // TextureInfo
@@ -2028,6 +1969,64 @@ float get_reflectance(float lambda, vec3 targetLinear) {
     return max(dot(targetLinear, vec3(r, g, b)), 0.0);
 }
 
+float computeF0Spectral(in HitInfo info, float lambda) {
+    float specular = clamp(info.mat.specular, 0.0, 1.0);
+    float tintAmount = clamp(info.mat.specularTint, 0.0, 1.0);
+
+    // Base F0 for dielectrics (achromatic)
+    float f0_dielectric = 0.16 * specular * specular;
+
+    // For metals, F0 is the material color (spectral)
+    float f0_metal = get_reflectance(lambda, info.mat.albedo);
+
+    // Blend based on metallic parameter
+    return mix(f0_dielectric, f0_metal, info.mat.metallic);
+}
+
+// === Diffuse ===
+float shadeDiffuseSpectral(in HitInfo info, float lambda, float NoL, float NoV, float VoH) {
+    float F0 = computeF0Spectral(info, lambda);
+    float F = fresnelSchlickScalar(VoH, F0);
+    float kd = (1.0 - F) * (1.0 - info.mat.metallic);
+
+    float FD90 = 0.5 + 2.0 * F0;
+    float FL = fresnelSchlickScalar(NoL, 1.0);
+    float FV = fresnelSchlickScalar(NoV, 1.0);
+
+    float fresnelDiffuse = (1.0 + (FD90 - 1.0) * pow(1.0 - NoL, 5.0)) *
+                           (1.0 + (FD90 - 1.0) * pow(1.0 - NoV, 5.0));
+
+    return kd * get_reflectance(lambda, info.mat.albedo) * INV_PI;
+}
+
+float diffusePdf(float NoL) {
+    return NoL * INV_PI;
+}
+
+// === Specular ===
+float specularPdf(float NoH, float VoH, float roughness) {
+    float a = roughness * roughness;
+    float D = NDF_GGX(NoH, roughness);
+    return D * NoH / max(4.0 * VoH, MIN_DENOMINATOR);
+}
+
+float shadeSpecularSpectral(in HitInfo info, float lambda, float NoV, float NoL, float NoH, float VoH) {
+    float F0 = computeF0Spectral(info, lambda);
+    float F = fresnelSchlickScalar(VoH, F0);
+    float D = NDF_GGX(NoH, info.mat.roughness);
+    float G = geometrySmith(NoV, NoL, info.mat.roughness);
+    return (D * G * F) / max(4.0 * NoV * NoL, MIN_DENOMINATOR);
+}
+
+float shadeSubsurfaceSpectral(in HitInfo info, float lambda, float NoL, float NoV, float LoV) {
+    float FL = pow(1.0 - NoL, 5.0);
+    float FV = pow(1.0 - NoV, 5.0);
+    float Fd90 = 0.5 + 2.0 * LoV * info.mat.roughness;
+    float Fd = mix(1.0, Fd90, FL) * mix(1.0, Fd90, FV);
+
+    return get_reflectance(lambda, info.mat.albedo) * Fd * INV_PI * info.mat.subsurface;
+}
+
 float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
     float radiance = 0.0;
     float spectral_throughout = 1.0;
@@ -2119,9 +2118,9 @@ float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
         }
 
         // Always evaluate both BRDFs and PDFs for MIS
-        vec3 brdf_sss = shadeSubsurface(info, NoL, NoV, LoV);
-        vec3 brdf_spec = shadeSpecular(info, NoV, NoL, NoH, VoH);
-        vec3 brdf_diff = shadeDiffuse(info, NoL, NoV, VoH);
+        float brdf_spec_s = shadeSpecularSpectral(info, lambda, NoV, NoL, NoH, VoH);
+        float brdf_diff_s = shadeDiffuseSpectral(info, lambda, NoL, NoV, VoH);
+        float brdf_sss_s = shadeSubsurfaceSpectral(info, lambda, NoL, NoV, LoV);
 
         float p_surf = 1.0 - transmissionProb;
 
@@ -2139,12 +2138,12 @@ float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
         float rdenom = 1.0 / max(denom, MIN_DENOMINATOR);
 
         // Combine weighted BRDFs (all lobes)
-        vec3 brdf_total = ((pdf_spec * pdf_spec) * brdf_spec
-                        + (pdf_diff * pdf_diff) * brdf_diff
-                        + (pdf_sss * pdf_sss) * brdf_sss) * rdenom;
+        float brdf_total_s = ((pdf_spec * pdf_spec) * brdf_spec_s
+                        + (pdf_diff * pdf_diff) * brdf_diff_s
+                        + (pdf_sss * pdf_sss) * brdf_sss_s) * rdenom;
 
         // Final contribution
-        vec3 contribution = (brdf_total * NoL) / max(pdf_used, MIN_DENOMINATOR);
+        float contribution = (brdf_total_s * NoL) / max(pdf_used, MIN_DENOMINATOR);
 
         // Emission (add before rayColor is updated)
         if (info.mat.emissionStrength > 0.0) {
@@ -2152,8 +2151,7 @@ float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
             radiance += energy * spectral_throughout * info.mat.emissionStrength;
         }
 
-        float reflectance = get_reflectance(lambda, contribution);
-        spectral_throughout *= reflectance;
+        spectral_throughout *= contribution;
     }
 
     return radiance;
