@@ -2152,6 +2152,11 @@ float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
         }
 
         spectral_throughput *= contribution;
+
+        // Break if spectral throughput is too small
+        if (spectral_throughput < 1e-6) {
+            break;
+        }
     }
 
     return radiance;
