@@ -2021,7 +2021,7 @@ float get_reflectance(float lambda, vec3 targetLinear) {
     
     float r = exp(-0.5 * pow((lambda - 640.0) / 22.0, 2.0));
     float g = exp(-0.5 * pow((lambda - 535.0) / 22.0, 2.0));
-    float b = exp(-0.5 * pow((lambda - 460.0) / 22.0, 2.0));
+    float b = exp(-0.5 * pow((lambda - 465.0) / 22.0, 2.0));
 
     // The key is to avoid over-amplifying here. 
     // Simply sum the peaks. For white, the peaks overlap to roughly 1.0.
