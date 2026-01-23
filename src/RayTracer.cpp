@@ -886,7 +886,11 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
     float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
     vec3 H = sampleGGXVNDF_H(N, V, mat.roughness, seed);
+
+    // Fresnel effect implicitly handled by choosing
+    // no need to apply (1.0 - R) later
     float R = reflectance(cos_theta, eta);
+
     bool cannot_refract = eta * sin_theta > 1.0;
     if (cannot_refract || randFloat(seed) < R) {
         return reflect(-V, H);
@@ -967,14 +971,10 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         r.direction = L;
 
         if (trans == 1) {
-            float eta = info.front_face ? (1.0 / info.mat.ior) : info.mat.ior;
-            float cos_theta = min(dot(V, N), 1);
-            float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
             if (!info.front_face) {
                 vec3 albedo = max(info.mat.albedo, vec3(MIN_DENOMINATOR));
                 vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
-                float R = reflectance(cos_theta, eta);
-                rayColor *= (1.0 - R) * transmittance;
+                rayColor *= transmittance;
             }
             continue;
         }
@@ -1889,7 +1889,11 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
     float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
     vec3 H = sampleGGXVNDF_H(N, V, mat.roughness, seed);
-    float R = fresnelSchlick(cos_theta, eta);
+
+    // Fresnel effect implicitly handled by choosing
+    // no need to apply (1.0 - R) later
+    float R = reflectance(cos_theta, eta);
+
     bool cannot_refract = eta * sin_theta > 1.0;
     if (cannot_refract || randFloat(seed) < R) {
         return reflect(-V, H);
@@ -2096,19 +2100,11 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         r.direction = L;
 
         if (trans == 1) {
-            float eta = info.front_face ? (1.0 / info.mat.ior) : info.mat.ior;
-            float cos_theta = min(dot(V, N), 1);
-            float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
-            float R = fresnelSchlick(cos_theta, eta);
-
-            if (info.front_face) {
-                spectral_throughput *= (1.0 - R);
-            }
-            else {
+            if (!info.front_face) {
                 float spectral_albedo = max(get_reflectance(lambda, info.mat.albedo), MIN_DENOMINATOR);
                 float absorption = -log(spectral_albedo);
                 float transmittance = exp(-absorption * info.t); // Beer–Lambert
-                spectral_throughput *= (1.0 - R) * transmittance;
+                spectral_throughput *= transmittance;
             }
             continue;
         }
