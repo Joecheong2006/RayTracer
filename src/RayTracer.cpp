@@ -1319,10 +1319,6 @@ float fresnelSchlickScalar(float cosTheta, float F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-vec3 fresnelSchlick(float cosTheta, in vec3 F0) {
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
 float NDF_GGX(float NoH, float roughness) {
     float a = roughness * roughness;
     float a2 = a * a;
@@ -1879,7 +1875,7 @@ vec3 refract(in vec3 uv, in vec3 n, float etai_over_etat) {
     return r_out_perp + r_out_parallel;
 }
 
-float reflectance(float cosine, float reflectance_index) {
+float fresnelSchlick(float cosine, float reflectance_index) {
     // Use Schlick's approximation for reflectance.
     float r0 = (1 - reflectance_index) / (1 + reflectance_index);
     r0 = r0 * r0;
@@ -1893,7 +1889,7 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
     float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
     vec3 H = sampleGGXVNDF_H(N, V, mat.roughness, seed);
-    float R = reflectance(cos_theta, eta);
+    float R = fresnelSchlick(cos_theta, eta);
     bool cannot_refract = eta * sin_theta > 1.0;
     if (cannot_refract || randFloat(seed) < R) {
         return reflect(-V, H);
@@ -2103,12 +2099,16 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
             float eta = info.front_face ? (1.0 / info.mat.ior) : info.mat.ior;
             float cos_theta = min(dot(V, N), 1);
             float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
-            if (!info.front_face) {
-                vec3 albedo = max(info.mat.albedo, vec3(MIN_DENOMINATOR));
-                vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
-                float R = reflectance(cos_theta, eta);
-                float reflectance = get_reflectance(lambda, transmittance);
-                spectral_throughput *= (1.0 - R) * reflectance;
+            float R = fresnelSchlick(cos_theta, eta);
+
+            if (info.front_face) {
+                spectral_throughput *= (1.0 - R);
+            }
+            else {
+                float spectral_albedo = max(get_reflectance(lambda, info.mat.albedo), MIN_DENOMINATOR);
+                float absorption = -log(spectral_albedo);
+                float transmittance = exp(-absorption * info.t); // Beer–Lambert
+                spectral_throughput *= (1.0 - R) * transmittance;
             }
             continue;
         }
