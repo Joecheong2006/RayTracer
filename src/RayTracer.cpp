@@ -2027,7 +2027,7 @@ float shadeSubsurfaceSpectral(in HitInfo info, float lambda, float NoL, float No
     return get_reflectance(lambda, info.mat.albedo) * Fd * INV_PI * info.mat.subsurface;
 }
 
-float traceColorWavelength(in Ray r, in float lambda, inout SeedType seed) {
+float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
     float radiance = 0.0;
     float spectral_throughput = 1.0;
 
@@ -2235,9 +2235,7 @@ void main() {
             vec4 lambdas = get_hero_wavelengths(base_offset);
             vec4 radiances;
             for (int k = 0; k < 4; k++) {
-                SeedType saved_seed = seed;
                 radiances[k] = traceColorWavelength(r, lambdas[k], seed);
-                seed = saved_seed;
             }
             color += hero_wavelengths_to_rgb(lambdas, radiances, wl_pdf);
         }
