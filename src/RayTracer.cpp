@@ -882,10 +882,10 @@ float reflectance(float cosine, float reflectance_index) {
 vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, inout SeedType seed) {
     float eta = front_face ? (1.0 / mat.ior) : mat.ior;
 
-    float cos_theta = min(dot(V, N), 1);
-    float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
-
     vec3 H = sampleGGXVNDF_H(N, V, mat.roughness, seed);
+
+    float cos_theta = min(abs(dot(V, N)), 1);
+    float sin_theta = sqrt(min(1.0 - cos_theta * cos_theta, 0));
 
     // Fresnel effect implicitly handled by choosing
     // no need to apply (1.0 - R) later
@@ -1885,10 +1885,10 @@ float fresnelSchlick(float cosine, float reflectance_index) {
 vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, inout SeedType seed) {
     float eta = front_face ? (1.0 / mat.ior) : mat.ior;
 
-    float cos_theta = min(dot(V, N), 1);
-    float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
-
     vec3 H = sampleGGXVNDF_H(N, V, mat.roughness, seed);
+
+    float cos_theta = min(abs(dot(V, N)), 1);
+    float sin_theta = sqrt(min(1.0 - cos_theta * cos_theta, 0));
 
     // Fresnel effect implicitly handled by choosing
     // no need to apply (1.0 - R) later
