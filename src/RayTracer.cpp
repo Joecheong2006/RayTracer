@@ -2235,7 +2235,9 @@ void main() {
             vec4 lambdas = get_hero_wavelengths(base_offset);
             vec4 radiances;
             for (int k = 0; k < 4; k++) {
+                SeedType saved_seed = seed;
                 radiances[k] = traceColorWavelength(r, lambdas[k], seed);
+                seed = saved_seed;
             }
             color += hero_wavelengths_to_rgb(lambdas, radiances, wl_pdf);
         }
