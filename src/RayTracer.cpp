@@ -872,7 +872,7 @@ vec3 refract(in vec3 uv, in vec3 n, float etai_over_etat) {
     return r_out_perp + r_out_parallel;
 }
 
-float reflectance(float cosine, float reflectance_index) {
+float fresnelSchlick(float cosine, float reflectance_index) {
     // Use Schlick's approximation for reflectance.
     float r0 = (1 - reflectance_index) / (1 + reflectance_index);
     r0 = r0 * r0;
@@ -889,7 +889,7 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
 
     // Fresnel effect implicitly handled by choosing
     // no need to apply (1.0 - R) later
-    float R = reflectance(cos_theta, eta);
+    float R = fresnelSchlick(cos_theta, eta);
 
     bool cannot_refract = eta * sin_theta > 1.0;
     if (cannot_refract || randFloat(seed) < R) {
@@ -1892,7 +1892,7 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
 
     // Fresnel effect implicitly handled by choosing
     // no need to apply (1.0 - R) later
-    float R = reflectance(cos_theta, eta);
+    float R = fresnelSchlick(cos_theta, eta);
 
     bool cannot_refract = eta * sin_theta > 1.0;
     if (cannot_refract || randFloat(seed) < R) {
