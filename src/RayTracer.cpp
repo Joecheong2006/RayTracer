@@ -885,7 +885,7 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
     vec3 H = sampleGGXVNDF_H(N, V, mat.roughness, seed);
 
     float cos_theta = min(abs(dot(V, N)), 1);
-    float sin_theta = sqrt(min(1.0 - cos_theta * cos_theta, 0));
+    float sin_theta = sqrt(max(1.0 - cos_theta * cos_theta, 0));
 
     // Fresnel effect implicitly handled by choosing
     // no need to apply (1.0 - R) later
@@ -1888,7 +1888,7 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
     vec3 H = sampleGGXVNDF_H(N, V, mat.roughness, seed);
 
     float cos_theta = min(abs(dot(V, N)), 1);
-    float sin_theta = sqrt(min(1.0 - cos_theta * cos_theta, 0));
+    float sin_theta = sqrt(max(1.0 - cos_theta * cos_theta, 0));
 
     // Fresnel effect implicitly handled by choosing
     // no need to apply (1.0 - R) later
