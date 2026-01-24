@@ -53,17 +53,11 @@ cmake --build . --config Release
 
 ## Gallery
 
-## Salle de Bain by Benedikt Bitterli
-![Salle de Bain by Benedikt Bitterli](screenshots/Salle_de_Bain_by_Benedikt_Bitterli.png)
+## Prism Test1
+![Prism Test1](screenshots/prism_test1.png)
 
-## Mordern Kitchen
-![Modern Kitchen by dylanheyes](screenshots/Modern_Kitchen_By_dylanheyes.png)
-
-## Transmissive teapot under sea
-![Transmissive teapot under sea](screenshots/transmissive_teapot_in_sea.png)
-
-## Transmissive dragon2
-![Transmissive Dragon2](screenshots/transmissive_dragon2.png)
+## Transmissive Dragon2
+![Transmissive Dragon2](screenshots/spectral_transmissive_dragon2.png)
 
 ## Roadmap
 

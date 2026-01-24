@@ -13,6 +13,12 @@ namespace gl {
 }
 
 class RayTracer {
+public:
+    enum class Type {
+        RGB,
+        Spectral
+    };
+
 private:
     std::unique_ptr<gl::ShaderProgram> m_shader;
     std::unique_ptr<gl::Texture2D> m_frames[2];
@@ -20,13 +26,16 @@ private:
     u32 m_frameCount = 1;
     i32 m_frameIndex = 0;
 
+    Type m_type;
+
 public:
     explicit RayTracer() = default;
-    bool initialize(glm::ivec2 resolution);
+    bool initialize(glm::ivec2 resolution, Type type);
     void renderToTexture(const RayCamera &camera, const RayScene &scene);
     void changeResolution(glm::ivec2 resolution);
     void reset();
 
+    inline Type getType() { return m_type; }
     inline gl::Texture2D &getCurrentFrame() const { return *m_frames[m_frameIndex]; }
     inline gl::Texture2D &getPreviousFrame() const { return *m_frames[!m_frameIndex]; }
     inline u32 getFrameCount() const { return m_frameCount; }

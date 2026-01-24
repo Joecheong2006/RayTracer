@@ -33,8 +33,21 @@ in vec2 uv;
 
 uniform sampler2D screenTexture;
 
+// ACES Filmic
+vec3 tonemap_aces(vec3 color) {
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    vec3 result = (color * (a * color + b)) / (color * (c * color + d) + e);
+    return clamp(result, 0.0, 1.0);
+}
+
 void main() {
     vec3 color = texture(screenTexture, uv).rgb;
+
+    color = tonemap_aces(color);
 
     if (any(isnan(color))) {
         fragColor = vec4(1.0, 0.0, 0.0, 1.0);
@@ -88,7 +101,7 @@ int main() {
     f32 xScale, yScale;
     getDPIScaler(&xScale, &yScale);
 
-    const std::string title= "Ray Tracer Demo - Transmission Test";
+    const std::string title= "Spectral Ray Tracer";
     std::printf("Retina Sacler [%.2g, %.2g]\n", xScale, yScale);
 
     GLFWwindow *window = glfwCreateWindow(width / xScale, height / yScale, title.c_str(), NULL, NULL);
@@ -119,7 +132,7 @@ int main() {
 
         // Initialize RayEngine
         RayEngine rayEngine;
-        rayEngine.initialize(camera);
+        ASSERT(rayEngine.initialize(camera, RayTracer::Type::Spectral));
         rayEngine.changeResolution({ width * 0.5f, height * 0.5f });
 
         // Set up Scene

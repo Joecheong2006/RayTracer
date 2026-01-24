@@ -11,6 +11,7 @@ namespace gl {
 }
 
 class RayEngine {
+private:
     RayCamera m_camera;
     RayScene m_rayScene;
     RayTracer m_rayTracer;
@@ -21,7 +22,7 @@ class RayEngine {
 public:
     RayEngine() = default;
     
-    bool initialize(const RayCamera &camera);
+    bool initialize(const RayCamera &camera, RayTracer::Type raytracerType);
     void changeResolution(glm::ivec2 resolution);
     void render();
 
