@@ -3,7 +3,7 @@
 #include "glUtilities/Framebuffer.h"
 #include "glUtilities/Texture2D.h"
 #include "glUtilities/Quad.h"
-    
+
 bool RayEngine::initialize(const RayCamera &camera, RayTracer::Type raytracerType) {
     m_camera = camera;
     m_rayScene.initialize();

@@ -20,7 +20,6 @@ private:
     std::unique_ptr<gl::Quad> m_quad;
 
 public:
-
     RayEngine() = default;
     
     bool initialize(const RayCamera &camera, RayTracer::Type raytracerType);
