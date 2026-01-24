@@ -59,6 +59,12 @@ cmake --build . --config Release
 ## Transmissive Dragon2
 ![Transmissive Dragon2](screenshots/spectral_transmissive_dragon2.png)
 
+## Salle de Bain by Benedikt Bitterli
+![Salle de Bain by Benedikt Bitterli](screenshots/Salle_de_Bain_by_Benedikt_Bitterli.png)
+
+## Mordern Kitchen
+![Modern Kitchen by dylanheyes](screenshots/Modern_Kitchen_By_dylanheyes.png)
+
 ## Roadmap
 
 - [x] Static BVH acceleration structure
