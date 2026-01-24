@@ -883,16 +883,29 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
     float eta = front_face ? (1.0 / mat.ior) : mat.ior;
 
     vec3 H = sampleGGXVNDF_H(N, V, mat.roughness, seed);
+    float VoH = dot(V, H);
 
-    float cos_theta = min(abs(dot(V, H)), 1);
+    // Handle backfacing microfacets
+    if (VoH < 0.0) {
+        // Backfacing microfacet - use macro normal
+        H = N;
+        VoH = dot(V, N);
+    }
+
+    float cos_theta = min(VoH, 1);
     float sin_theta = sqrt(max(1.0 - cos_theta * cos_theta, 0));
+
+    bool cannot_refract = eta * sin_theta > 1.0;
+
+    if (cannot_refract) {
+        return reflect(-V, H);
+    }
 
     // Fresnel effect implicitly handled by choosing
     // no need to apply (1.0 - R) later
     float R = fresnelSchlick(cos_theta, eta);
 
-    bool cannot_refract = eta * sin_theta > 1.0;
-    if (cannot_refract || randFloat(seed) < R) {
+    if (randFloat(seed) < R) {
         return reflect(-V, H);
     }
 
@@ -1886,16 +1899,29 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
     float eta = front_face ? (1.0 / mat.ior) : mat.ior;
 
     vec3 H = sampleGGXVNDF_H(N, V, mat.roughness, seed);
+    float VoH = dot(V, H);
 
-    float cos_theta = min(abs(dot(V, H)), 1);
+    // Handle backfacing microfacets
+    if (VoH < 0.0) {
+        // Backfacing microfacet - use macro normal
+        H = N;
+        VoH = dot(V, N);
+    }
+
+    float cos_theta = min(VoH, 1);
     float sin_theta = sqrt(max(1.0 - cos_theta * cos_theta, 0));
+
+    bool cannot_refract = eta * sin_theta > 1.0;
+
+    if (cannot_refract) {
+        return reflect(-V, H);
+    }
 
     // Fresnel effect implicitly handled by choosing
     // no need to apply (1.0 - R) later
     float R = fresnelSchlick(cos_theta, eta);
 
-    bool cannot_refract = eta * sin_theta > 1.0;
-    if (cannot_refract || randFloat(seed) < R) {
+    if (randFloat(seed) < R) {
         return reflect(-V, H);
     }
 
