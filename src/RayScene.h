@@ -45,7 +45,6 @@ private:
     std::vector<f32> m_modelObjectsBuffer;
 
     // Textures
-    std::vector<MeshData::Texture*> m_textures;
     std::unique_ptr<gl::TextureBuffer> m_texturesTexBuffer;
     std::vector<f32> m_texturesBuffer;
 
@@ -64,7 +63,7 @@ public:
 
     void setSkyColor(glm::vec3 skyColor);
     glm::vec3 getSkyColor() const;
-    i32 getMaterialCount() const { return m_materials.size(); }
+    inline i32 getMaterialCount() const { return static_cast<u32>(m_materials.size()); }
     inline u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
     inline u32 getModelsCount() const { return static_cast<u32>(m_modelObjects.size()); }
 
