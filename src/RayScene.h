@@ -3,7 +3,6 @@
 #include "Material.h"
 #include "TraceableObject.h"
 #include "glUtilities/TextureBuffer.h"
-#include "glUtilities/util.h"
 
 #include <string> // std::string
 #include <vector> // std::vector
@@ -24,7 +23,6 @@ struct RayCamera {
 };
 
 class RayScene {
-    friend class TraceableObject;
 private:
     glm::vec3 m_skyColor = { 0.5, 0.7, 1.0 };
 
