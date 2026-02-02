@@ -1029,7 +1029,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
             incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
 
         rayColor *= contribution;
-        if (dot(rayColor, vec3(1)) < 1e-4) break;
+        if (dot(rayColor, vec3(1)) < 1e-6) break;
     }
 
     return incomingLight;
@@ -1940,23 +1940,59 @@ const mat3 XYZ_TO_RGB = mat3(
    -0.4986,  0.0415,  1.0570
 );
 
-// --- HELPER FUNCTIONS ---
-float gauss(float x, float alpha, float mu, float sigma1, float sigma2) {
-    float d = x - mu;
-    float s = d < 0.0 ? sigma1 : sigma2;
-    return alpha * exp(-0.5 * pow(d / s, 2.0));
-}
+// CIE 1931 Standard Observer (2*) - sampled every 10nm from 380-780nm
+const int CIE_SAMPLES = 41;
+const float CIE_WAVELENGTHS[41] = float[41](
+    380.0, 390.0, 400.0, 410.0, 420.0, 430.0, 440.0, 450.0, 460.0, 470.0,
+    480.0, 490.0, 500.0, 510.0, 520.0, 530.0, 540.0, 550.0, 560.0, 570.0,
+    580.0, 590.0, 600.0, 610.0, 620.0, 630.0, 640.0, 650.0, 660.0, 670.0,
+    680.0, 690.0, 700.0, 710.0, 720.0, 730.0, 740.0, 750.0, 760.0, 770.0, 780.0
+);
 
-// Approximates the eye's spectral response (CIE 1931)
+// X-bar values
+const float CIE_X[41] = float[41](
+    0.0014, 0.0042, 0.0143, 0.0435, 0.1344, 0.2839, 0.3483, 0.3362, 0.2908, 0.1954,
+    0.0956, 0.0320, 0.0049, 0.0093, 0.0633, 0.1655, 0.2904, 0.4334, 0.5945, 0.7621,
+    0.9163, 1.0263, 1.0622, 1.0026, 0.8544, 0.6424, 0.4479, 0.2835, 0.1649, 0.0874,
+    0.0468, 0.0227, 0.0114, 0.0058, 0.0029, 0.0014, 0.0007, 0.0003, 0.0002, 0.0001, 0.0000
+);
+
+// Y-bar values (luminance function)
+const float CIE_Y[41] = float[41](
+    0.0000, 0.0001, 0.0004, 0.0012, 0.0040, 0.0116, 0.0230, 0.0380, 0.0600, 0.0910,
+    0.1390, 0.2080, 0.3230, 0.5030, 0.7100, 0.8620, 0.9540, 0.9950, 0.9950, 0.9520,
+    0.8700, 0.7570, 0.6310, 0.5030, 0.3810, 0.2650, 0.1750, 0.1070, 0.0610, 0.0320,
+    0.0170, 0.0082, 0.0041, 0.0021, 0.0010, 0.0005, 0.0003, 0.0001, 0.0001, 0.0000, 0.0000
+);
+
+// Z-bar values
+const float CIE_Z[41] = float[41](
+    0.0065, 0.0201, 0.0679, 0.2074, 0.6456, 1.3856, 1.7471, 1.7721, 1.6692, 1.2876,
+    0.8130, 0.4652, 0.2720, 0.1582, 0.0782, 0.0422, 0.0203, 0.0087, 0.0039, 0.0021,
+    0.0017, 0.0011, 0.0008, 0.0003, 0.0002, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+    0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000
+);
+
 vec3 get_cie_xyz(float lambda) {
-    float x = gauss(lambda, 1.056, 599.8, 37.9, 31.0) +
-              gauss(lambda, 0.362, 442.0, 16.0, 26.7) +
-              gauss(lambda, -0.065, 501.1, 20.4, 26.2);
-    float y = gauss(lambda, 0.821, 568.8, 46.9, 40.5) +
-              gauss(lambda, 0.128, 530.9, 16.3, 31.1);
-    float z = gauss(lambda, 1.217, 437.0, 11.8, 36.0) +
-              gauss(lambda, 0.681, 459.0, 26.0, 13.8);
-    return vec3(x, y, z);
+    if (lambda < 380.0 || lambda > 780.0) return vec3(0.0);
+
+    // Manual binary search (unrolled for speed)
+    int idx = 0;
+
+    // Divide and conquer: 41 samples
+    if (lambda >= 580.0) idx += 20;  // Upper half
+    if (lambda >= CIE_WAVELENGTHS[idx + 10]) idx += 10;
+    if (lambda >= CIE_WAVELENGTHS[idx + 5]) idx += 5;
+    if (lambda >= CIE_WAVELENGTHS[idx + 2]) idx += 2;
+    if (lambda >= CIE_WAVELENGTHS[idx + 1]) idx += 1;
+
+    // Interpolate
+    float t = (lambda - CIE_WAVELENGTHS[idx]) / 10.0;
+    return vec3(
+        mix(CIE_X[idx], CIE_X[idx + 1], t),
+        mix(CIE_Y[idx], CIE_Y[idx + 1], t),
+        mix(CIE_Z[idx], CIE_Z[idx + 1], t)
+    );
 }
 
 // Convert Spectrum back to RGB
