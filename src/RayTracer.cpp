@@ -2378,6 +2378,10 @@ void main() {
 
     color /= CIE_Y_INTEGRAL;
 
+    // Adapt equal-energy white to D65
+    const vec3 D65_WHITE = vec3(0.95047, 1.00000, 1.08883);
+    color *= D65_WHITE;
+
     color = xyz_to_rgb(color);
 
     color = (texture(previousFrame, vec2(gl_FragCoord.xy) * rImgSize).rgb * (frameCount - 1.0) + color) / float(frameCount);
