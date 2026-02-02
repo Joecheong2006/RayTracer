@@ -2094,27 +2094,38 @@ float computeF0Spectral(in HitInfo info, float lambda) {
     // Base F0 for dielectrics (achromatic)
     float f0_dielectric = 0.16 * specular * specular;
 
-    // For metals, F0 is the material color (spectral)
-    float f0_metal = get_reflectance(lambda, info.mat.albedo);
+    // Spectral base color
+    float f0_colored = get_reflectance(lambda, info.mat.albedo);
 
-    // Blend based on metallic parameter
-    return mix(f0_dielectric, f0_metal, info.mat.metallic);
+    // Apply specular tint for dielectrics
+    float f0_dielectric_tinted = mix(f0_dielectric, f0_colored, tintAmount);
+
+    // Blend between dielectric (possibly tinted) and metal
+    return mix(f0_dielectric_tinted, f0_colored, info.mat.metallic);
 }
 
 // === Diffuse ===
 float shadeDiffuseSpectral(in HitInfo info, float lambda, float NoL, float NoV, float VoH) {
+    // Get spectral albedo
+    float albedo = get_reflectance(lambda, info.mat.albedo);
+
+    // Energy conservation: reduce diffuse by Fresnel reflection and metallic
     float F0 = computeF0Spectral(info, lambda);
     float F = fresnelSchlickScalar(VoH, F0);
     float kd = (1.0 - F) * (1.0 - info.mat.metallic);
 
-    float FD90 = 0.5 + 2.0 * F0;
-    float FL = fresnelSchlickScalar(NoL, 1.0);
-    float FV = fresnelSchlickScalar(NoV, 1.0);
+    // Disney diffuse with roughness-based retroreflection
+    float roughness = info.mat.roughness;
+    float FD90 = 0.5 + 2.0 * roughness * VoH * VoH;
 
-    float fresnelDiffuse = (1.0 + (FD90 - 1.0) * pow(1.0 - NoL, 5.0)) *
-                           (1.0 + (FD90 - 1.0) * pow(1.0 - NoV, 5.0));
+    float FL = pow(1.0 - NoL, 5.0);
+    float FV = pow(1.0 - NoV, 5.0);
 
-    return kd * get_reflectance(lambda, info.mat.albedo) * INV_PI;
+    float fresnelDiffuse = (1.0 + (FD90 - 1.0) * FL) * 
+                           (1.0 + (FD90 - 1.0) * FV);
+
+    // Final diffuse BRDF
+    return kd * albedo * fresnelDiffuse * INV_PI;
 }
 
 float diffusePdf(float NoL) {
@@ -2137,12 +2148,20 @@ float shadeSpecularSpectral(in HitInfo info, float lambda, float NoV, float NoL,
 }
 
 float shadeSubsurfaceSpectral(in HitInfo info, float lambda, float NoL, float NoV, float LoV) {
+    float albedo = get_reflectance(lambda, info.mat.albedo);
+
+    // Disney subsurface (Hanrahan-Krueger approximation)
     float FL = pow(1.0 - NoL, 5.0);
     float FV = pow(1.0 - NoV, 5.0);
-    float Fd90 = 0.5 + 2.0 * LoV * info.mat.roughness;
-    float Fd = mix(1.0, Fd90, FL) * mix(1.0, Fd90, FV);
 
-    return get_reflectance(lambda, info.mat.albedo) * Fd * INV_PI * info.mat.subsurface;
+    // Subsurface Fresnel
+    float Fss90 = LoV * info.mat.roughness;
+    float Fss = mix(1.0, Fss90, FL) * mix(1.0, Fss90, FV);
+
+    // Characteristic subsurface term with normalization
+    float ss = 1.25 * (Fss * (1.0 / (NoL + NoV) - 0.5) + 0.5);
+
+    return albedo * ss * INV_PI;
 }
 
 float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
