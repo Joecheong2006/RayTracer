@@ -1995,40 +1995,96 @@ vec3 get_cie_xyz(float lambda) {
     );
 }
 
-// Convert Spectrum back to RGB
-vec3 wavelength_to_rgb(float lambda, float radiance, float pdf) {
-    // Get XYZ response (human eye)
+// Convert Spectrum back to XYZ
+vec3 wavelength_to_xyz(float lambda, float radiance, float pdf) {
     vec3 xyz = get_cie_xyz(lambda);
-
-    // Convert to linear RGB
-    vec3 linear_rgb = XYZ_TO_RGB * xyz;
-    linear_rgb = max(linear_rgb, vec3(0.0));
-
-    // Apply radiance
-    linear_rgb *= radiance;
-
-    // Monte Carlo normalization
-    // Divide by PDF (wavelength sampling density)
-    // Divide by CIE_Y_INTEGRAL (photometric normalization)
-    linear_rgb /= (pdf * CIE_Y_INTEGRAL);
-
-    return linear_rgb;  // Returns LINEAR RGB (for accumulation)
+    xyz *= radiance / pdf;
+    return xyz;
 }
 
-// Convert RGB to Spectrum (Uplifting) 
-// using Gaussian peaks may switch to 
-// polynomial-based method in the future
-float get_reflectance(float lambda, vec3 targetLinear) {
-    // We must ensure that for a targetLinear of vec3(1.0), 
-    // the AVERAGE value across the spectrum is 1.0.
-    
-    float r = exp(-0.5 * pow((lambda - 640.0) / 22.0, 2.0));
-    float g = exp(-0.5 * pow((lambda - 535.0) / 22.0, 2.0));
-    float b = exp(-0.5 * pow((lambda - 465.0) / 22.0, 2.0));
+// Convert XYZ to RGB
+vec3 xyz_to_rgb(vec3 xyz) {
+    return max(XYZ_TO_RGB * xyz, 0.0);
+}
 
-    // The key is to avoid over-amplifying here. 
-    // Simply sum the peaks. For white, the peaks overlap to roughly 1.0.
-    return max(dot(targetLinear, vec3(r, g, b)), 0.0);
+// --- FAST SMITS METHOD (Optimized) ---
+
+// Pack all 7 spectra into a single array for better cache performance
+const float SMITS_TABLE[70] = float[70](
+    // White [0-9]
+    1.0000, 1.0000, 0.9999, 0.9993, 0.9992, 0.9998, 1.0000, 1.0000, 1.0000, 1.0000,
+    // Cyan [10-19]
+    0.9710, 0.9426, 1.0007, 1.0007, 1.0007, 1.0007, 0.1564, 0.0000, 0.0000, 0.0000,
+    // Magenta [20-29]
+    1.0000, 1.0000, 0.9685, 0.2229, 0.0000, 0.0458, 0.8369, 1.0000, 1.0000, 0.9959,
+    // Yellow [30-39]
+    0.0001, 0.0000, 0.1088, 0.6651, 1.0000, 1.0000, 0.9996, 0.9586, 0.9685, 0.9840,
+    // Red [40-49]
+    0.1012, 0.0515, 0.0000, 0.0000, 0.0000, 0.0000, 0.8325, 1.0149, 1.0149, 1.0149,
+    // Green [50-59]
+    0.0000, 0.0000, 0.0273, 0.7937, 1.0000, 0.9418, 0.1719, 0.0000, 0.0000, 0.0025,
+    // Blue [60-69]
+    1.0000, 1.0000, 0.8916, 0.3323, 0.0000, 0.0000, 0.0003, 0.0369, 0.0483, 0.0496
+);
+
+float smits_eval(float lambda, int spectrum_type) {
+    // Normalize lambda to [0, 9] range (380-740nm mapped to 10 samples)
+    lambda = clamp(lambda, 380.0, 740.0);
+    float t = (lambda - 380.0) / 40.0; // 360nm range / 9 intervals = 40nm per interval
+    int idx = int(floor(t));
+    idx = clamp(idx, 0, 8);
+    float frac = t - float(idx);
+
+    // Direct array access (much faster than if-else)
+    int offset = spectrum_type * 10;
+    float v0 = SMITS_TABLE[offset + idx];
+    float v1 = SMITS_TABLE[offset + idx + 1];
+
+    return mix(v0, v1, frac);
+}
+
+float get_reflectance(float lambda, vec3 rgb) {
+    rgb = clamp(rgb, 0.0, 1.0);
+
+    float result = 0.0;
+
+    // Smits decomposition (optimized with fewer branches)
+    float minVal = min(rgb.r, min(rgb.g, rgb.b));
+    result += minVal * smits_eval(lambda, 0); // white
+                                              //
+    vec3 excess = rgb - minVal;
+
+    // Determine decomposition path based on which channel is smallest
+    if (rgb.r == minVal) {
+        // Red is smallest
+        float midVal = min(excess.g, excess.b);
+        result += midVal * smits_eval(lambda, 1); // cyan
+        if (excess.g < excess.b) {
+            result += (excess.b - excess.g) * smits_eval(lambda, 6); // blue
+        } else {
+            result += (excess.g - excess.b) * smits_eval(lambda, 5); // green
+        }
+    } else if (rgb.g == minVal) {
+        // Green is smallest
+        float midVal = min(excess.r, excess.b);
+        result += midVal * smits_eval(lambda, 2); // magenta
+        if (excess.r < excess.b) {
+            result += (excess.b - excess.r) * smits_eval(lambda, 6); // blue
+        } else {
+            result += (excess.r - excess.b) * smits_eval(lambda, 4); // red
+        }
+    } else {
+        // Blue is smallest
+        float midVal = min(excess.r, excess.g);
+        result += midVal * smits_eval(lambda, 3); // yellow
+        if (excess.r < excess.g) {
+            result += (excess.g - excess.r) * smits_eval(lambda, 5); // green
+        } else {
+            result += (excess.r - excess.g) * smits_eval(lambda, 4); // red
+        }
+    }
+
+    return clamp(result, 0.0, 1.0);
 }
 
 float computeF0Spectral(in HitInfo info, float lambda) {
@@ -2240,7 +2296,7 @@ vec4 get_hero_wavelengths(float base_offset) {
 vec3 hero_wavelengths_to_rgb(vec4 lambdas, vec4 radiances, float pdf) {
     vec3 rgb = vec3(0.0);
     for (int k = 0; k < 4; k++) {
-        rgb += wavelength_to_rgb(lambdas[k], radiances[k], pdf);
+        rgb += wavelength_to_xyz(lambdas[k], radiances[k], pdf);
     }
     return rgb / float(NUM_HERO_WAVELENGTHS);
 }
@@ -2287,7 +2343,7 @@ void main() {
 
             // float lambda = (randFloat(seed) + i * ssq + j) * wl_dt + WL_MIN;
             // float radiance = traceColorWavelength(r, lambda, seed);
-            // color += wavelength_to_rgb(lambda, radiance, wl_pdf);
+            // color += wavelength_to_xyz(lambda, radiance, wl_pdf);
 
             float base_offset = (randFloat(seed) + i * ssq + j) * wl_dt;
             vec4 lambdas = get_hero_wavelengths(base_offset);
@@ -2300,6 +2356,11 @@ void main() {
     }
 
     color *= rssq * rssq;
+
+    color /= CIE_Y_INTEGRAL;
+
+    color = xyz_to_rgb(color);
+
     color = (texture(previousFrame, vec2(gl_FragCoord.xy) * rImgSize).rgb * (frameCount - 1.0) + color) / float(frameCount);
 
     fragColor = vec4(color, 1.0);
