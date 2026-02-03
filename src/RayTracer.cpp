@@ -1102,6 +1102,8 @@ out vec4 fragColor;
 #define MIN_DENOMINATOR 1e-8
 #define SPECTRAL_GAIN 12.432
 
+#define HERO_WAVELENGTH_ENABLE 0
+
 const float PI = 3.1415926;
 const float INV_PI = 1.0 / PI;
 const float RAD = PI / 180.0;
@@ -2381,10 +2383,7 @@ void main() {
                 + ((i + randFloat(seed)) * rssq) * rImgSize.y * camera.up;
             r.direction = normalize(r.direction - cameraCenter);
 
-            // float lambda = (randFloat(seed) + i * ssq + j) * wl_dt + WL_MIN;
-            // float radiance = traceColorWavelength(r, lambda, seed);
-            // color += wavelength_to_xyz(lambda, radiance, wl_pdf);
-
+#if HERO_WAVELENGTH_ENABLE
             float base_offset = (randFloat(seed) + i * ssq + j) * wl_dt;
             vec4 lambdas = get_hero_wavelengths(base_offset);
             vec4 radiances;
@@ -2392,6 +2391,11 @@ void main() {
                 radiances[k] = traceColorWavelength(r, lambdas[k], seed);
             }
             color += hero_wavelengths_to_rgb(lambdas, radiances, wl_pdf);
+#else
+            float lambda = (randFloat(seed) + i * ssq + j) * wl_dt + WL_MIN;
+            float radiance = traceColorWavelength(r, lambda, seed);
+            color += wavelength_to_xyz(lambda, radiance, wl_pdf);
+#endif
         }
     }
 
