@@ -2076,7 +2076,7 @@ float get_reflectance(float lambda, vec3 rgb) {
     return clamp(result, 0.0, 1.0);
 }
 
-float computeF0Spectral(in HitInfo info, float lambda) {
+float computeF0Spectral(in HitInfo info, float spectral_albedo, float lambda) {
     float specular = clamp(info.mat.specular, 0.0, 1.0);
     float tintAmount = clamp(info.mat.specularTint, 0.0, 1.0);
 
@@ -2084,7 +2084,7 @@ float computeF0Spectral(in HitInfo info, float lambda) {
     float f0_dielectric = 0.16 * specular * specular;
 
     // Spectral base color
-    float f0_colored = get_reflectance(lambda, info.mat.albedo);
+    float f0_colored = spectral_albedo;
 
     // Apply specular tint for dielectrics
     float f0_dielectric_tinted = mix(f0_dielectric, f0_colored, tintAmount);
@@ -2094,12 +2094,9 @@ float computeF0Spectral(in HitInfo info, float lambda) {
 }
 
 // === Diffuse ===
-float shadeDiffuseSpectral(in HitInfo info, float lambda, float NoL, float NoV, float VoH) {
-    // Get spectral albedo
-    float albedo = get_reflectance(lambda, info.mat.albedo);
-
+float shadeDiffuseSpectral(in HitInfo info, float spectral_albedo, float lambda, float NoL, float NoV, float VoH) {
     // Energy conservation: reduce diffuse by Fresnel reflection and metallic
-    float F0 = computeF0Spectral(info, lambda);
+    float F0 = computeF0Spectral(info, spectral_albedo, lambda);
     float F = fresnelSchlickScalar(VoH, F0);
     float kd = (1.0 - F) * (1.0 - info.mat.metallic);
 
@@ -2114,7 +2111,7 @@ float shadeDiffuseSpectral(in HitInfo info, float lambda, float NoL, float NoV, 
                            (1.0 + (FD90 - 1.0) * FV);
 
     // Final diffuse BRDF
-    return kd * albedo * fresnelDiffuse * INV_PI;
+    return kd * spectral_albedo * fresnelDiffuse * INV_PI;
 }
 
 float diffusePdf(float NoL) {
@@ -2128,17 +2125,15 @@ float specularPdf(float NoH, float VoH, float roughness) {
     return D * NoH / max(4.0 * VoH, MIN_DENOMINATOR);
 }
 
-float shadeSpecularSpectral(in HitInfo info, float lambda, float NoV, float NoL, float NoH, float VoH) {
-    float F0 = computeF0Spectral(info, lambda);
+float shadeSpecularSpectral(in HitInfo info, float spectral_albedo, float lambda, float NoV, float NoL, float NoH, float VoH) {
+    float F0 = computeF0Spectral(info, spectral_albedo, lambda);
     float F = fresnelSchlickScalar(VoH, F0);
     float D = NDF_GGX(NoH, info.mat.roughness);
     float G = geometrySmith(NoV, NoL, info.mat.roughness);
     return (D * G * F) / max(4.0 * NoV * NoL, MIN_DENOMINATOR);
 }
 
-float shadeSubsurfaceSpectral(in HitInfo info, float lambda, float NoL, float NoV, float LoV) {
-    float albedo = get_reflectance(lambda, info.mat.albedo);
-
+float shadeSubsurfaceSpectral(in HitInfo info, float spectral_albedo, float lambda, float NoL, float NoV, float LoV) {
     // Disney subsurface (Hanrahan-Krueger approximation)
     float FL = pow(1.0 - NoL, 5.0);
     float FV = pow(1.0 - NoV, 5.0);
@@ -2150,7 +2145,7 @@ float shadeSubsurfaceSpectral(in HitInfo info, float lambda, float NoL, float No
     // Characteristic subsurface term with normalization
     float ss = 1.25 * (Fss * (1.0 / (NoL + NoV) - 0.5) + 0.5);
 
-    return albedo * ss * INV_PI;
+    return spectral_albedo * ss * INV_PI;
 }
 
 float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
@@ -2225,9 +2220,11 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         r.origin = info.point + L * 0.001;
         r.direction = L;
 
+        float spectral_albedo = get_reflectance(lambda, info.mat.albedo);
+
         if (trans == 1) {
             if (!info.front_face) {
-                float spectral_albedo = max(get_reflectance(lambda, info.mat.albedo), MIN_DENOMINATOR);
+                float spectral_albedo = max(spectral_albedo, MIN_DENOMINATOR);
                 float absorption = -log(spectral_albedo);
                 float transmittance = exp(-absorption * info.t); // Beer–Lambert
                 spectral_throughput *= transmittance;
@@ -2240,9 +2237,9 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         }
 
         // Always evaluate both BRDFs and PDFs for MIS
-        float brdf_spec_s = shadeSpecularSpectral(info, lambda, NoV, NoL, NoH, VoH);
-        float brdf_diff_s = shadeDiffuseSpectral(info, lambda, NoL, NoV, VoH);
-        float brdf_sss_s = shadeSubsurfaceSpectral(info, lambda, NoL, NoV, LoV);
+        float brdf_spec_s = shadeSpecularSpectral(info, spectral_albedo, lambda, NoV, NoL, NoH, VoH);
+        float brdf_diff_s = shadeDiffuseSpectral(info, spectral_albedo, lambda, NoL, NoV, VoH);
+        float brdf_sss_s = shadeSubsurfaceSpectral(info, spectral_albedo, lambda, NoL, NoV, LoV);
 
         float p_surf = 1.0 - transmissionProb;
 
