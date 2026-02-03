@@ -1934,12 +1934,6 @@ const float WL_MAX = 780.0;
 const float WL_RANGE = WL_MAX - WL_MIN;
 const float CIE_Y_INTEGRAL = 106.856895;
 
-const mat3 XYZ_TO_RGB = mat3(
-    3.2406, -0.9689,  0.0557,
-   -1.5372,  1.8758, -0.2040,
-   -0.4986,  0.0415,  1.0570
-);
-
 // CIE 1931 Standard Observer (2*) - sampled every 10nm from 380-780nm
 const int CIE_SAMPLES = 41;
 const float CIE_WAVELENGTHS[41] = float[41](
@@ -2000,11 +1994,6 @@ vec3 wavelength_to_xyz(float lambda, float radiance, float pdf) {
     vec3 xyz = get_cie_xyz(lambda);
     xyz *= radiance / pdf;
     return xyz;
-}
-
-// Convert XYZ to RGB
-vec3 xyz_to_rgb(vec3 xyz) {
-    return max(XYZ_TO_RGB * xyz, 0.0);
 }
 
 // --- FAST SMITS METHOD (Optimized) ---
@@ -2377,12 +2366,6 @@ void main() {
     color *= rssq * rssq;
 
     color /= CIE_Y_INTEGRAL;
-
-    // Adapt equal-energy white to D65
-    const vec3 D65_WHITE = vec3(0.95047, 1.00000, 1.08883);
-    color *= D65_WHITE;
-
-    color = xyz_to_rgb(color);
 
     color = (texture(previousFrame, vec2(gl_FragCoord.xy) * rImgSize).rgb * (frameCount - 1.0) + color) / float(frameCount);
 

@@ -44,8 +44,46 @@ vec3 tonemap_aces(vec3 color) {
     return clamp(result, 0.0, 1.0);
 }
 
+const vec3 E_WHITE = vec3(0.997065, 1.002169, 0.988182);
+const vec3 D65_WHITE = vec3(0.95047, 1.00000, 1.08883);
+
+const mat3 BRADFORD_MA = mat3(
+     0.8951, -0.7502,  0.0389,  // Column 0 (was row 0)
+     0.2664,  1.7135, -0.0685,  // Column 1 (was row 1)
+    -0.1614,  0.0367,  1.0296   // Column 2 (was row 2)
+);
+
+const mat3 BRADFORD_MA_INV = mat3(
+     0.9870,  0.4323, -0.0085,  // Column 0
+    -0.1471,  0.5184,  0.0400,  // Column 1
+     0.1600,  0.0493,  0.9685   // Column 2
+);
+
+vec3 chromatic_adapt_E_to_D65(vec3 xyz) {
+    vec3 rgb_src = BRADFORD_MA * E_WHITE;
+    vec3 rgb_dst = BRADFORD_MA * D65_WHITE;
+    vec3 gain = rgb_dst / rgb_src;
+    vec3 adapted = BRADFORD_MA * xyz;
+    adapted *= gain;
+    adapted = BRADFORD_MA_INV * adapted;
+    return adapted;
+}
+
+const mat3 XYZ_TO_RGB = mat3(
+    3.2406, -0.9689,  0.0557,
+   -1.5372,  1.8758, -0.2040,
+   -0.4986,  0.0415,  1.0570
+);
+
+vec3 xyz_to_rgb(vec3 xyz) {
+    return max(XYZ_TO_RGB * xyz, 0.0);
+}
+
 void main() {
     vec3 color = texture(screenTexture, uv).rgb;
+
+    color = chromatic_adapt_E_to_D65(color);
+    color = xyz_to_rgb(color);
 
     color = tonemap_aces(color);
 
