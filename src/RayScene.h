@@ -25,6 +25,7 @@ struct RayCamera {
 class RayScene {
 private:
     glm::vec3 m_skyColor = { 0.5, 0.7, 1.0 };
+    glm::vec3 m_linearSkyColor = glm::pow(m_skyColor, glm::vec3(2.2));
 
     // Materials
     std::unique_ptr<gl::TextureBuffer> m_materialTexturesTexBuffer;
@@ -63,6 +64,7 @@ public:
 
     void setSkyColor(glm::vec3 skyColor);
     glm::vec3 getSkyColor() const;
+    glm::vec3 getLinearSkyColor() const;
     inline u32 getObjectsCount() const { return static_cast<u32>(m_traceableObjects.size()); }
     inline u32 getModelsCount() const { return static_cast<u32>(m_modelObjects.size()); }
 

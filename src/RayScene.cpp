@@ -116,10 +116,15 @@ void RayScene::bindMaterialTextures(i32 slot) const {
 
 void RayScene::setSkyColor(glm::vec3 skyColor) {
     m_skyColor = skyColor;
+    m_linearSkyColor = glm::pow(m_skyColor, glm::vec3(2.2));
 }
 
 glm::vec3 RayScene::getSkyColor() const {
     return m_skyColor;
+}
+
+glm::vec3 RayScene::getLinearSkyColor() const {
+    return m_linearSkyColor;
 }
 
 void RayScene::addModel(const std::string &modelPath) {
