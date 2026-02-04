@@ -1100,7 +1100,6 @@ out vec4 fragColor;
 
 #define SeedType uint
 #define MIN_DENOMINATOR 1e-8
-#define SPECTRAL_GAIN 12.432
 
 #define HERO_WAVELENGTH_ENABLE 0
 
