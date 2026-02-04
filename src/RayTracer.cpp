@@ -2477,7 +2477,7 @@ void RayTracer::renderToTexture(const RayCamera &camera, const RayScene &scene) 
     m_shader->setUniform1i("objectCount", scene.getObjectsCount());
     m_shader->setUniform1i("modelsCount", scene.getModelsCount());
     m_shader->setUniform1u("frameCount", m_frameCount);
-    m_shader->setUniform3f("skyColor", scene.getSkyColor());
+    m_shader->setUniform3f("skyColor", scene.getLinearSkyColor());
 
     m_shader->setUniform1f("camera.fov", camera.fov);
     m_shader->setUniform2f("camera.resolution", camera.resolution);
