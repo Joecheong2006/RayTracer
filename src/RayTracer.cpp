@@ -2405,8 +2405,8 @@ void main() {
     color = chromatic_adapt_E_to_D65(color);
     color = xyz_to_rgb(color);
 
+    // Accumulate color
     color = (texture(previousFrame, vec2(gl_FragCoord.xy) * rImgSize).rgb * (frameCount - 1.0) + color) / float(frameCount);
-
     fragColor = vec4(color, 1.0);
 }
 )";
