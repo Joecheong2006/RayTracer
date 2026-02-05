@@ -20,7 +20,7 @@ namespace gl {
     public:
         ShaderProgram();
         ShaderProgram(const ShaderProgram &shader);
-        ~ShaderProgram();
+        virtual ~ShaderProgram();
 
         void create();
         void attachShader(u32 type, const std::string &path);
