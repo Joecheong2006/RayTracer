@@ -33,6 +33,7 @@ public:
     {}
 
     virtual ~TraceableObject() = default;
+    virtual std::unique_ptr<TraceableObject> clone() const = 0;
 
     virtual void write(std::vector<f32> &buffer) const = 0;
     virtual bool inAABB(const AABB &box) const = 0;
@@ -51,6 +52,10 @@ struct Sphere : public TraceableObject {
     glm::vec3 center = { 0, 0, 0 };
     f32 radius = 1.0;
 
+    virtual std::unique_ptr<TraceableObject> clone() const override {
+        return std::make_unique<Sphere>(*this);
+    }
+
 };
 
 struct Quad : public TraceableObject {
@@ -61,6 +66,11 @@ struct Quad : public TraceableObject {
 
     glm::vec3 q, u, v;
     bool cullFace;
+
+    virtual std::unique_ptr<TraceableObject> clone() const override {
+        return std::make_unique<Quad>(*this);
+    }
+
 };
 
 struct Triangle : public TraceableObject {
@@ -72,6 +82,11 @@ struct Triangle : public TraceableObject {
 
     glm::vec3 posA, posB, posC;
     glm::vec3 normA, normB, normC;
+
+    virtual std::unique_ptr<TraceableObject> clone() const override {
+        return std::make_unique<Triangle>(*this);
+    }
+
 };
 
 namespace tinygltf {
@@ -102,11 +117,21 @@ struct Model : public TraceableObject {
     Model(std::string modelPath);
     Model(Model&&) = default;
 
+    Model(const Model &model)
+        : TraceableObject(TraceableType::Model)
+        , meshData(model.meshData)
+        , bvh(model.bvh)
+    {}
+
     virtual void write(std::vector<f32> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
 
     MeshData meshData;
     BVHTree bvh;
+
+    virtual std::unique_ptr<TraceableObject> clone() const override {
+        return std::make_unique<Model>(*this);
+    }
 
 };
 

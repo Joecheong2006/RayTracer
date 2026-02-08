@@ -2,6 +2,7 @@
 
 #include <memory> // std::unique_ptr
 
+#include "RayCamera.h"
 #include "RayScene.h"
 #include "RayTracer.h"
 

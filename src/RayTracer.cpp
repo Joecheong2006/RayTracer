@@ -3,6 +3,7 @@
 #include "glUtilities/ShaderProgram.h"
 #include "glUtilities/Texture2D.h"
 
+#include "RayCamera.h"
 #include "RayScene.h"
 
 #include <glad/glad.h>
@@ -2459,20 +2460,7 @@ void RayTracer::renderToTexture(const RayCamera &camera, const RayScene &scene) 
     getPreviousFrame().bind(0);
     m_shader->setUniform1i("previousFrame", 0);
 
-    scene.bindObjects(1);
-    m_shader->setUniform1i("objectsBuffer", 1);
-
-    scene.bindMaterials(2);
-    m_shader->setUniform1i("materialsBuffer", 2);
-
-    scene.bindMaterialTextures(3);
-    m_shader->setUniform1i("materialTexturesBuffer", 3);
-
-    scene.bindModelObjects(4);
-    m_shader->setUniform1i("modelObjectsBuffer", 4);
-
-    scene.bindTextures(5);
-    m_shader->setUniform1i("texturesBuffer", 5);
+    scene.bindShader(*m_shader);
 
     m_shader->setUniform1i("objectCount", scene.getObjectsCount());
     m_shader->setUniform1i("modelsCount", scene.getModelsCount());

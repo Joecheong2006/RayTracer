@@ -1,20 +1,11 @@
 #include "RayScene.h"
 
+#include "glUtilities/ShaderProgram.h"
 #include "glUtilities/TextureBuffer.h"
 #include "TraceableObject.h"
 #include <glad/glad.h>
 
 #include <iostream>
-
-void RayCamera::updateDirection() {
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(180 + yaw)) * cos(glm::radians(pitch));
-    direction.y = sin(glm::radians(pitch));
-    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    forward = glm::normalize(direction);
-    right = normalize(-glm::cross(forward, glm::vec3(0, 1, 0)));
-    up = glm::cross(-right, forward);
-}
 
 #include <tinygltf/tiny_gltf.h>
 #include <tinygltf/stb_image.h>
@@ -36,32 +27,32 @@ static void load_meshdata_texture(std::vector<f32> &buffer, MeshData::Texture &t
 }
 
 // TODO: changed this to static hepler function
-void RayScene::load_material(const Material &material) {
+void load_material(std::vector<f32> &materialBuffer, std::vector<i32> &texturesBuffer, const Material &material) {
     // Load material texture
-    m_materialTexturesBuffer.push_back(material.texture.normalTexture);
-    m_materialTexturesBuffer.push_back(material.texture.baseColorTexture);
-    m_materialTexturesBuffer.push_back(material.texture.metallicRoughnessTexture);
-    m_materialTexturesBuffer.push_back(material.texture.emissiveTexture);
-    m_materialTexturesBuffer.push_back(material.texture.transmissionTexture);
-    m_materialTexturesBuffer.push_back(material.texture.occlusionTexture);
+    texturesBuffer.push_back(material.texture.normalTexture);
+    texturesBuffer.push_back(material.texture.baseColorTexture);
+    texturesBuffer.push_back(material.texture.metallicRoughnessTexture);
+    texturesBuffer.push_back(material.texture.emissiveTexture);
+    texturesBuffer.push_back(material.texture.transmissionTexture);
+    texturesBuffer.push_back(material.texture.occlusionTexture);
 
     // Load material
-    m_materialsBuffer.insert(m_materialsBuffer.end(),
+    materialBuffer.insert(materialBuffer.end(),
             &material.emissionColor.x, &material.emissionColor.x + 3);
-    m_materialsBuffer.push_back(material.emissionStrength);
-    m_materialsBuffer.insert(m_materialsBuffer.end(),
+    materialBuffer.push_back(material.emissionStrength);
+    materialBuffer.insert(materialBuffer.end(),
             &material.albedo.x, &material.albedo.x + 3);
-    m_materialsBuffer.push_back(material.subsurface);
-    m_materialsBuffer.push_back(material.roughness);
-    m_materialsBuffer.push_back(material.metallic);
-    m_materialsBuffer.push_back(material.specular);
-    m_materialsBuffer.push_back(material.specularTint);
-    m_materialsBuffer.push_back(material.transmission);
-    m_materialsBuffer.push_back(material.ior);
+    materialBuffer.push_back(material.subsurface);
+    materialBuffer.push_back(material.roughness);
+    materialBuffer.push_back(material.metallic);
+    materialBuffer.push_back(material.specular);
+    materialBuffer.push_back(material.specularTint);
+    materialBuffer.push_back(material.transmission);
+    materialBuffer.push_back(material.ior);
 
-    m_materialsBuffer.push_back(material.alphaCut);
-    m_materialsBuffer.push_back(material.normalScale);
-    m_materialsBuffer.push_back(material.occlusionStrength);
+    materialBuffer.push_back(material.alphaCut);
+    materialBuffer.push_back(material.normalScale);
+    materialBuffer.push_back(material.occlusionStrength);
 }
 
 void RayScene::initialize() {
@@ -83,7 +74,30 @@ void RayScene::initialize() {
     // Added default material
     Material defaultMat;
     m_materials.push_back(defaultMat);
-    load_material(defaultMat);
+    load_material(m_materialsBuffer, m_materialTexturesBuffer, defaultMat);
+}
+
+void RayScene::bindShader(gl::ShaderProgram &shader) const {
+    // Bind objects
+    m_objectsTexBuffer->bind(1);
+    shader.setUniform1i("objectsBuffer", 1);
+
+    // Bind materials
+    m_materialsTexBuffer->bind(2);
+    shader.setUniform1i("materialsBuffer", 2);
+
+    // Bind mateiral textures
+    m_materialTexturesTexBuffer->bind(3);
+    shader.setUniform1i("materialTexturesBuffer", 3);
+
+    // Bind models
+    m_modelObjectsTexBuffer->bind(4);
+    shader.setUniform1i("modelObjectsBuffer", 4);
+
+    // Bind textures
+    m_texturesTexBuffer->bind(5);
+    shader.setUniform1i("texturesBuffer", 5);
+
 }
 
 void RayScene::submit() {
@@ -92,26 +106,6 @@ void RayScene::submit() {
     m_texturesTexBuffer->setBuffer(m_texturesBuffer.data(), m_texturesBuffer.size() * sizeof(f32));
     m_materialTexturesTexBuffer->setBuffer(m_materialTexturesBuffer.data(), m_materialTexturesBuffer.size() * sizeof(i32));
     m_materialsTexBuffer->setBuffer(m_materialsBuffer.data(), m_materialsBuffer.size() * sizeof(f32));
-}
-
-void RayScene::bindObjects(i32 slot) const {
-    m_objectsTexBuffer->bind(slot);
-}
-
-void RayScene::bindModelObjects(i32 slot) const {
-    m_modelObjectsTexBuffer->bind(slot);
-}
-
-void RayScene::bindTextures(i32 slot) const {
-    m_texturesTexBuffer->bind(slot);
-}
-
-void RayScene::bindMaterials(i32 slot) const {
-    m_materialsTexBuffer->bind(slot);
-}
-
-void RayScene::bindMaterialTextures(i32 slot) const {
-    m_materialTexturesTexBuffer->bind(slot);
 }
 
 void RayScene::setSkyColor(glm::vec3 skyColor) {
@@ -195,7 +189,7 @@ void RayScene::addModel(const std::string &modelPath) {
             std::cout << " at " << material.texture.occlusionTexture << std::endl;
         }
 
-        load_material(material);
+        load_material(m_materialsBuffer, m_materialTexturesBuffer, material);
     }
     m_materials.insert(m_materials.end(), meshData.materials.begin(), meshData.materials.end());
 
@@ -204,5 +198,29 @@ void RayScene::addModel(const std::string &modelPath) {
     std::cout << "identifiers: " << meshData.identifiers.size() << std::endl;
     std::cout << "\tTriangles Count: " << meshData.identifiers.size() << '\n';
     std::cout << "\tMaterials Count: " << meshData.materials.size() << '\n';
+}
+
+void RayScene::addObject(const TraceableObject &obj, const Material &material) {
+    m_traceableObjects.push_back(obj.clone());
+
+    auto &object = m_traceableObjects.back();
+
+    object->m_materialIndex = m_materials.size();
+    object->writeHeader(m_objectsBuffer);
+    object->write(m_objectsBuffer);
+
+    m_materials.push_back(material);
+    load_material(m_materialsBuffer, m_materialTexturesBuffer, material);
+}
+
+void RayScene::addObject(const TraceableObject &obj, int materialIndex) {
+    ASSERT(materialIndex >= 0 && materialIndex < m_materials.size());
+    m_traceableObjects.push_back(obj.clone());
+
+    auto &object = m_traceableObjects.back();
+
+    object->m_materialIndex = materialIndex;
+    object->writeHeader(m_objectsBuffer);
+    object->write(m_objectsBuffer);
 }
 

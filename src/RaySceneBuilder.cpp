@@ -1,4 +1,5 @@
 #include "RaySceneBuilder.h"
+#include "TraceableObject.h"
 #include "RayScene.h"
 #include <glm/gtc/matrix_transform.hpp> // for glm::mat4_cast
 
@@ -10,36 +11,59 @@ void RaySceneBuilder::RoughnessMetallicDemo(RayScene &scene) {
         for (int j = 0; j <= 1; ++j) {
             m.roughness = i / 10.0;
             m.metallic = j * (1 - i / 10.0);
-            scene.addObject<Sphere>(
-                    m, glm::vec3{i * 0.3 - 10 * 0.5 * 0.3, 0, 2 - j * 0.5}, 0.1);
+            scene.addObject(
+                    Sphere{glm::vec3{i * 0.3 - 10 * 0.5 * 0.3, 0, 2 - j * 0.5}, 0.1},
+                    m
+                );
         }
     }
 
     m = Material();
-    scene.addObject<Quad>(m, glm::vec3{ -5, -0.1, 0 }, glm::vec3{ 10, 0, 0 }, glm::vec3{ 0, 0, 10 });
+    scene.addObject(
+            Quad{glm::vec3{ -5, -0.1, 0 }, glm::vec3{ 10, 0, 0 }, glm::vec3{ 0, 0, 10 }},
+            m
+        );
 
     m.emissionColor = { 1, 1, 1 };
     m.emissionStrength = 100;
-    scene.addObject<Sphere>(m, glm::vec3{ -5, 8, -15 }, 1.5);
+    scene.addObject(
+            Sphere{glm::vec3{ -5, 8, -15 }, 1.5},
+            m
+        );
 }
 
 void RaySceneBuilder::ThreeColorDemo(RayScene &scene) {
     Material m;
-    scene.addObject<Sphere>(m, glm::vec3{ 0, 0, 1 }, 0.12);
+    scene.addObject(
+            Sphere{glm::vec3{ 0, 0, 1 }, 0.12},
+            m
+        );
 
-    scene.addObject<Quad>(m, glm::vec3{ -5, -0.1, 0 }, glm::vec3{ 10, 0, 0 }, glm::vec3{ 0, 0, 10 });
+    scene.addObject(
+            Quad{glm::vec3{ -5, -0.1, 0 }, glm::vec3{ 10, 0, 0 }, glm::vec3{ 0, 0, 10 }},
+            m
+        );
 
     float l = 0.3;
 
     m.emissionColor = { 1, 0.2, 0.2 };
     m.emissionStrength = 140;
-    scene.addObject<Sphere>(m, glm::vec3{ l, 0.5, 1.0 - l }, 0.03);
+    scene.addObject(
+            Sphere{glm::vec3{ l, 0.5, 1.0 - l }, 0.03},
+            m
+        );
 
     m.emissionColor = { 0.2, 0.2, 1 };
-    scene.addObject<Sphere>(m, glm::vec3{ -l, 0.5, 1.0 - l }, 0.03);
+    scene.addObject(
+            Sphere{glm::vec3{ -l, 0.5, 1.0 - l }, 0.03},
+            m
+        );
 
     m.emissionColor = { 0.2, 1.0, 0.2 };
-    scene.addObject<Sphere>(m, glm::vec3{ 0, 0.5, 1 + l * sqrt(2) - 0.1 }, 0.03);
+    scene.addObject(
+            Sphere{glm::vec3{ 0, 0.5, 1 + l * sqrt(2) - 0.1 }, 0.03},
+            m
+        );
 
     m.emissionColor = { 1, 1, 1 };
     m.emissionStrength = 1;
@@ -56,10 +80,11 @@ void RaySceneBuilder::BuildCornellBox(RayScene &scene, glm::vec3 pos, float boxL
     m.emissionStrength = emissionStrenth;
 
     // Construct Light
-    scene.addObject<Quad>(m,
-                pos + glm::vec3{ (boxLen - lightLen) * 0.5, boxLen - 1e-4, boxLen * 0.5 - lightLen },
+    scene.addObject(
+                Quad{pos + glm::vec3{ (boxLen - lightLen) * 0.5, boxLen - 1e-4, boxLen * 0.5 - lightLen },
                 glm::vec3{ lightLen, 0, 0 },
-                glm::vec3{ 0, 0, lightLen }
+                glm::vec3{ 0, 0, lightLen }},
+                m
             );
 
     // Construct Quads
@@ -67,50 +92,60 @@ void RaySceneBuilder::BuildCornellBox(RayScene &scene, glm::vec3 pos, float boxL
 
     // Left Quad
     m.albedo = red;
-    scene.addObject<Quad>(m,
-                pos,
+    scene.addObject(
+                Quad{pos,
                 glm::vec3{ 0, boxLen, 0 },
-                glm::vec3{ 0, 0, boxLen }
+                glm::vec3{ 0, 0, boxLen } },
+                m
             );
 
     // Right Quad
     m.albedo = green;
-    scene.addObject<Quad>(m,
-                pos + glm::vec3{ boxLen, 0, 0 },
+    scene.addObject(
+                Quad{pos + glm::vec3{ boxLen, 0, 0 },
                 glm::vec3{ 0, boxLen, 0 },
-                glm::vec3{ 0, 0, boxLen }
+                glm::vec3{ 0, 0, boxLen } },
+                m
             );
 
     m = Material();
 
     // Down Quad
-    scene.addObject<Quad>(m,
+    scene.addObject(
+                Quad{
                 pos,
                 glm::vec3{ boxLen, 0, 0 },
-                glm::vec3{ 0, 0, boxLen }
+                glm::vec3{ 0, 0, boxLen } },
+                m
             );
 
     // Top Quad
-    scene.addObject<Quad>(m,
+    scene.addObject(
+                Quad{
                 pos + glm::vec3{ 0, boxLen, 0 },
                 glm::vec3{ boxLen, 0, 0 },
-                glm::vec3{ 0, 0, boxLen }
+                glm::vec3{ 0, 0, boxLen } },
+                m
             );
 
     // Back Quad
-    scene.addObject<Quad>(m,
+    scene.addObject(
+                Quad{
                 pos + glm::vec3{ 0, 0, boxLen },
                 glm::vec3{ 0, boxLen, 0 },
-                glm::vec3{ boxLen, 0, 0 }
+                glm::vec3{ boxLen, 0, 0 } },
+                m
             );
 
     // Front Quad
     if (includedFront) {
-        scene.addObject<Quad>(m,
+        scene.addObject(
+                    Quad{
                     pos + glm::vec3{ 0, 0, 0 },
                     glm::vec3{ boxLen, 0, 0 },
                     glm::vec3{ 0, boxLen, 0 },
-                    true
+                    true},
+                    m
                 );
     }
 }
@@ -130,45 +165,57 @@ void RaySceneBuilder::BuildBox(RayScene &scene, const Material &material, glm::v
     };
 
     // Top Quad
-    scene.addObject<Quad>(material,
+    scene.addObject(
+                Quad{  
                 pos + vertics[0],
                 vertics[1] - vertics[0],
-                vertics[4] - vertics[0]
+                vertics[4] - vertics[0] },
+                material
             );
 
     // Down Quad
-    scene.addObject<Quad>(material,
+    scene.addObject(
+                Quad{  
                 pos + vertics[2],
                 vertics[3] - vertics[2],
-                vertics[6] - vertics[2]
+                vertics[6] - vertics[2] },
+                material
             );
 
     // Left Quad
-    scene.addObject<Quad>(material,
+    scene.addObject(
+                Quad{  
                 pos + vertics[1],
                 vertics[5] - vertics[1],
-                vertics[3] - vertics[1]
+                vertics[3] - vertics[1] },
+                material
             );
 
     // Right Quad
-    scene.addObject<Quad>(material,
+    scene.addObject(
+                Quad{  
                 pos + vertics[0],
                 vertics[2] - vertics[0],
-                vertics[4] - vertics[0]
+                vertics[4] - vertics[0] },
+                material
             );
 
     // Back Quad
-    scene.addObject<Quad>(material,
+    scene.addObject(
+                Quad{  
                 pos + vertics[0],
                 vertics[1] - vertics[0],
-                vertics[2] - vertics[0]
+                vertics[2] - vertics[0] },
+                material
             );
 
     // Front Quad
-    scene.addObject<Quad>(material,
+    scene.addObject(
+                Quad{  
                 pos + vertics[4],
                 vertics[6] - vertics[4],
-                vertics[5] - vertics[4]
+                vertics[5] - vertics[4] },
+                material
             );
 
 }
