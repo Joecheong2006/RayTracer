@@ -14,7 +14,7 @@ namespace gl {
         void setBuffer(const void *data, i64 size, i32 usage = 0, i32 internalFormat = 0);
         void updateBuffer(const void *data, i32 offset, i64 size);
 
-        void bind(u32 slot) const;
+        void bindToUnit(u32 slot) const;
         void unbind() const;
 
         i32 getSize() const { return m_size; }

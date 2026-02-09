@@ -79,23 +79,23 @@ void RayScene::initialize() {
 
 void RayScene::bindShader(gl::ShaderProgram &shader) const {
     // Bind objects
-    m_objectsTexBuffer->bind(1);
+    m_objectsTexBuffer->bindToUnit(1);
     shader.setUniform1i("objectsBuffer", 1);
 
     // Bind materials
-    m_materialsTexBuffer->bind(2);
+    m_materialsTexBuffer->bindToUnit(2);
     shader.setUniform1i("materialsBuffer", 2);
 
     // Bind mateiral textures
-    m_materialTexturesTexBuffer->bind(3);
+    m_materialTexturesTexBuffer->bindToUnit(3);
     shader.setUniform1i("materialTexturesBuffer", 3);
 
     // Bind models
-    m_modelObjectsTexBuffer->bind(4);
+    m_modelObjectsTexBuffer->bindToUnit(4);
     shader.setUniform1i("modelObjectsBuffer", 4);
 
     // Bind textures
-    m_texturesTexBuffer->bind(5);
+    m_texturesTexBuffer->bindToUnit(5);
     shader.setUniform1i("texturesBuffer", 5);
 
 }

@@ -43,14 +43,14 @@ namespace gl {
         m_size = size;
     }
 
-    void TextureBuffer::bind(u32 slot) const {
-        GLCALL(glActiveTexture(GL_TEXTURE0 + slot));
-        GLCALL(glBindTexture(GL_TEXTURE_BUFFER, m_tboTexture));
-    }
-
     void TextureBuffer::unbind() const {
         GLCALL(glBindBuffer(GL_TEXTURE_BUFFER, 0));
         GLCALL(glBindTexture(GL_TEXTURE_BUFFER, 0));
+    }
+
+    void TextureBuffer::bindToUnit(u32 unit) const {
+        GLCALL(glActiveTexture(GL_TEXTURE0 + unit));
+        GLCALL(glBindTexture(GL_TEXTURE_BUFFER, m_tboTexture));
     }
 
 }
