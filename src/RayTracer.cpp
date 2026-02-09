@@ -627,6 +627,20 @@ BVHNode loadBVHNodeAt(samplerBuffer buffer, int objectIndex) {
     return result;
 }
 
+void loadVertexByIndex(int offset, int index, inout vec3 position, inout vec3 normal, inout vec2 uv) {
+    // NOTE: position (3) + normal (3) + uv (2) = 8 (f32)
+    int location = offset + index * 8;
+    position = samplerLoadVec3(modelObjectsBuffer, location);
+    normal = samplerLoadVec3(modelObjectsBuffer, location);
+    uv = samplerLoadVec2(modelObjectsBuffer, location);
+}
+
+void loadTriangleByIndex(int offset, ivec3 index, inout Triangle triangle) {
+    for (int i = 0; i < 3; ++i) {
+        loadVertexByIndex(offset, index[i], triangle.vertices[i], triangle.normals[i], triangle.UVs[i]);
+    }
+}
+
 bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex, inout Triangle triangle) {
     int stack[32];
     int stackIndex = 0;
@@ -649,19 +663,7 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
                 ivec3 idx = ivec3(samplerLoadVec3(modelObjectsBuffer, index));
                 tri.materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
 
-                // Looking for positions
-                index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4;
-                tri.vertices = loadVec3FromIndices(modelObjectsBuffer, idx, index);
-
-                // Looking for normals
-                index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4 + model.verticesCount * 3;
-                tri.normals = loadVec3FromIndices(modelObjectsBuffer, idx, index);
-
-                // Looking for UVs
-                if (model.UVsCount > 0) {
-                    index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4 + model.verticesCount * 6;
-                    tri.UVs = loadVec2FromIndices(modelObjectsBuffer, idx, index);
-                }
+                loadTriangleByIndex(objectIndex + model.nodesCount * 9 + model.identifiersCount * 4, idx, tri);
 
                 if (hitTriangle(tri, r, max, hInfo)) {
                     max = hInfo.t;
@@ -1644,6 +1646,20 @@ BVHNode loadBVHNodeAt(samplerBuffer buffer, int objectIndex) {
     return result;
 }
 
+void loadVertexByIndex(int offset, int index, inout vec3 position, inout vec3 normal, inout vec2 uv) {
+    // NOTE: position (3) + normal (3) + uv (2) = 8 (f32)
+    int location = offset + index * 8;
+    position = samplerLoadVec3(modelObjectsBuffer, location);
+    normal = samplerLoadVec3(modelObjectsBuffer, location);
+    uv = samplerLoadVec2(modelObjectsBuffer, location);
+}
+
+void loadTriangleByIndex(int offset, ivec3 index, inout Triangle triangle) {
+    for (int i = 0; i < 3; ++i) {
+        loadVertexByIndex(offset, index[i], triangle.vertices[i], triangle.normals[i], triangle.UVs[i]);
+    }
+}
+
 bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex, inout Triangle triangle) {
     int stack[32];
     int stackIndex = 0;
@@ -1666,19 +1682,7 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
                 ivec3 idx = ivec3(samplerLoadVec3(modelObjectsBuffer, index));
                 tri.materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
 
-                // Looking for positions
-                index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4;
-                tri.vertices = loadVec3FromIndices(modelObjectsBuffer, idx, index);
-
-                // Looking for normals
-                index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4 + model.verticesCount * 3;
-                tri.normals = loadVec3FromIndices(modelObjectsBuffer, idx, index);
-
-                // Looking for UVs
-                if (model.UVsCount > 0) {
-                    index = objectIndex + model.nodesCount * 9 + model.identifiersCount * 4 + model.verticesCount * 6;
-                    tri.UVs = loadVec2FromIndices(modelObjectsBuffer, idx, index);
-                }
+                loadTriangleByIndex(objectIndex + model.nodesCount * 9 + model.identifiersCount * 4, idx, tri);
 
                 if (hitTriangle(tri, r, max, hInfo)) {
                     max = hInfo.t;

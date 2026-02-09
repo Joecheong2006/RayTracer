@@ -207,17 +207,21 @@ void Model::write(std::vector<f32> &buffer) const {
         buffer.push_back(iden.materialIndex);
     }
 
-    for (const auto &vertex : meshData.vertices) {
-        buffer.insert(buffer.end(), &vertex.x, &vertex.x + 3);
+    for (int i = 0; i < meshData.vertices.size(); ++i) {
+        glm::vec3 vertex = meshData.vertices[i];
+        buffer.insert(buffer.end(), &vertex[0], &vertex[0] + 3);
+
+        glm::vec3 normal = meshData.normals[i];
+        buffer.insert(buffer.end(), &normal[0], &normal[0] + 3);
+
+        glm::vec2 uv = meshData.UVs[i];
+        buffer.insert(buffer.end(), &uv[0], &uv[0] + 2);
     }
 
-    for (const auto &normal : meshData.normals) {
-        buffer.insert(buffer.end(), &normal.x, &normal.x + 3);
-    }
-
-    for (const auto &uv: meshData.UVs) {
-        buffer.insert(buffer.end(), &uv.x, &uv.x + 2);
-    }
+    std::cout << "Identiifers: " << meshData.identifiers.size() << '\n';
+    std::cout << "Vertices: " << meshData.vertices.size() << '\n';
+    std::cout << "normals: " << meshData.normals.size() << '\n';
+    std::cout << "uvs: " << meshData.UVs.size() << '\n';
 }
 
 bool Model::inAABB(const AABB &box) const {
