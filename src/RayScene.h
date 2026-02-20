@@ -19,9 +19,6 @@ private:
     glm::vec3 m_linearSkyColor = glm::pow(m_skyColor, glm::vec3(2.2));
 
     // Materials
-    std::unique_ptr<gl::TextureBuffer> m_materialTexturesTexBuffer;
-    std::vector<i32> m_materialTexturesBuffer;
-
     std::vector<Material> m_materials;
     std::unique_ptr<gl::TextureBuffer> m_materialsTexBuffer;
     std::vector<f32> m_materialsBuffer;

@@ -26,15 +26,14 @@ static void load_meshdata_texture(std::vector<f32> &buffer, MeshData::Texture &t
     buffer.insert(buffer.end(), texture.data.begin(), texture.data.end());
 }
 
-// TODO: changed this to static hepler function
-void load_material(std::vector<f32> &materialBuffer, std::vector<i32> &texturesBuffer, const Material &material) {
+static void load_material(std::vector<f32> &materialBuffer, const Material &material) {
     // Load material texture
-    texturesBuffer.push_back(material.texture.normalTexture);
-    texturesBuffer.push_back(material.texture.baseColorTexture);
-    texturesBuffer.push_back(material.texture.metallicRoughnessTexture);
-    texturesBuffer.push_back(material.texture.emissiveTexture);
-    texturesBuffer.push_back(material.texture.transmissionTexture);
-    texturesBuffer.push_back(material.texture.occlusionTexture);
+    materialBuffer.push_back(*reinterpret_cast<const f32*>(&material.texture.normalTexture));
+    materialBuffer.push_back(*reinterpret_cast<const f32*>(&material.texture.baseColorTexture));
+    materialBuffer.push_back(*reinterpret_cast<const f32*>(&material.texture.metallicRoughnessTexture));
+    materialBuffer.push_back(*reinterpret_cast<const f32*>(&material.texture.emissiveTexture));
+    materialBuffer.push_back(*reinterpret_cast<const f32*>(&material.texture.transmissionTexture));
+    materialBuffer.push_back(*reinterpret_cast<const f32*>(&material.texture.occlusionTexture));
 
     // Load material
     materialBuffer.insert(materialBuffer.end(),
@@ -65,16 +64,13 @@ void RayScene::initialize() {
     m_texturesTexBuffer = std::make_unique<gl::TextureBuffer>(
             nullptr, 0, GL_STATIC_DRAW, GL_R32F);
 
-    m_materialTexturesTexBuffer = std::make_unique<gl::TextureBuffer>(
-            nullptr, 0, GL_STATIC_DRAW, GL_R32I);
-
     m_materialsTexBuffer = std::make_unique<gl::TextureBuffer>(
             nullptr, 0, GL_STATIC_DRAW, GL_R32F);
 
     // Added default material
     Material defaultMat;
     m_materials.push_back(defaultMat);
-    load_material(m_materialsBuffer, m_materialTexturesBuffer, defaultMat);
+    load_material(m_materialsBuffer, defaultMat);
 }
 
 void RayScene::bindShader(gl::ShaderProgram &shader) const {
@@ -85,10 +81,6 @@ void RayScene::bindShader(gl::ShaderProgram &shader) const {
     // Bind materials
     m_materialsTexBuffer->bindToUnit(2);
     shader.setUniform1i("materialsBuffer", 2);
-
-    // Bind mateiral textures
-    m_materialTexturesTexBuffer->bindToUnit(3);
-    shader.setUniform1i("materialTexturesBuffer", 3);
 
     // Bind models
     m_modelObjectsTexBuffer->bindToUnit(4);
@@ -104,7 +96,6 @@ void RayScene::submit() {
     m_objectsTexBuffer->setBuffer(m_objectsBuffer.data(), m_objectsBuffer.size() * sizeof(f32));
     m_modelObjectsTexBuffer->setBuffer(m_modelObjectsBuffer.data(), m_modelObjectsBuffer.size() * sizeof(f32));
     m_texturesTexBuffer->setBuffer(m_texturesBuffer.data(), m_texturesBuffer.size() * sizeof(f32));
-    m_materialTexturesTexBuffer->setBuffer(m_materialTexturesBuffer.data(), m_materialTexturesBuffer.size() * sizeof(i32));
     m_materialsTexBuffer->setBuffer(m_materialsBuffer.data(), m_materialsBuffer.size() * sizeof(f32));
 }
 
@@ -189,7 +180,7 @@ void RayScene::addModel(const std::string &modelPath) {
             std::cout << " at " << material.texture.occlusionTexture << std::endl;
         }
 
-        load_material(m_materialsBuffer, m_materialTexturesBuffer, material);
+        load_material(m_materialsBuffer, material);
     }
     m_materials.insert(m_materials.end(), meshData.materials.begin(), meshData.materials.end());
 
@@ -210,7 +201,7 @@ void RayScene::addObject(const TraceableObject &obj, const Material &material) {
     object->write(m_objectsBuffer);
 
     m_materials.push_back(material);
-    load_material(m_materialsBuffer, m_materialTexturesBuffer, material);
+    load_material(m_materialsBuffer, material);
 }
 
 void RayScene::addObject(const TraceableObject &obj, int materialIndex) {

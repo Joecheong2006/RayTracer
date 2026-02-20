@@ -113,6 +113,11 @@ struct BVHNode {
     bool isLeaf;
 };
 
+struct Identifier {
+    ivec3 index;
+    int materialIndex;
+};
+
 struct Model {
     int identifiersCount, verticesCount, UVsCount, nodesCount;
     int materialIndex;
@@ -123,7 +128,6 @@ uniform samplerBuffer objectsBuffer;
 uniform samplerBuffer modelObjectsBuffer;
 uniform samplerBuffer texturesBuffer;
 uniform samplerBuffer materialsBuffer;
-uniform isamplerBuffer materialTexturesBuffer;
 
 uniform int objectCount;
 uniform int modelsCount;
@@ -137,6 +141,11 @@ float samplerLoadFloat(samplerBuffer buffer, inout int index) {
     float x = texelFetch(buffer, index).r;
     index++;
     return x;
+}
+
+int samplerLoadFloatInt(samplerBuffer buffer, inout int index) {
+    float x = samplerLoadFloat(buffer, index);
+    return floatBitsToInt(x);
 }
 
 vec2 samplerLoadVec2(samplerBuffer buffer, inout int index) {
@@ -388,7 +397,13 @@ Material loadMaterial(int materialIndex) {
     Material result;
 
     // Offset = (byteof Material / byteof f32) -> how many floats from Material
-    int offset = materialIndex * (68 / 4);
+    int offset = materialIndex * (92 / 4);
+    result.texture.normalTexture = samplerLoadFloatInt(materialsBuffer, offset);
+    result.texture.baseColorTexture = samplerLoadFloatInt(materialsBuffer, offset);
+    result.texture.metallicRoughnessTexture = samplerLoadFloatInt(materialsBuffer, offset);
+    result.texture.emissiveTexture = samplerLoadFloatInt(materialsBuffer, offset);
+    result.texture.transmissionTexture = samplerLoadFloatInt(materialsBuffer, offset);
+    result.texture.occlusionTexture = samplerLoadFloatInt(materialsBuffer, offset);
 
     result.emissionColor = samplerLoadVec3(materialsBuffer, offset);
     result.emissionStrength = samplerLoadFloat(materialsBuffer, offset);
@@ -408,14 +423,6 @@ Material loadMaterial(int materialIndex) {
 
     result.normalScale = samplerLoadFloat(materialsBuffer, offset);
     result.occlusionStrength = samplerLoadFloat(materialsBuffer, offset);
-
-    offset = materialIndex * (24 / 4);
-    result.texture.normalTexture = texelFetch(materialTexturesBuffer, offset + 0).r;
-    result.texture.baseColorTexture = texelFetch(materialTexturesBuffer, offset + 1).r;
-    result.texture.metallicRoughnessTexture = texelFetch(materialTexturesBuffer, offset + 2).r;
-    result.texture.emissiveTexture = texelFetch(materialTexturesBuffer, offset + 3).r;
-    result.texture.transmissionTexture = texelFetch(materialTexturesBuffer, offset + 4).r;
-    result.texture.occlusionTexture = texelFetch(materialTexturesBuffer, offset + 5).r;
 
     return result;
 }
@@ -641,6 +648,13 @@ void loadTriangleByIndex(int offset, ivec3 index, inout Triangle triangle) {
     }
 }
 
+Identifier loadIdentifier(int index) {
+    Identifier iden;
+    iden.index = ivec3(samplerLoadVec3(modelObjectsBuffer, index));
+    iden.materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
+    return iden;
+}
+
 bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex, inout Triangle triangle) {
     int stack[32];
     int stackIndex = 0;
@@ -660,10 +674,12 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
 
                 Triangle tri;
 
-                ivec3 idx = ivec3(samplerLoadVec3(modelObjectsBuffer, index));
-                tri.materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
+                Identifier iden = loadIdentifier(index);
+                tri.materialIndex = iden.materialIndex;
 
-                loadTriangleByIndex(objectIndex + model.nodesCount * 9 + model.identifiersCount * 4, idx, tri);
+                loadTriangleByIndex(
+                        objectIndex + model.nodesCount * 9 + model.identifiersCount * 4,
+                        iden.index, tri);
 
                 if (hitTriangle(tri, r, max, hInfo)) {
                     max = hInfo.t;
@@ -1195,6 +1211,11 @@ struct BVHNode {
     bool isLeaf;
 };
 
+struct Identifier {
+    ivec3 index;
+    int materialIndex;
+};
+
 struct Model {
     int identifiersCount, verticesCount, UVsCount, nodesCount;
     int materialIndex;
@@ -1205,7 +1226,6 @@ uniform samplerBuffer objectsBuffer;
 uniform samplerBuffer modelObjectsBuffer;
 uniform samplerBuffer texturesBuffer;
 uniform samplerBuffer materialsBuffer;
-uniform isamplerBuffer materialTexturesBuffer;
 
 uniform int objectCount;
 uniform int modelsCount;
@@ -1219,6 +1239,11 @@ float samplerLoadFloat(samplerBuffer buffer, inout int index) {
     float x = texelFetch(buffer, index).r;
     index++;
     return x;
+}
+
+int samplerLoadFloatInt(samplerBuffer buffer, inout int index) {
+    float x = samplerLoadFloat(buffer, index);
+    return floatBitsToInt(x);
 }
 
 vec2 samplerLoadVec2(samplerBuffer buffer, inout int index) {
@@ -1407,7 +1432,13 @@ Material loadMaterial(int materialIndex) {
     Material result;
 
     // Offset = (byteof Material / byteof f32) -> how many floats from Material
-    int offset = materialIndex * (68 / 4);
+    int offset = materialIndex * (92 / 4);
+    result.texture.normalTexture = samplerLoadFloatInt(materialsBuffer, offset);
+    result.texture.baseColorTexture = samplerLoadFloatInt(materialsBuffer, offset);
+    result.texture.metallicRoughnessTexture = samplerLoadFloatInt(materialsBuffer, offset);
+    result.texture.emissiveTexture = samplerLoadFloatInt(materialsBuffer, offset);
+    result.texture.transmissionTexture = samplerLoadFloatInt(materialsBuffer, offset);
+    result.texture.occlusionTexture = samplerLoadFloatInt(materialsBuffer, offset);
 
     result.emissionColor = samplerLoadVec3(materialsBuffer, offset);
     result.emissionStrength = samplerLoadFloat(materialsBuffer, offset);
@@ -1427,14 +1458,6 @@ Material loadMaterial(int materialIndex) {
 
     result.normalScale = samplerLoadFloat(materialsBuffer, offset);
     result.occlusionStrength = samplerLoadFloat(materialsBuffer, offset);
-
-    offset = materialIndex * (24 / 4);
-    result.texture.normalTexture = texelFetch(materialTexturesBuffer, offset + 0).r;
-    result.texture.baseColorTexture = texelFetch(materialTexturesBuffer, offset + 1).r;
-    result.texture.metallicRoughnessTexture = texelFetch(materialTexturesBuffer, offset + 2).r;
-    result.texture.emissiveTexture = texelFetch(materialTexturesBuffer, offset + 3).r;
-    result.texture.transmissionTexture = texelFetch(materialTexturesBuffer, offset + 4).r;
-    result.texture.occlusionTexture = texelFetch(materialTexturesBuffer, offset + 5).r;
 
     return result;
 }
@@ -1660,6 +1683,13 @@ void loadTriangleByIndex(int offset, ivec3 index, inout Triangle triangle) {
     }
 }
 
+Identifier loadIdentifier(int index) {
+    Identifier iden;
+    iden.index = ivec3(samplerLoadVec3(modelObjectsBuffer, index));
+    iden.materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
+    return iden;
+}
+
 bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex, inout Triangle triangle) {
     int stack[32];
     int stackIndex = 0;
@@ -1679,10 +1709,12 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
 
                 Triangle tri;
 
-                ivec3 idx = ivec3(samplerLoadVec3(modelObjectsBuffer, index));
-                tri.materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
+                Identifier iden = loadIdentifier(index);
+                tri.materialIndex = iden.materialIndex;
 
-                loadTriangleByIndex(objectIndex + model.nodesCount * 9 + model.identifiersCount * 4, idx, tri);
+                loadTriangleByIndex(
+                        objectIndex + model.nodesCount * 9 + model.identifiersCount * 4,
+                        iden.index, tri);
 
                 if (hitTriangle(tri, r, max, hInfo)) {
                     max = hInfo.t;
