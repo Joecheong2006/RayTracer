@@ -7,6 +7,7 @@
 
 #include <vector> // std::vector
 #include <string> // std::string
+#include <memory> // std::unique_ptr
 
 enum class TraceableType {
     Sphere,
