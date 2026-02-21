@@ -148,6 +148,14 @@ int samplerLoadFloatInt(samplerBuffer buffer, inout int index) {
     return floatBitsToInt(x);
 }
 
+ivec3 vec3BitsToIVec3(vec3 v) {
+    return ivec3(
+            floatBitsToInt(v.x),
+            floatBitsToInt(v.y),
+            floatBitsToInt(v.z)
+        );
+}
+
 vec2 samplerLoadVec2(samplerBuffer buffer, inout int index) {
     float x = texelFetch(buffer, index + 0).r;
     float y = texelFetch(buffer, index + 1).r;
@@ -613,10 +621,10 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
 Model loadModel(samplerBuffer buffer, inout int objectIndex) {
     Model result;
 
-    result.identifiersCount = int(samplerLoadFloat(buffer, objectIndex));
-    result.verticesCount = int(samplerLoadFloat(buffer, objectIndex));
-    result.UVsCount = int(samplerLoadFloat(buffer, objectIndex));
-    result.nodesCount = int(samplerLoadFloat(buffer, objectIndex));
+    result.identifiersCount = samplerLoadFloatInt(buffer, objectIndex);
+    result.verticesCount = samplerLoadFloatInt(buffer, objectIndex);
+    result.UVsCount = samplerLoadFloatInt(buffer, objectIndex);
+    result.nodesCount = samplerLoadFloatInt(buffer, objectIndex);
 
     return result;
 }
@@ -627,8 +635,8 @@ BVHNode loadBVHNodeAt(samplerBuffer buffer, int objectIndex) {
     result.boundingBox.min = samplerLoadVec3(buffer, objectIndex);
     result.boundingBox.max = samplerLoadVec3(buffer, objectIndex);
 
-    result.leftIndex = int(samplerLoadFloat(buffer, objectIndex));
-    result.rightIndex = int(samplerLoadFloat(buffer, objectIndex));
+    result.leftIndex = samplerLoadFloatInt(buffer, objectIndex);
+    result.rightIndex = samplerLoadFloatInt(buffer, objectIndex);
     result.isLeaf = bool(samplerLoadFloat(buffer, objectIndex));
 
     return result;
@@ -650,8 +658,8 @@ void loadTriangleByIndex(int offset, ivec3 index, inout Triangle triangle) {
 
 Identifier loadIdentifier(int index) {
     Identifier iden;
-    iden.index = ivec3(samplerLoadVec3(modelObjectsBuffer, index));
-    iden.materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
+    iden.index = vec3BitsToIVec3(samplerLoadVec3(modelObjectsBuffer, index));
+    iden.materialIndex = samplerLoadFloatInt(modelObjectsBuffer, index);
     return iden;
 }
 
@@ -1246,6 +1254,14 @@ int samplerLoadFloatInt(samplerBuffer buffer, inout int index) {
     return floatBitsToInt(x);
 }
 
+ivec3 vec3BitsToIVec3(vec3 v) {
+    return ivec3(
+            floatBitsToInt(v.x),
+            floatBitsToInt(v.y),
+            floatBitsToInt(v.z)
+        );
+}
+
 vec2 samplerLoadVec2(samplerBuffer buffer, inout int index) {
     float x = texelFetch(buffer, index + 0).r;
     float y = texelFetch(buffer, index + 1).r;
@@ -1648,10 +1664,10 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
 Model loadModel(samplerBuffer buffer, inout int objectIndex) {
     Model result;
 
-    result.identifiersCount = int(samplerLoadFloat(buffer, objectIndex));
-    result.verticesCount = int(samplerLoadFloat(buffer, objectIndex));
-    result.UVsCount = int(samplerLoadFloat(buffer, objectIndex));
-    result.nodesCount = int(samplerLoadFloat(buffer, objectIndex));
+    result.identifiersCount = samplerLoadFloatInt(buffer, objectIndex);
+    result.verticesCount = samplerLoadFloatInt(buffer, objectIndex);
+    result.UVsCount = samplerLoadFloatInt(buffer, objectIndex);
+    result.nodesCount = samplerLoadFloatInt(buffer, objectIndex);
 
     return result;
 }
@@ -1662,8 +1678,8 @@ BVHNode loadBVHNodeAt(samplerBuffer buffer, int objectIndex) {
     result.boundingBox.min = samplerLoadVec3(buffer, objectIndex);
     result.boundingBox.max = samplerLoadVec3(buffer, objectIndex);
 
-    result.leftIndex = int(samplerLoadFloat(buffer, objectIndex));
-    result.rightIndex = int(samplerLoadFloat(buffer, objectIndex));
+    result.leftIndex = samplerLoadFloatInt(buffer, objectIndex);
+    result.rightIndex = samplerLoadFloatInt(buffer, objectIndex);
     result.isLeaf = bool(samplerLoadFloat(buffer, objectIndex));
 
     return result;
@@ -1685,8 +1701,8 @@ void loadTriangleByIndex(int offset, ivec3 index, inout Triangle triangle) {
 
 Identifier loadIdentifier(int index) {
     Identifier iden;
-    iden.index = ivec3(samplerLoadVec3(modelObjectsBuffer, index));
-    iden.materialIndex = int(samplerLoadFloat(modelObjectsBuffer, index));
+    iden.index = vec3BitsToIVec3(samplerLoadVec3(modelObjectsBuffer, index));
+    iden.materialIndex = samplerLoadFloatInt(modelObjectsBuffer, index);
     return iden;
 }
 

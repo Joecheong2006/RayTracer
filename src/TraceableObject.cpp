@@ -186,10 +186,18 @@ Model::Model(std::string modelPath)
 
 void Model::write(std::vector<f32> &buffer) const {
     const auto &nodes = bvh.getNodes();
-    buffer.push_back(meshData.identifiers.size());
-    buffer.push_back(meshData.vertices.size());
-    buffer.push_back(meshData.UVs.size());
-    buffer.push_back(nodes.size());
+
+    i32 size = meshData.identifiers.size();
+    buffer.push_back(*reinterpret_cast<const f32*>(&size));
+
+    size = meshData.vertices.size();
+    buffer.push_back(*reinterpret_cast<const f32*>(&size));
+
+    size = meshData.UVs.size();
+    buffer.push_back(*reinterpret_cast<const f32*>(&size));
+
+    size = nodes.size();
+    buffer.push_back(*reinterpret_cast<const f32*>(&size));
 
     std::cout << "Wrote nodesCount: " << nodes.size() << std::endl;
     std::cout << "Wrote verticesCount: " << meshData.vertices.size() << std::endl;
@@ -197,14 +205,16 @@ void Model::write(std::vector<f32> &buffer) const {
     for (const auto &node : nodes) {
         buffer.insert(buffer.end(), &node.box.min.x, &node.box.min.x + 3);
         buffer.insert(buffer.end(), &node.box.max.x, &node.box.max.x + 3);
-        buffer.push_back(node.leftIndex);
-        buffer.push_back(node.rightIndex);
-        buffer.push_back(static_cast<bool>(node.isLeaf));
+        buffer.push_back(*reinterpret_cast<const f32*>(&node.leftIndex));
+        buffer.push_back(*reinterpret_cast<const f32*>(&node.rightIndex));
+        buffer.push_back(node.isLeaf);
     }
 
     for (const auto &iden : meshData.identifiers) {
-        buffer.insert(buffer.end(), &iden.index.x, &iden.index.x + 3);
-        buffer.push_back(iden.materialIndex);
+        buffer.push_back(*reinterpret_cast<const f32*>(&iden.index.x));
+        buffer.push_back(*reinterpret_cast<const f32*>(&iden.index.y));
+        buffer.push_back(*reinterpret_cast<const f32*>(&iden.index.z));
+        buffer.push_back(*reinterpret_cast<const f32*>(&iden.materialIndex));
     }
 
     for (int i = 0; i < meshData.vertices.size(); ++i) {
