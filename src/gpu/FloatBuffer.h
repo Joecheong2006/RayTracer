@@ -1,5 +1,8 @@
 #pragma once
 #include "gpu/Buffer.h"
+#include <vector>
+#include <string>
+#include <cstring>
 
 namespace gpu {
     class FloatBuffer : public Buffer {
