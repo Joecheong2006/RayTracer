@@ -9,6 +9,8 @@
 #include <string> // std::string
 #include <memory> // std::unique_ptr
 
+#include "gpu/Serializable.h"
+
 enum class TraceableType {
     Sphere,
     Quad,
@@ -18,14 +20,13 @@ enum class TraceableType {
 };
 
 class RayScene;
-class TraceableObject {
+class TraceableObject : public gpu::Serializable {
     friend class RayScene;
 private:
     i32 m_materialIndex = -1;
     TraceableType m_type = TraceableType::Count;
 
 protected:
-    void writeHeader(std::vector<f32> &buffer) const;
     AABB boundingBox;
 
 public:
@@ -36,9 +37,9 @@ public:
     virtual ~TraceableObject() = default;
     virtual std::unique_ptr<TraceableObject> clone() const = 0;
 
-    virtual void write(std::vector<f32> &buffer) const = 0;
     virtual bool inAABB(const AABB &box) const = 0;
 
+    inline TraceableType getType() const { return m_type; }
     inline i32 getMaterialIndex() const { return m_materialIndex; }
     inline virtual AABB getAABB() const { return boundingBox; }
 
@@ -47,8 +48,8 @@ public:
 struct Sphere : public TraceableObject {
     Sphere(glm::vec3 center, f32 radius);
 
-    virtual void write(std::vector<f32> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
+    virtual void serialize(gpu::Buffer &buffer) const override;
 
     glm::vec3 center = { 0, 0, 0 };
     f32 radius = 1.0;
@@ -62,8 +63,8 @@ struct Sphere : public TraceableObject {
 struct Quad : public TraceableObject {
     Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v, bool cullFace = false);
 
-    virtual void write(std::vector<f32> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
+    virtual void serialize(gpu::Buffer &buffer) const override;
 
     glm::vec3 q, u, v;
     bool cullFace;
@@ -78,8 +79,8 @@ struct Triangle : public TraceableObject {
     Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC,
              glm::vec3 normA = {}, glm::vec3 normB = {}, glm::vec3 normC = {});
 
-    virtual void write(std::vector<f32> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
+    virtual void serialize(gpu::Buffer &buffer) const override;
 
     glm::vec3 posA, posB, posC;
     glm::vec3 normA, normB, normC;
@@ -124,8 +125,8 @@ struct Model : public TraceableObject {
         , bvh(model.bvh)
     {}
 
-    virtual void write(std::vector<f32> &buffer) const override;
     virtual bool inAABB(const AABB &box) const override;
+    virtual void serialize(gpu::Buffer &buffer) const override;
 
     MeshData meshData;
     BVHTree bvh;

@@ -357,11 +357,11 @@ vec3 shadeSubsurface(in HitInfo info, float NoL, float NoV, float LoV) {
 // TextureInfo
 TextureInfo loadTextureInfo(int textureInfoIndex) {
     TextureInfo info;
-    info.width = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
-    info.height = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
-    info.channels = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
-    info.wrapS = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
-    info.wrapT  = int(samplerLoadFloat(texturesBuffer, textureInfoIndex));
+    info.width = samplerLoadFloatInt(texturesBuffer, textureInfoIndex);
+    info.height = samplerLoadFloatInt(texturesBuffer, textureInfoIndex);
+    info.channels = samplerLoadFloatInt(texturesBuffer, textureInfoIndex);
+    info.wrapS = samplerLoadFloatInt(texturesBuffer, textureInfoIndex);
+    info.wrapT  = samplerLoadFloatInt(texturesBuffer, textureInfoIndex);
     info.index = textureInfoIndex;
     return info;
 }
@@ -848,8 +848,8 @@ void hit(in Ray r, inout HitInfo track) {
     int objectIndex = 0;
 
     for (int i = 0; i < objectCount; ++i) {
-        int type = int(samplerLoadFloat(objectsBuffer, objectIndex));
-        tmp.materialIndex = int(samplerLoadFloat(objectsBuffer, objectIndex));
+        int type = samplerLoadFloatInt(objectsBuffer, objectIndex);
+        tmp.materialIndex = samplerLoadFloatInt(objectsBuffer, objectIndex);
 
         bool hitted = false;
 
@@ -1891,8 +1891,8 @@ void hit(in Ray r, inout HitInfo track) {
     int objectIndex = 0;
 
     for (int i = 0; i < objectCount; ++i) {
-        int type = int(samplerLoadFloat(objectsBuffer, objectIndex));
-        tmp.materialIndex = int(samplerLoadFloat(objectsBuffer, objectIndex));
+        int type = samplerLoadFloatInt(objectsBuffer, objectIndex);
+        tmp.materialIndex = samplerLoadFloatInt(objectsBuffer, objectIndex);
 
         bool hitted = false;
 

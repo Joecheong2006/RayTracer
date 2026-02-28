@@ -3,6 +3,8 @@
 #include "glm/glm.hpp"
 #include "util.h"
 
+#include "gpu/Serializable.h"
+
 using GVec3 = glm::vec<3, f32, glm::packed>;
 
 struct MaterialTexture {
@@ -15,7 +17,7 @@ struct MaterialTexture {
 
 };
 
-struct Material {
+struct Material : public gpu::Serializable {
     GVec3 emissionColor = { 0, 0, 0 };
     f32 emissionStrength = 0;
 
@@ -35,6 +37,30 @@ struct Material {
     f32 occlusionStrength = 1.0;
 
     MaterialTexture texture;
+
+    virtual void serialize(gpu::Buffer &buffer) const {
+        buffer.push(texture.normalTexture);
+        buffer.push(texture.baseColorTexture);
+        buffer.push(texture.metallicRoughnessTexture);
+        buffer.push(texture.emissiveTexture);
+        buffer.push(texture.transmissionTexture);
+        buffer.push(texture.occlusionTexture);
+
+        buffer.push(emissionColor);
+        buffer.push(emissionStrength);
+        buffer.push(albedo);
+        buffer.push(subsurface);
+        buffer.push(roughness);
+        buffer.push(metallic);
+        buffer.push(specular);
+        buffer.push(specularTint);
+        buffer.push(transmission);
+        buffer.push(ior);
+
+        buffer.push(alphaCut);
+        buffer.push(normalScale);
+        buffer.push(occlusionStrength);
+    }
 
 };
 

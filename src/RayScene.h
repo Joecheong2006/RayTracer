@@ -2,16 +2,20 @@
 #include "Material.h"
 #include "TraceableObject.h"
 
-#include "glUtilities/TextureBuffer.h"
 #include "glm/glm.hpp"
 
 #include <string> // std::string
 #include <vector> // std::vector
 #include <memory> // std::unique_ptr
 
+#include "gpu/Buffer.h"
+#include "gpu/Storage.h"
+
 namespace gl {
     class ShaderProgram;
 }
+
+struct RayCamera;
 
 class RayScene {
 private:
@@ -20,22 +24,22 @@ private:
 
     // Materials
     std::vector<Material> m_materials;
-    std::unique_ptr<gl::TextureBuffer> m_materialsTexBuffer;
-    std::vector<f32> m_materialsBuffer;
+    std::unique_ptr<gpu::Buffer> materialBuffer;
+    std::unique_ptr<gpu::Storage> materialGPUStorage;
 
     // Primitive objects
     std::vector<std::unique_ptr<TraceableObject>> m_traceableObjects;
-    std::unique_ptr<gl::TextureBuffer> m_objectsTexBuffer;
-    std::vector<f32> m_objectsBuffer;
+    std::unique_ptr<gpu::Buffer> primitiveBuffer;
+    std::unique_ptr<gpu::Storage> primitiveGPUStorage;
 
     // Models
     std::vector<std::unique_ptr<Model>> m_modelObjects;
-    std::unique_ptr<gl::TextureBuffer> m_modelObjectsTexBuffer;
-    std::vector<f32> m_modelObjectsBuffer;
+    std::unique_ptr<gpu::Buffer> modelBuffer;
+    std::unique_ptr<gpu::Storage> modelGPUStorage;
 
     // Textures
-    std::unique_ptr<gl::TextureBuffer> m_texturesTexBuffer;
-    std::vector<f32> m_texturesBuffer;
+    std::unique_ptr<gpu::Buffer> textureBuffer;
+    std::unique_ptr<gpu::Storage> textureGPUStorage;
 
 public:
     explicit RayScene() = default;

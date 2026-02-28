@@ -392,6 +392,16 @@ void writeBMP(
     file.close();
 }
 
+void MeshData::Texture::serialize(gpu::Buffer &buffer) const {
+    buffer.push(width);
+    buffer.push(height);
+    buffer.push(channels);
+
+    buffer.push(wrapS);
+    buffer.push(wrapT);
+    buffer.push(reinterpret_cast<const char*>(data.data()), data.size() * sizeof(f32));
+}
+
 #include <tinygltf/stb_image_write.h>
 
 MeshData MeshData::LoadMeshData(std::string modelPath) {
@@ -548,6 +558,58 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
             texture.data.data(),
             90  // quality (90 is good)
         );
+    }
+
+    size_t textureBufferSize = 0;
+    std::vector<i32> indexLocationMap(meshData.textures.size());
+    for (size_t i = 0; i < indexLocationMap.size(); ++i) {
+        indexLocationMap[i] = textureBufferSize / sizeof(f32);
+        textureBufferSize += 5 * sizeof(i32) + meshData.textures[i].data.size() * sizeof(f32);
+    }
+
+    for (auto &material : meshData.materials) {
+        if (material.texture.normalTexture != -1) {
+            std::cout << "Load normalTexture index: " << material.texture.normalTexture;
+            material.texture.normalTexture
+                = indexLocationMap[material.texture.normalTexture];
+            std::cout << " at " << material.texture.normalTexture << std::endl;
+        }
+
+        if (material.texture.baseColorTexture != -1) {
+            std::cout << "Load baseColorTexture index: " << material.texture.baseColorTexture;
+            material.texture.baseColorTexture
+                = indexLocationMap[material.texture.baseColorTexture];
+            std::cout << " at " << material.texture.baseColorTexture << std::endl;
+        }
+
+        if (material.texture.metallicRoughnessTexture != -1) {
+            std::cout << "Load metallicRoughnessTexture index: " << material.texture.metallicRoughnessTexture;
+            material.texture.metallicRoughnessTexture
+                = indexLocationMap[material.texture.metallicRoughnessTexture];
+            std::cout << " at " << material.texture.metallicRoughnessTexture << std::endl;
+        }
+
+        if (material.texture.emissiveTexture != -1) {
+            std::cout << "Load emissiveTexture index: " << material.texture.emissiveTexture;
+            material.texture.emissiveTexture
+                = indexLocationMap[material.texture.emissiveTexture];
+            std::cout << " at " << material.texture.emissiveTexture << std::endl;
+        }
+
+        if (material.texture.transmissionTexture != -1) {
+            std::cout << "Load transmissionTexture index: " << material.texture.transmissionTexture;
+            material.texture.transmissionTexture
+                = indexLocationMap[material.texture.transmissionTexture];
+            std::cout << " at " << material.texture.transmissionTexture << std::endl;
+        }
+
+        if (material.texture.occlusionTexture != -1) {
+            std::cout << "Load occlusionTexture index: " << material.texture.occlusionTexture;
+            material.texture.occlusionTexture
+                = indexLocationMap[material.texture.occlusionTexture];
+            std::cout << " at " << material.texture.occlusionTexture << std::endl;
+        }
+
     }
 
     return meshData;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gpu/Serializable.h"
 #include "Material.h"
 #include "glm/glm.hpp"
 
@@ -19,9 +20,10 @@ struct MeshData {
     std::vector<Identifier> identifiers;
     std::vector<Material> materials;
 
-    struct Texture {
+    struct Texture : public gpu::Serializable {
         i32 width, height, channels, channelSize, wrapS, wrapT;
         std::vector<f32> data;
+        virtual void serialize(gpu::Buffer &buffer) const override;
     };
 
     std::vector<Texture> textures;

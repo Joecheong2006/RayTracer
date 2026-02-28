@@ -3,11 +3,6 @@
 #include <iostream>
 #include <stack>
 
-void TraceableObject::writeHeader(std::vector<f32> &buffer) const {
-    buffer.push_back(static_cast<f32>(m_type));
-    buffer.push_back(static_cast<f32>(m_materialIndex));
-}
-
 Sphere::Sphere(glm::vec3 center, f32 radius)
     : TraceableObject(TraceableType::Sphere)
     , center(center)
@@ -19,15 +14,15 @@ Sphere::Sphere(glm::vec3 center, f32 radius)
         );
 }
 
-void Sphere::write(std::vector<f32> &buffer) const {
-    buffer.insert(buffer.end(), &center.x, &center.x + 3);
-    buffer.push_back(radius);
-}
-
 bool Sphere::inAABB(const AABB &box) const {
     return (center.x - radius >= box.min.x && center.x + radius <= box.max.x) &&
            (center.y - radius >= box.min.y && center.y + radius <= box.max.y) &&
            (center.z - radius >= box.min.z && center.z + radius <= box.max.z);
+}
+
+void Sphere::serialize(gpu::Buffer &buffer) const {
+    buffer.push(center);
+    buffer.push(radius);
 }
 
 Quad::Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v, bool cullFace)
@@ -44,13 +39,6 @@ Quad::Quad(glm::vec3 q, glm::vec3 u, glm::vec3 v, bool cullFace)
         );
 }
 
-void Quad::write(std::vector<f32> &buffer) const {
-    buffer.insert(buffer.end(), &q.x, &q.x + 3);
-    buffer.insert(buffer.end(), &u.x, &u.x + 3);
-    buffer.insert(buffer.end(), &v.x, &v.x + 3);
-    buffer.push_back(static_cast<f32>(cullFace));
-}
-
 bool Quad::inAABB(const AABB &box) const {
     glm::vec3 p0 = q;          // corner
     glm::vec3 p1 = q + u;      // corner + edge u
@@ -65,6 +53,13 @@ bool Quad::inAABB(const AABB &box) const {
            (quadMax.z >= box.min.z && quadMin.z <= box.max.z);
 }
 
+void Quad::serialize(gpu::Buffer &buffer) const {
+    buffer.push(q);
+    buffer.push(u);
+    buffer.push(v);
+    buffer.push(static_cast<f32>(cullFace));
+}
+
 Triangle::Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC, glm::vec3 normA, glm::vec3 normB, glm::vec3 normC)
     : TraceableObject(TraceableType::Triangle)
     , posA(posA), posB(posB), posC(posC)
@@ -76,15 +71,6 @@ Triangle::Triangle(glm::vec3 posA, glm::vec3 posB, glm::vec3 posC, glm::vec3 nor
         );
 }
 
-void Triangle::write(std::vector<f32> &buffer) const {
-    buffer.insert(buffer.end(), &posA.x, &posA.x + 3);
-    buffer.insert(buffer.end(), &posB.x, &posB.x + 3);
-    buffer.insert(buffer.end(), &posC.x, &posC.x + 3);
-    buffer.insert(buffer.end(), &normA.x, &normA.x + 3);
-    buffer.insert(buffer.end(), &normB.x, &normB.x + 3);
-    buffer.insert(buffer.end(), &normC.x, &normC.x + 3);
-}
-
 bool Triangle::inAABB(const AABB &box) const {
     for (auto v : {posA, posB, posC}) {
         if (v.x < box.min.x || v.x > box.max.x ||
@@ -94,6 +80,15 @@ bool Triangle::inAABB(const AABB &box) const {
         }
     }
     return true;
+}
+
+void Triangle::serialize(gpu::Buffer &buffer) const {
+    buffer.push(posA);
+    buffer.push(posB);
+    buffer.push(posC);
+    buffer.push(normA);
+    buffer.push(normB);
+    buffer.push(normC);
 }
 
 Model::Model(std::string modelPath)
@@ -184,59 +179,49 @@ Model::Model(std::string modelPath)
         << "\tEmpty Leaf: " << gaps << gaps << emptyLeaf  << "\n\n";
 }
 
-void Model::write(std::vector<f32> &buffer) const {
+bool Model::inAABB(const AABB &box) const {
+    glm::vec3 clampedMin = glm::max(boundingBox.min, box.min);
+    glm::vec3 clampedMax = glm::min(boundingBox.max, box.max);
+    return clampedMin == boundingBox.min && clampedMax == boundingBox.max;
+}
+
+void Model::serialize(gpu::Buffer &buffer) const {
     const auto &nodes = bvh.getNodes();
-
-    i32 size = meshData.identifiers.size();
-    buffer.push_back(*reinterpret_cast<const f32*>(&size));
-
-    size = meshData.vertices.size();
-    buffer.push_back(*reinterpret_cast<const f32*>(&size));
-
-    size = meshData.UVs.size();
-    buffer.push_back(*reinterpret_cast<const f32*>(&size));
-
-    size = nodes.size();
-    buffer.push_back(*reinterpret_cast<const f32*>(&size));
+    buffer.push(static_cast<u32>(meshData.identifiers.size()));
+    buffer.push(static_cast<u32>(meshData.vertices.size()));
+    buffer.push(static_cast<u32>(meshData.UVs.size()));
+    buffer.push(static_cast<u32>(nodes.size()));
 
     std::cout << "Wrote nodesCount: " << nodes.size() << std::endl;
     std::cout << "Wrote verticesCount: " << meshData.vertices.size() << std::endl;
     std::cout << "Wrote identifiersCount: " << meshData.identifiers.size() << std::endl;
     for (const auto &node : nodes) {
-        buffer.insert(buffer.end(), &node.box.min.x, &node.box.min.x + 3);
-        buffer.insert(buffer.end(), &node.box.max.x, &node.box.max.x + 3);
-        buffer.push_back(*reinterpret_cast<const f32*>(&node.leftIndex));
-        buffer.push_back(*reinterpret_cast<const f32*>(&node.rightIndex));
-        buffer.push_back(node.isLeaf);
+        buffer.push(node.box.min);
+        buffer.push(node.box.max);
+        buffer.push(node.leftIndex);
+        buffer.push(node.rightIndex);
+        buffer.push(node.isLeaf);
     }
 
     for (const auto &iden : meshData.identifiers) {
-        buffer.push_back(*reinterpret_cast<const f32*>(&iden.index.x));
-        buffer.push_back(*reinterpret_cast<const f32*>(&iden.index.y));
-        buffer.push_back(*reinterpret_cast<const f32*>(&iden.index.z));
-        buffer.push_back(*reinterpret_cast<const f32*>(&iden.materialIndex));
+        buffer.push(iden.index);
+        buffer.push(iden.materialIndex);
     }
 
     for (int i = 0; i < meshData.vertices.size(); ++i) {
         glm::vec3 vertex = meshData.vertices[i];
-        buffer.insert(buffer.end(), &vertex[0], &vertex[0] + 3);
+        buffer.push(vertex);
 
         glm::vec3 normal = meshData.normals[i];
-        buffer.insert(buffer.end(), &normal[0], &normal[0] + 3);
+        buffer.push(normal);
 
         glm::vec2 uv = meshData.UVs[i];
-        buffer.insert(buffer.end(), &uv[0], &uv[0] + 2);
+        buffer.push(uv);
     }
 
     std::cout << "Identiifers: " << meshData.identifiers.size() << '\n';
     std::cout << "Vertices: " << meshData.vertices.size() << '\n';
     std::cout << "normals: " << meshData.normals.size() << '\n';
     std::cout << "uvs: " << meshData.UVs.size() << '\n';
-}
-
-bool Model::inAABB(const AABB &box) const {
-    glm::vec3 clampedMin = glm::max(boundingBox.min, box.min);
-    glm::vec3 clampedMax = glm::min(boundingBox.max, box.max);
-    return clampedMin == boundingBox.min && clampedMax == boundingBox.max;
 }
 
