@@ -2,7 +2,6 @@
 
 #include "glUtilities/ShaderProgram.h"
 #include "TraceableObject.h"
-#include <glad/glad.h>
 
 #include <iostream>
 #include <glm/glm.hpp>
@@ -12,16 +11,16 @@
 
 void RayScene::initialize() {
     primitiveBuffer = std::make_unique<gpu::FloatBuffer>();
-    primitiveGPUStorage = std::make_unique<gpu::TBOStorage>(GL_R32F);
+    primitiveGPUStorage = std::make_unique<gpu::TBOStorage>();
 
     modelBuffer = std::make_unique<gpu::FloatBuffer>();
-    modelGPUStorage = std::make_unique<gpu::TBOStorage>(GL_R32F);
+    modelGPUStorage = std::make_unique<gpu::TBOStorage>();
 
     textureBuffer = std::make_unique<gpu::FloatBuffer>();
-    textureGPUStorage = std::make_unique<gpu::TBOStorage>(GL_R32F);
+    textureGPUStorage = std::make_unique<gpu::TBOStorage>();
 
     materialBuffer = std::make_unique<gpu::FloatBuffer>();
-    materialGPUStorage = std::make_unique<gpu::TBOStorage>(GL_R32F);
+    materialGPUStorage = std::make_unique<gpu::TBOStorage>();
 
     // Added default material
     Material defaultMat;
