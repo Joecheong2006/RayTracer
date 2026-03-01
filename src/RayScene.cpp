@@ -174,6 +174,17 @@ uniform samplerBuffer modelObjectsBuffer;
 uniform samplerBuffer texturesBuffer;
 uniform samplerBuffer materialsBuffer;
 
+float srgb_to_linear_c(float c) {
+    if (c <= 0.04045)
+        return c / 12.92;
+    else
+        return pow((c + 0.055) / 1.055, 2.4);
+}
+
+vec3 srgb_to_linear(vec3 srgb) {
+    return vec3(srgb_to_linear_c(srgb.x), srgb_to_linear_c(srgb.y), srgb_to_linear_c(srgb.z));
+}
+
 // === Buffer Utilities ===
 float samplerLoadFloat(samplerBuffer buffer, inout int index) {
     float x = texelFetch(buffer, index).r;
@@ -442,6 +453,37 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
     float v = -dot(edgeAB, dao) * invDet;
     if (u < 0.0 || v < 0.0 || u + v > 1.0) return false;
 
+    info.mat = loadMaterial(tri.materialIndex);
+    if (info.mat.texture.baseColorTexture != -1 && info.mat.alphaCut > 0) {
+        vec3 e0 = tri.vertices[1] - tri.vertices[0];
+        vec3 e1 = tri.vertices[2] - tri.vertices[0];
+        vec3 vp = rayAt(r, info.t)  - tri.vertices[0];
+
+        float d00 = dot(e0, e0);
+        float d01 = dot(e0, e1);
+        float d11 = dot(e1, e1);
+        float d20 = dot(vp, e0);
+        float d21 = dot(vp, e1);
+
+        float denom = d00 * d11 - d01 * d01;
+
+        float v = (d11 * d20 - d01 * d21) / denom;
+        float w = (d00 * d21 - d01 * d20) / denom;
+        float u = 1.0 - v - w;
+
+        info.uv = u * tri.UVs[0] + v * tri.UVs[1] + w * tri.UVs[2];
+
+        TextureInfo texInfo = loadTextureInfo(info.mat.texture.baseColorTexture);
+        vec2 uv = getTextureUV(texInfo, info.uv);
+        info.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, uv);
+        info.mat.albedo = samplerLoadVec3(texturesBuffer, info.mat.texture.baseColorTexture);
+        info.mat.albedo = srgb_to_linear(info.mat.albedo);
+        float a = samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture);
+        if (a < info.mat.alphaCut) {
+            return false;
+        }
+    }
+
     info.t = t;
     info.point = rayAt(r, t);
 
@@ -587,17 +629,6 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
     }
     info = hInfo;
     return info.t < 1e20;
-}
-
-float srgb_to_linear_c(float c) {
-    if (c <= 0.04045)
-        return c / 12.92;
-    else
-        return pow((c + 0.055) / 1.055, 2.4);
-}
-
-vec3 srgb_to_linear(vec3 srgb) {
-    return vec3(srgb_to_linear_c(srgb.x), srgb_to_linear_c(srgb.y), srgb_to_linear_c(srgb.z));
 }
 
 void hitModels(in Ray r, inout HitInfo track) {
