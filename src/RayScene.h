@@ -58,5 +58,7 @@ public:
     void addObject(const TraceableObject &obj, const Material &material);
     void addObject(const TraceableObject &obj, int materialIndex);
 
+    static std::string genShaderCode();
+
 };
 
