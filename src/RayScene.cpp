@@ -460,7 +460,7 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
         if (info.mat.texture.baseColorTexture != -1 && info.mat.alphaCut > 0) {
             vec3 e0 = tri.vertices[1] - tri.vertices[0];
             vec3 e1 = tri.vertices[2] - tri.vertices[0];
-            vec3 vp = rayAt(r, info.t)  - tri.vertices[0];
+            vec3 vp = rayAt(r, t)  - tri.vertices[0];
 
             float d00 = dot(e0, e0);
             float d01 = dot(e0, e1);
@@ -480,7 +480,6 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
             vec2 uv = getTextureUV(texInfo, info.uv);
             info.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, uv);
             info.mat.albedo = samplerLoadVec3(texturesBuffer, info.mat.texture.baseColorTexture);
-            info.mat.albedo = srgb_to_linear(info.mat.albedo);
             float a = samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture);
             if (a < info.mat.alphaCut) {
                 return false;
