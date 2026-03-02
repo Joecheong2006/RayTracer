@@ -204,9 +204,7 @@ void Model::serialize(gpu::Buffer &buffer) const {
     }
 
     for (const auto &iden : meshData.identifiers) {
-        buffer.push(iden.index);
-        buffer.push(iden.materialIndex);
-        buffer.push(iden.hasTextures);
+        iden.serialize(buffer);
     }
 
     for (int i = 0; i < meshData.vertices.size(); ++i) {

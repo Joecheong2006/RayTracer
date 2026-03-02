@@ -400,16 +400,6 @@ void writeBMP(
     file.close();
 }
 
-void MeshData::Texture::serialize(gpu::Buffer &buffer) const {
-    buffer.push(width);
-    buffer.push(height);
-    buffer.push(channels);
-
-    buffer.push(wrapS);
-    buffer.push(wrapT);
-    buffer.push(reinterpret_cast<const char*>(data.data()), data.size() * sizeof(f32));
-}
-
 #include <tinygltf/stb_image_write.h>
 
 MeshData MeshData::LoadMeshData(std::string modelPath) {
@@ -635,4 +625,20 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
     }
 
     return meshData;
+}
+
+void MeshData::Identifier::serialize(gpu::Buffer &buffer) const {
+    buffer.push(index);
+    buffer.push(materialIndex);
+    buffer.push(hasTextures);
+}
+
+void MeshData::Texture::serialize(gpu::Buffer &buffer) const {
+    buffer.push(width);
+    buffer.push(height);
+    buffer.push(channels);
+
+    buffer.push(wrapS);
+    buffer.push(wrapT);
+    buffer.push(reinterpret_cast<const char*>(data.data()), data.size() * sizeof(f32));
 }

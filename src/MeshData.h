@@ -12,10 +12,11 @@ struct MeshData {
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> UVs;
 
-    struct Identifier {
+    struct Identifier : public gpu::Serializable {
         glm::ivec3 index;
         i32 materialIndex;
         bool hasTextures = false;
+        virtual void serialize(gpu::Buffer &buffer) const override;
     };
 
     std::vector<Identifier> identifiers;
