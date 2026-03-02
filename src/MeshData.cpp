@@ -159,7 +159,10 @@ static void load_mesh_data_gltf(MeshData &meshData, const tinygltf::Primitive &p
                     ASSERT(false); // Unsupported index component type
             }
             index += glm::ivec3(verticesOffset);
-            meshData.identifiers.push_back({ index, materialIndex });
+            MeshData::Identifier iden;
+            iden.index = index;
+            iden.materialIndex = materialIndex;
+            meshData.identifiers.push_back(iden);
         }
     }
 }
