@@ -15,6 +15,7 @@ struct MeshData {
     struct Identifier {
         glm::ivec3 index;
         i32 materialIndex;
+        bool hasTextures = false;
     };
 
     std::vector<Identifier> identifiers;

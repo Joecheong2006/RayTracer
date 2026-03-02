@@ -151,6 +151,7 @@ struct Triangle {
     vec3[3] vertices, normals;
     vec2[3] UVs;
     int materialIndex;
+    bool hasTextures;
 };
 
 struct BVHNode {
@@ -162,6 +163,7 @@ struct BVHNode {
 struct Identifier {
     ivec3 index;
     int materialIndex;
+    bool hasTextures;
 };
 
 struct Model {
@@ -453,34 +455,36 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
     float v = -dot(edgeAB, dao) * invDet;
     if (u < 0.0 || v < 0.0 || u + v > 1.0) return false;
 
-    info.mat = loadMaterial(tri.materialIndex);
-    if (info.mat.texture.baseColorTexture != -1 && info.mat.alphaCut > 0) {
-        vec3 e0 = tri.vertices[1] - tri.vertices[0];
-        vec3 e1 = tri.vertices[2] - tri.vertices[0];
-        vec3 vp = rayAt(r, info.t)  - tri.vertices[0];
+    if (tri.hasTextures) {
+        info.mat = loadMaterial(tri.materialIndex);
+        if (info.mat.texture.baseColorTexture != -1 && info.mat.alphaCut > 0) {
+            vec3 e0 = tri.vertices[1] - tri.vertices[0];
+            vec3 e1 = tri.vertices[2] - tri.vertices[0];
+            vec3 vp = rayAt(r, info.t)  - tri.vertices[0];
 
-        float d00 = dot(e0, e0);
-        float d01 = dot(e0, e1);
-        float d11 = dot(e1, e1);
-        float d20 = dot(vp, e0);
-        float d21 = dot(vp, e1);
+            float d00 = dot(e0, e0);
+            float d01 = dot(e0, e1);
+            float d11 = dot(e1, e1);
+            float d20 = dot(vp, e0);
+            float d21 = dot(vp, e1);
 
-        float denom = d00 * d11 - d01 * d01;
+            float denom = d00 * d11 - d01 * d01;
 
-        float v = (d11 * d20 - d01 * d21) / denom;
-        float w = (d00 * d21 - d01 * d20) / denom;
-        float u = 1.0 - v - w;
+            float v = (d11 * d20 - d01 * d21) / denom;
+            float w = (d00 * d21 - d01 * d20) / denom;
+            float u = 1.0 - v - w;
 
-        info.uv = u * tri.UVs[0] + v * tri.UVs[1] + w * tri.UVs[2];
+            info.uv = u * tri.UVs[0] + v * tri.UVs[1] + w * tri.UVs[2];
 
-        TextureInfo texInfo = loadTextureInfo(info.mat.texture.baseColorTexture);
-        vec2 uv = getTextureUV(texInfo, info.uv);
-        info.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, uv);
-        info.mat.albedo = samplerLoadVec3(texturesBuffer, info.mat.texture.baseColorTexture);
-        info.mat.albedo = srgb_to_linear(info.mat.albedo);
-        float a = samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture);
-        if (a < info.mat.alphaCut) {
-            return false;
+            TextureInfo texInfo = loadTextureInfo(info.mat.texture.baseColorTexture);
+            vec2 uv = getTextureUV(texInfo, info.uv);
+            info.mat.texture.baseColorTexture = getTextureItemIndex(texInfo, uv);
+            info.mat.albedo = samplerLoadVec3(texturesBuffer, info.mat.texture.baseColorTexture);
+            info.mat.albedo = srgb_to_linear(info.mat.albedo);
+            float a = samplerLoadFloat(texturesBuffer, info.mat.texture.baseColorTexture);
+            if (a < info.mat.alphaCut) {
+                return false;
+            }
         }
     }
 
@@ -574,8 +578,14 @@ Identifier loadIdentifier(int index) {
     Identifier iden;
     iden.index = vec3BitsToIVec3(samplerLoadVec3(modelObjectsBuffer, index));
     iden.materialIndex = samplerLoadFloatInt(modelObjectsBuffer, index);
+    iden.hasTextures = bool(samplerLoadFloat(modelObjectsBuffer, index));
     return iden;
 }
+
+const int identifierFloatSize = 5;
+const int nodeFloatSize = 9;
+const int vertexFloatSize = 6;
+const int UVFloatSize = 2;
 
 bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex, inout Triangle triangle) {
     int stack[32];
@@ -587,20 +597,21 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
 
     while (stackIndex > 0) {
         int nodeIndex = stack[--stackIndex];
-        BVHNode node = loadBVHNodeAt(modelObjectsBuffer, objectIndex + nodeIndex * 9);
+        BVHNode node = loadBVHNodeAt(modelObjectsBuffer, objectIndex + nodeIndex * nodeFloatSize);
 
         if (node.isLeaf) {
             for (int offset = node.leftIndex; offset < node.rightIndex; ++offset) {
                 // Looking for identifiers
-                int index = objectIndex + model.nodesCount * 9 + offset * 4;
+                int index = objectIndex + model.nodesCount * nodeFloatSize + offset * identifierFloatSize;
 
                 Triangle tri;
 
                 Identifier iden = loadIdentifier(index);
                 tri.materialIndex = iden.materialIndex;
+                tri.hasTextures = iden.hasTextures;
 
                 loadTriangleByIndex(
-                        objectIndex + model.nodesCount * 9 + model.identifiersCount * 4,
+                        objectIndex + model.nodesCount * nodeFloatSize + model.identifiersCount * identifierFloatSize,
                         iden.index, tri);
 
                 if (hitTriangle(tri, r, max, hInfo)) {
@@ -612,8 +623,8 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
             continue;
         }
 
-        BVHNode leftNode = loadBVHNodeAt(modelObjectsBuffer, objectIndex + node.leftIndex * 9);
-        BVHNode rightNode = loadBVHNodeAt(modelObjectsBuffer, objectIndex + node.rightIndex * 9);
+        BVHNode leftNode = loadBVHNodeAt(modelObjectsBuffer, objectIndex + node.leftIndex * nodeFloatSize);
+        BVHNode rightNode = loadBVHNodeAt(modelObjectsBuffer, objectIndex + node.rightIndex * nodeFloatSize);
 
         float leftDst = RayBoundingBoxDst(r, leftNode.boundingBox, hInfo.t);
         float rightDst = RayBoundingBoxDst(r, rightNode.boundingBox, hInfo.t);
@@ -640,15 +651,16 @@ void hitModels(in Ray r, inout HitInfo track) {
     int modelObjectIndex = 0;
 
     Triangle tri;
+    tri.hasTextures = false;
     for (int i = 0; i < modelsCount; ++i) {
         bool hitted = false;
 
         Model model = loadModel(modelObjectsBuffer, modelObjectIndex);
         hitted = hitModel(model, r, closest, tmp, modelObjectIndex, tri);
-        modelObjectIndex += model.nodesCount * 9
-                        + model.identifiersCount * 4 // For identifiers
-                        + model.verticesCount * 6 // For vertices and normals
-                        + model.UVsCount * 2; // For UVs
+        modelObjectIndex += model.nodesCount * nodeFloatSize
+                        + model.identifiersCount * identifierFloatSize // For identifiers
+                        + model.verticesCount * vertexFloatSize // For vertices and normals
+                        + model.UVsCount * UVFloatSize; // For UVs
 
         if (hitted) {
             closest = tmp.t;
@@ -657,8 +669,8 @@ void hitModels(in Ray r, inout HitInfo track) {
         track.tests++;
     }
 
-    if (startClosest > closest) {
-        track.mat = loadMaterial(track.materialIndex);
+    track.mat = loadMaterial(track.materialIndex);
+    if (tri.hasTextures && startClosest > closest) {
         vec3 e0 = tri.vertices[1] - tri.vertices[0];
         vec3 e1 = tri.vertices[2] - tri.vertices[0];
         vec3 vp = rayAt(r, track.t)  - tri.vertices[0];

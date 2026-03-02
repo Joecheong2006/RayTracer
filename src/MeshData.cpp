@@ -214,7 +214,15 @@ static Material process_material(const tinygltf::Model &model, const tinygltf::M
         std::cout << "OcclusionTexture: " << outMat.texture.occlusionTexture << std::endl;
     }
 
-    outMat.alphaCut = material.alphaMode == "CUTOFF" ? material.alphaCutoff : 0;
+    if (material.alphaMode == "CUTOFF") {
+        outMat.alphaCut = material.alphaCutoff;
+    }
+    else if (material.alphaMode == "MASK") {
+        outMat.alphaCut = material.alphaCutoff;
+    }
+    else {
+        outMat.alphaCut = 0;
+    }
     std::cout << "AlphaCut: " << outMat.alphaCut << std::endl;
     std::cout << "AlphaMode: " << material.alphaMode << std::endl;
 
@@ -435,6 +443,20 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
     meshData.materials.reserve(model.materials.size());
     for (const auto &material : model.materials) {
         meshData.materials.push_back(process_material(model, material));
+    }
+
+    for (auto &iden : meshData.identifiers) {
+        const auto &m = meshData.materials[iden.materialIndex];
+        if (m.texture.baseColorTexture != -1 ||
+            m.texture.metallicRoughnessTexture != -1 ||
+            m.texture.normalTexture != -1 ||
+            m.texture.emissiveTexture != -1 ||
+            m.texture.occlusionTexture != -1) {
+            iden.hasTextures = true;
+        }
+        else {
+            iden.hasTextures = false;
+        }
     }
 
     meshData.textures.resize(model.textures.size());
