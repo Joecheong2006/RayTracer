@@ -57,10 +57,8 @@ void RayScene::submit() {
     }
     modelGPUStorage->upload(*modelBuffer);
 
-    for (const auto &model : m_modelObjects) {
-        for (const auto &texture : model->meshData.textures) {
-            texture.serialize(*textureBuffer);
-        }
+    for (const auto &texture : m_textureObjects) {
+        texture.serialize(*textureBuffer);
     }
     textureGPUStorage->upload(*textureBuffer);
 
@@ -96,13 +94,54 @@ void RayScene::addModel(const std::string &modelPath) {
     auto &model = m_modelObjects.back();
     MeshData &meshData = model->meshData;
 
+    // Move model's textures to scene's textures
+    for (auto &texture : meshData.textures) {
+        m_textureObjects.push_back(std::move(texture));
+    }
+
     // Compute unqiue material index
     for (auto &identifier : meshData.identifiers) {
         identifier.materialIndex = 
             meshData.materials.size() > 0 ? m_materials.size() + identifier.materialIndex : 0;
     }
 
+    // Compute unique texture index
+    for (auto &material : meshData.materials) {
+        if (material.texture.normalTexture != -1) {
+            material.texture.normalTexture += m_textureTotalSize;
+            std::cout << "Load normalTexture index: " << material.texture.normalTexture << std::endl;
+        }
+
+        if (material.texture.baseColorTexture != -1) {
+            material.texture.baseColorTexture += m_textureTotalSize;
+            std::cout << "Load baseColorTexture index: " << material.texture.baseColorTexture << std::endl;
+        }
+
+        if (material.texture.metallicRoughnessTexture != -1) {
+            material.texture.metallicRoughnessTexture += m_textureTotalSize;
+            std::cout << "Load baseColorTexture index: " << material.texture.baseColorTexture << std::endl;
+        }
+
+        if (material.texture.emissiveTexture != -1) {
+            material.texture.emissiveTexture += m_textureTotalSize;
+            std::cout << "Load emissiveTexture index: " << material.texture.emissiveTexture << std::endl;
+        }
+
+        if (material.texture.transmissionTexture != -1) {
+            material.texture.transmissionTexture += m_textureTotalSize;
+            std::cout << "Load transmissionTexture index: " << material.texture.transmissionTexture << std::endl;
+        }
+
+        if (material.texture.occlusionTexture != -1) {
+            material.texture.occlusionTexture += m_textureTotalSize;
+            std::cout << "Load occlusionTexture index: " << material.texture.occlusionTexture << std::endl;
+        }
+    }
+
     m_materials.insert(m_materials.end(), meshData.materials.begin(), meshData.materials.end());
+
+    // Accumulate total texture size
+    m_textureTotalSize += meshData.textureTotalSize;
 
     std::cout << "identifiers: " << meshData.identifiers.size() << std::endl;
     std::cout << "\tTriangles Count: " << meshData.identifiers.size() << '\n';

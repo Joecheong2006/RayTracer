@@ -30,6 +30,8 @@ struct MeshData {
 
     std::vector<Texture> textures;
 
+    i32 textureTotalSize;
+
     static MeshData LoadMeshData(std::string modelPath);
 };
 

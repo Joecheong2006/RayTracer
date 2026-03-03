@@ -38,8 +38,11 @@ private:
     std::unique_ptr<gpu::Storage> modelGPUStorage;
 
     // Textures
+    std::vector<MeshData::Texture> m_textureObjects;
     std::unique_ptr<gpu::Buffer> textureBuffer;
     std::unique_ptr<gpu::Storage> textureGPUStorage;
+
+    i32 m_textureTotalSize = 0;
 
 public:
     explicit RayScene() = default;
