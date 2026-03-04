@@ -575,46 +575,6 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
         );
     }
 
-    size_t textureBufferSize = 0;
-    std::vector<i32> indexLocationMap(meshData.textures.size());
-    for (size_t i = 0; i < indexLocationMap.size(); ++i) {
-        indexLocationMap[i] = textureBufferSize / sizeof(f32);
-        textureBufferSize += 5 * sizeof(i32) + meshData.textures[i].data.size() * sizeof(f32);
-    }
-    meshData.textureTotalSize = textureBufferSize / sizeof(f32);
-
-    for (auto &material : meshData.materials) {
-        if (material.texture.normalTexture != -1) {
-            material.texture.normalTexture
-                = indexLocationMap[material.texture.normalTexture];
-        }
-
-        if (material.texture.baseColorTexture != -1) {
-            material.texture.baseColorTexture
-                = indexLocationMap[material.texture.baseColorTexture];
-        }
-
-        if (material.texture.metallicRoughnessTexture != -1) {
-            material.texture.metallicRoughnessTexture
-                = indexLocationMap[material.texture.metallicRoughnessTexture];
-        }
-
-        if (material.texture.emissiveTexture != -1) {
-            material.texture.emissiveTexture
-                = indexLocationMap[material.texture.emissiveTexture];
-        }
-
-        if (material.texture.transmissionTexture != -1) {
-            material.texture.transmissionTexture
-                = indexLocationMap[material.texture.transmissionTexture];
-        }
-
-        if (material.texture.occlusionTexture != -1) {
-            material.texture.occlusionTexture
-                = indexLocationMap[material.texture.occlusionTexture];
-        }
-    }
-
     return meshData;
 }
 

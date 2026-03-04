@@ -57,8 +57,10 @@ void RayScene::submit() {
     }
     modelGPUStorage->upload(*modelBuffer);
 
-    for (const auto &texture : m_textureObjects) {
-        texture.serialize(*textureBuffer);
+    for (const auto &model : m_modelObjects) {
+        for (const auto &texture : model->meshData.textures) {
+            texture.serialize(*textureBuffer);
+        }
     }
     textureGPUStorage->upload(*textureBuffer);
 
@@ -94,46 +96,55 @@ void RayScene::addModel(const std::string &modelPath) {
     auto &model = m_modelObjects.back();
     MeshData &meshData = model->meshData;
 
-    // Move model's textures to scene's textures
-    for (auto &texture : meshData.textures) {
-        m_textureObjects.push_back(std::move(texture));
-    }
-
     // Compute unqiue material index
     for (auto &identifier : meshData.identifiers) {
         identifier.materialIndex = 
             meshData.materials.size() > 0 ? m_materials.size() + identifier.materialIndex : 0;
     }
 
-    // Compute unique texture index
+    // Compute texture index for FloatBuffer
+    size_t textureBufferSize = 0;
+    std::vector<i32> indexLocationMap(meshData.textures.size());
+    for (size_t i = 0; i < indexLocationMap.size(); ++i) {
+        indexLocationMap[i] = textureBufferSize / sizeof(f32);
+        textureBufferSize += 5 * sizeof(i32) + meshData.textures[i].data.size() * sizeof(f32);
+    }
+    meshData.textureTotalSize = textureBufferSize / sizeof(f32);
+
     for (auto &material : meshData.materials) {
         if (material.texture.normalTexture != -1) {
-            material.texture.normalTexture += m_textureTotalSize;
+            material.texture.normalTexture
+                = indexLocationMap[material.texture.normalTexture] + m_textureTotalSize;
             std::cout << "Load normalTexture index: " << material.texture.normalTexture << std::endl;
         }
 
         if (material.texture.baseColorTexture != -1) {
-            material.texture.baseColorTexture += m_textureTotalSize;
+            material.texture.baseColorTexture
+                = indexLocationMap[material.texture.baseColorTexture] + m_textureTotalSize;
             std::cout << "Load baseColorTexture index: " << material.texture.baseColorTexture << std::endl;
         }
 
         if (material.texture.metallicRoughnessTexture != -1) {
-            material.texture.metallicRoughnessTexture += m_textureTotalSize;
-            std::cout << "Load baseColorTexture index: " << material.texture.baseColorTexture << std::endl;
+            material.texture.metallicRoughnessTexture
+                = indexLocationMap[material.texture.metallicRoughnessTexture] + m_textureTotalSize;
+            std::cout << "Load metallicRoughnessTexture index: " << material.texture.metallicRoughnessTexture << std::endl;
         }
 
         if (material.texture.emissiveTexture != -1) {
-            material.texture.emissiveTexture += m_textureTotalSize;
+            material.texture.emissiveTexture
+                = indexLocationMap[material.texture.emissiveTexture] + m_textureTotalSize;
             std::cout << "Load emissiveTexture index: " << material.texture.emissiveTexture << std::endl;
         }
 
         if (material.texture.transmissionTexture != -1) {
-            material.texture.transmissionTexture += m_textureTotalSize;
+            material.texture.transmissionTexture
+                = indexLocationMap[material.texture.transmissionTexture] + m_textureTotalSize;
             std::cout << "Load transmissionTexture index: " << material.texture.transmissionTexture << std::endl;
         }
 
         if (material.texture.occlusionTexture != -1) {
-            material.texture.occlusionTexture += m_textureTotalSize;
+            material.texture.occlusionTexture
+                = indexLocationMap[material.texture.occlusionTexture] + m_textureTotalSize;
             std::cout << "Load occlusionTexture index: " << material.texture.occlusionTexture << std::endl;
         }
     }
