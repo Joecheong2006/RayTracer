@@ -218,7 +218,6 @@ struct Identifier {
 
 struct Model {
     int identifiersCount, verticesCount, UVsCount, nodesCount;
-    int materialIndex;
 };
 
 uniform samplerBuffer objectsBuffer;
