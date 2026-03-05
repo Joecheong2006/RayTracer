@@ -59,16 +59,16 @@ static void load_mesh_data_gltf(MeshData &meshData, const tinygltf::Primitive &p
 
     // Reserve to vertexCount
     size_t verticesOffset = meshData.vertices.size();
-    meshData.vertices.reserve(verticesOffset + vertexCount);
+    meshData.vertices.resize(verticesOffset + vertexCount);
 
     for (size_t i = 0; i < vertexCount; ++i) {
         // Transform all positions once
-        meshData.vertices.push_back(GVec3(worldTransform *
-            glm::vec4(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2], 1.0f)));
+        meshData.vertices[verticesOffset + i].position = GVec3(worldTransform *
+            glm::vec4(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2], 1.0f));
     }
 
     // ================= Load normals =================
-    meshData.normals.reserve(meshData.normals.size() + vertexCount);
+    // meshData.normals.reserve(meshData.normals.size() + vertexCount);
     if (primitive.attributes.find("NORMAL") != primitive.attributes.end()) {
         const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.at("NORMAL")];
         const tinygltf::BufferView &view = model.bufferViews[accessor.bufferView];
@@ -77,20 +77,19 @@ static void load_mesh_data_gltf(MeshData &meshData, const tinygltf::Primitive &p
             buffer.data.data() + view.byteOffset + accessor.byteOffset
         );
         for (size_t i = 0; i < vertexCount; ++i) {
-            meshData.normals.push_back(glm::normalize(normalMatrix *
-                glm::vec3(normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2])));
+            meshData.vertices[verticesOffset + i].normal = glm::normalize(normalMatrix *
+                glm::vec3(normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]));
         }
     }
     else {
         // Default normals if not provided
         for (size_t i = 0; i < vertexCount; ++i) {
-            meshData.normals.push_back(glm::normalize(normalMatrix * glm::vec3(0, 1, 0)));
-
+            meshData.vertices[verticesOffset + i].normal = glm::normalize(normalMatrix * glm::vec3(0, 1, 0));
         }
     }
 
     // ================= Load UVs coordinates =================
-    meshData.UVs.reserve(meshData.UVs.size() + vertexCount);
+    // meshData.UVs.reserve(meshData.UVs.size() + vertexCount);
     if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
         const tinygltf::Accessor &accessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
         const tinygltf::BufferView &view = model.bufferViews[accessor.bufferView];
@@ -107,19 +106,19 @@ static void load_mesh_data_gltf(MeshData &meshData, const tinygltf::Primitive &p
             std::cout << "TINYGLTF_COMPONENT_TYPE_FLOAT\n";
             for (size_t i = 0; i < vertexCount; i++) {
                 const float* uv = reinterpret_cast<const float*>(dataPtr + i * stride);
-                meshData.UVs.push_back(glm::vec2(uv[0], uv[1]));
+                meshData.vertices[verticesOffset + i].uv = glm::vec2(uv[0], uv[1]);
             }
         }
         else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
             for (size_t i = 0; i < vertexCount; i++) {
                 const u8* uv = dataPtr + i * stride;
-                meshData.UVs.push_back(glm::vec2(uv[0] / 255.0f, uv[1] / 255.0f));
+                meshData.vertices[verticesOffset + i].uv = glm::vec2(uv[0] / 255.0f, uv[1] / 255.0f);
             }
         }
         else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
             for (size_t i = 0; i < vertexCount; i++) {
                 const u16* uv = reinterpret_cast<const uint16_t*>(dataPtr + i * stride);
-                meshData.UVs.push_back(glm::vec2(uv[0] / 65535.0f, uv[1] / 65535.0f));
+                meshData.vertices[verticesOffset + i].uv = glm::vec2(uv[0] / 65535.0f, uv[1] / 65535.0f);
             }
         }
     }
@@ -167,7 +166,7 @@ static void load_mesh_data_gltf(MeshData &meshData, const tinygltf::Primitive &p
     }
 }
 
-inline static void process_node(const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform, MeshData &meshData) {
+inline static void process_node(const tinygltf::Model &model, int nodeIndex, const glm::mat4 &parentTransform, MeshData &meshData, MeshData &lightData) {
     const tinygltf::Node &node = model.nodes[nodeIndex];
     glm::mat4 localTransform = get_local_transform(node);
     glm::mat4 worldTransform = parentTransform * localTransform;
@@ -176,12 +175,18 @@ inline static void process_node(const tinygltf::Model &model, int nodeIndex, con
         const tinygltf::Mesh &mesh = model.meshes[node.mesh];
         for (const tinygltf::Primitive &primitive : mesh.primitives) {
             ASSERT(primitive.mode == TINYGLTF_MODE_TRIANGLES);
-            load_mesh_data_gltf(meshData, primitive, model, worldTransform);
+            const auto &m = model.materials[primitive.material];
+            if (m.emissiveFactor[0] + m.emissiveFactor[1] + m.emissiveFactor[2] > 0) {
+                load_mesh_data_gltf(lightData, primitive, model, worldTransform);
+            }
+            else {
+                load_mesh_data_gltf(meshData, primitive, model, worldTransform);
+            }
         }
     }
 
     for (int childIndex : node.children) {
-        process_node(model, childIndex, worldTransform, meshData);
+        process_node(model, childIndex, worldTransform, meshData, lightData);
     }
 }
 
@@ -422,16 +427,25 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
     }
 
     std::cout << "Load " << modelPath << " successfully!\n";
-    MeshData meshData;
+    MeshData meshData, lightData;
 
     int sceneIndex = model.defaultScene > -1 ? model.defaultScene : 0;
     const tinygltf::Scene &scene = model.scenes[sceneIndex];
     for (int nodeIndex : scene.nodes) {
         glm::mat4 transform = glm::mat4(1.0);
         for (int nodeIndex : scene.nodes) {
-            process_node(model, nodeIndex, transform, meshData);
+            process_node(model, nodeIndex, transform, meshData, lightData);
         }
     }
+
+    meshData.lightSourceCount = lightData.identifiers.size();
+
+    for (auto &iden : lightData.identifiers) {
+        iden.index += meshData.vertices.size();
+    }
+
+    meshData.vertices.insert(meshData.vertices.end(), lightData.vertices.begin(), lightData.vertices.end());
+    meshData.identifiers.insert(meshData.identifiers.end(), lightData.identifiers.begin(), lightData.identifiers.end());
 
     meshData.materials.reserve(model.materials.size());
     for (const auto &material : model.materials) {

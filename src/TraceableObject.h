@@ -103,16 +103,16 @@ struct Model : public TraceableObject {
     inline Triangle getTriangleFromIdentifier(int idenIndex) {
         glm::ivec3 idx = meshData.identifiers[idenIndex].index;
         return Triangle {
-            meshData.vertices[idx.x], meshData.vertices[idx.y], meshData.vertices[idx.z],
-            meshData.normals[idx.x], meshData.normals[idx.y], meshData.normals[idx.z]
+            meshData.vertices[idx.x].position, meshData.vertices[idx.y].position, meshData.vertices[idx.z].position,
+            meshData.vertices[idx.x].normal, meshData.vertices[idx.y].normal, meshData.vertices[idx.z].normal,
         };
     }
 
     inline Triangle getTriangleFromIdentifier(const MeshData::Identifier &iden) {
         glm::ivec3 idx = iden.index;
         return Triangle {
-            meshData.vertices[idx.x], meshData.vertices[idx.y], meshData.vertices[idx.z],
-            meshData.normals[idx.x], meshData.normals[idx.y], meshData.normals[idx.z]
+            meshData.vertices[idx.x].position, meshData.vertices[idx.y].position, meshData.vertices[idx.z].position,
+            meshData.vertices[idx.x].normal, meshData.vertices[idx.y].normal, meshData.vertices[idx.z].normal,
         };
     }
 
@@ -132,7 +132,7 @@ struct Model : public TraceableObject {
     BVHTree bvh;
 
     struct Info : gpu::Serializable {
-        i32 identifiersCount, verticesCount, UVsCount, nodesCount;
+        i32 identifiersCount, verticesCount, nodesCount;
         virtual void serialize(gpu::Buffer &buffer) const override;
     } info;
 

@@ -8,9 +8,13 @@
 #include <string> // std::string
 
 struct MeshData {
-    std::vector<glm::vec3> vertices;
-    std::vector<glm::vec3> normals;
-    std::vector<glm::vec2> UVs;
+    struct Vertex {
+        glm::vec3 position;
+        glm::vec3 normal;
+        glm::vec2 uv;
+    };
+
+    std::vector<Vertex> vertices;
 
     struct Identifier : public gpu::Serializable {
         glm::ivec3 index;
@@ -30,7 +34,7 @@ struct MeshData {
 
     std::vector<Texture> textures;
 
-    i32 textureTotalSize;
+    i32 lightSourceCount = 0;
 
     static MeshData LoadMeshData(std::string modelPath);
 };

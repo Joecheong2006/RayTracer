@@ -228,7 +228,7 @@ struct Identifier {
 };
 
 struct Model {
-    int identifiersCount, verticesCount, UVsCount, nodesCount;
+    int identifiersCount, verticesCount, nodesCount;
 };
 
 uniform samplerBuffer objectsBuffer;
@@ -599,10 +599,9 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
 Model loadModel(samplerBuffer buffer, int objectIndex) {
     Model result;
 
-    objectIndex *= 4;
+    objectIndex *= 3;
     result.identifiersCount = samplerLoadFloatInt(buffer, objectIndex);
     result.verticesCount = samplerLoadFloatInt(buffer, objectIndex);
-    result.UVsCount = samplerLoadFloatInt(buffer, objectIndex);
     result.nodesCount = samplerLoadFloatInt(buffer, objectIndex);
 
     return result;
@@ -645,8 +644,7 @@ Identifier loadIdentifier(int index) {
 
 const int identifierFloatSize = 5;
 const int nodeFloatSize = 9;
-const int vertexFloatSize = 6;
-const int UVFloatSize = 2;
+const int vertexFloatSize = 3 + 3 + 2;
 
 bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex, inout Triangle triangle) {
     int stack[32];
@@ -720,8 +718,7 @@ void hitModels(in Ray r, inout HitInfo track) {
         hitted = hitModel(model, r, closest, tmp, modelObjectIndex, tri);
         modelObjectIndex += model.nodesCount * nodeFloatSize
                         + model.identifiersCount * identifierFloatSize // For identifiers
-                        + model.verticesCount * vertexFloatSize // For vertices and normals
-                        + model.UVsCount * UVFloatSize; // For UVs
+                        + model.verticesCount * vertexFloatSize; // For vertices and normals
 
         if (hitted) {
             closest = tmp.t;

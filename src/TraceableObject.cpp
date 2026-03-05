@@ -180,7 +180,6 @@ Model::Model(std::string modelPath)
 
     info.identifiersCount = meshData.identifiers.size();
     info.verticesCount = meshData.vertices.size();
-    info.UVsCount = meshData.UVs.size();
     info.nodesCount = bvh.getNodes().size();
 }
 
@@ -193,7 +192,6 @@ bool Model::inAABB(const AABB &box) const {
 void Model::Info::serialize(gpu::Buffer &buffer) const {
     buffer.push(static_cast<u32>(identifiersCount));
     buffer.push(static_cast<u32>(verticesCount));
-    buffer.push(static_cast<u32>(UVsCount));
     buffer.push(static_cast<u32>(nodesCount));
 
     std::cout << "Wrote nodesCount: " << nodesCount << std::endl;
@@ -215,20 +213,13 @@ void Model::serialize(gpu::Buffer &buffer) const {
         iden.serialize(buffer);
     }
 
-    for (int i = 0; i < meshData.vertices.size(); ++i) {
-        glm::vec3 vertex = meshData.vertices[i];
-        buffer.push(vertex);
-
-        glm::vec3 normal = meshData.normals[i];
-        buffer.push(normal);
-
-        glm::vec2 uv = meshData.UVs[i];
-        buffer.push(uv);
+    for (const auto &vertex : meshData.vertices) {
+        buffer.push(vertex.position);
+        buffer.push(vertex.normal);
+        buffer.push(vertex.uv);
     }
 
     std::cout << "Identiifers: " << meshData.identifiers.size() << '\n';
     std::cout << "Vertices: " << meshData.vertices.size() << '\n';
-    std::cout << "normals: " << meshData.normals.size() << '\n';
-    std::cout << "uvs: " << meshData.UVs.size() << '\n';
 }
 
