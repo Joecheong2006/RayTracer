@@ -117,10 +117,10 @@ void RayScene::addModel(const std::string &modelPath) {
     size_t textureBufferSize = 0;
     std::vector<i32> indexLocationMap(meshData.textures.size());
     for (size_t i = 0; i < indexLocationMap.size(); ++i) {
-        indexLocationMap[i] = textureBufferSize / sizeof(f32);
-        textureBufferSize += 5 * sizeof(i32) + meshData.textures[i].data.size() * sizeof(f32);
+        indexLocationMap[i] = textureBufferSize;
+        textureBufferSize += (5 * sizeof(i32) + meshData.textures[i].data.size() * sizeof(f32)) / sizeof(f32);
     }
-    meshData.textureTotalSize = textureBufferSize / sizeof(f32);
+    textureBufferSize = textureBufferSize;
 
     for (auto &material : meshData.materials) {
         if (material.texture.normalTexture != -1) {
@@ -163,7 +163,7 @@ void RayScene::addModel(const std::string &modelPath) {
     m_materials.insert(m_materials.end(), meshData.materials.begin(), meshData.materials.end());
 
     // Accumulate total texture size
-    m_textureTotalSize += meshData.textureTotalSize;
+    m_textureTotalSize += textureBufferSize;
 
     std::cout << "identifiers: " << meshData.identifiers.size() << std::endl;
     std::cout << "\tTriangles Count: " << meshData.identifiers.size() << '\n';
