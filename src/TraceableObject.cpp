@@ -177,6 +177,11 @@ Model::Model(std::string modelPath)
         << "\tMax Triangles Leaf: " << gaps << maxTri << '\n'
         << "\tAvg Triangles Leaf: " << gaps << meshData.identifiers.size() / (f32)leafNodeCount << '\n'
         << "\tEmpty Leaf: " << gaps << gaps << emptyLeaf  << "\n\n";
+
+    info.identifiersCount = meshData.identifiers.size();
+    info.verticesCount = meshData.vertices.size();
+    info.UVsCount = meshData.UVs.size();
+    info.nodesCount = bvh.getNodes().size();
 }
 
 bool Model::inAABB(const AABB &box) const {
@@ -185,16 +190,19 @@ bool Model::inAABB(const AABB &box) const {
     return clampedMin == boundingBox.min && clampedMax == boundingBox.max;
 }
 
+void Model::Info::serialize(gpu::Buffer &buffer) const {
+    buffer.push(static_cast<u32>(identifiersCount));
+    buffer.push(static_cast<u32>(verticesCount));
+    buffer.push(static_cast<u32>(UVsCount));
+    buffer.push(static_cast<u32>(nodesCount));
+
+    std::cout << "Wrote nodesCount: " << nodesCount << std::endl;
+    std::cout << "Wrote verticesCount: " << verticesCount << std::endl;
+    std::cout << "Wrote identifiersCount: " << nodesCount << std::endl;
+}
+
 void Model::serialize(gpu::Buffer &buffer) const {
     const auto &nodes = bvh.getNodes();
-    buffer.push(static_cast<u32>(meshData.identifiers.size()));
-    buffer.push(static_cast<u32>(meshData.vertices.size()));
-    buffer.push(static_cast<u32>(meshData.UVs.size()));
-    buffer.push(static_cast<u32>(nodes.size()));
-
-    std::cout << "Wrote nodesCount: " << nodes.size() << std::endl;
-    std::cout << "Wrote verticesCount: " << meshData.vertices.size() << std::endl;
-    std::cout << "Wrote identifiersCount: " << meshData.identifiers.size() << std::endl;
     for (const auto &node : nodes) {
         buffer.push(node.box.min);
         buffer.push(node.box.max);

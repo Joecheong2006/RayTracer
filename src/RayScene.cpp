@@ -12,11 +12,13 @@
 void RayScene::initialize() {
     primitiveBuffer = std::make_unique<gpu::FloatBuffer>();
     modelBuffer = std::make_unique<gpu::FloatBuffer>();
+    modelInfoBuffer = std::make_unique<gpu::FloatBuffer>();
     textureBuffer = std::make_unique<gpu::FloatBuffer>();
     materialBuffer = std::make_unique<gpu::FloatBuffer>();
 
     primitiveGPUStorage = std::make_unique<gpu::TBOStorage>();
     modelGPUStorage = std::make_unique<gpu::TBOStorage>();
+    modelInfoGPUStorage = std::make_unique<gpu::TBOStorage>();
     textureGPUStorage = std::make_unique<gpu::TBOStorage>();
     materialGPUStorage = std::make_unique<gpu::TBOStorage>();
 
@@ -33,6 +35,10 @@ void RayScene::bindShader(gl::ShaderProgram &shader) const {
     // Bind materials
     materialGPUStorage->bindToUnit(2);
     shader.setUniform1i("materialsBuffer", 2);
+
+    // bind models' info
+    modelInfoGPUStorage->bindToUnit(3);
+    shader.setUniform1i("modelInfoObjectsBuffer", 3);
 
     // Bind models
     modelGPUStorage->bindToUnit(4);
@@ -56,6 +62,11 @@ void RayScene::submit() {
         model->serialize(*modelBuffer);
     }
     modelGPUStorage->upload(*modelBuffer);
+
+    for (const auto &model : m_modelObjects) {
+        model->info.serialize(*modelInfoBuffer);
+    }
+    modelInfoGPUStorage->upload(*modelInfoBuffer);
 
     for (const auto &model : m_modelObjects) {
         for (const auto &texture : model->meshData.textures) {
@@ -222,6 +233,7 @@ struct Model {
 
 uniform samplerBuffer objectsBuffer;
 uniform samplerBuffer modelObjectsBuffer;
+uniform samplerBuffer modelInfoObjectsBuffer;
 uniform samplerBuffer texturesBuffer;
 uniform samplerBuffer materialsBuffer;
 
@@ -584,9 +596,10 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
 }
 
 // Model Function
-Model loadModel(samplerBuffer buffer, inout int objectIndex) {
+Model loadModel(samplerBuffer buffer, int objectIndex) {
     Model result;
 
+    objectIndex *= 4;
     result.identifiersCount = samplerLoadFloatInt(buffer, objectIndex);
     result.verticesCount = samplerLoadFloatInt(buffer, objectIndex);
     result.UVsCount = samplerLoadFloatInt(buffer, objectIndex);
@@ -703,7 +716,7 @@ void hitModels(in Ray r, inout HitInfo track) {
     for (int i = 0; i < modelsCount; ++i) {
         bool hitted = false;
 
-        Model model = loadModel(modelObjectsBuffer, modelObjectIndex);
+        Model model = loadModel(modelInfoObjectsBuffer, i);
         hitted = hitModel(model, r, closest, tmp, modelObjectIndex, tri);
         modelObjectIndex += model.nodesCount * nodeFloatSize
                         + model.identifiersCount * identifierFloatSize // For identifiers

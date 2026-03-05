@@ -131,6 +131,11 @@ struct Model : public TraceableObject {
     MeshData meshData;
     BVHTree bvh;
 
+    struct Info : gpu::Serializable {
+        i32 identifiersCount, verticesCount, UVsCount, nodesCount;
+        virtual void serialize(gpu::Buffer &buffer) const override;
+    } info;
+
     virtual std::unique_ptr<TraceableObject> clone() const override {
         return std::make_unique<Model>(*this);
     }

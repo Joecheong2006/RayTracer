@@ -37,6 +37,10 @@ private:
     std::unique_ptr<gpu::Buffer> modelBuffer;
     std::unique_ptr<gpu::Storage> modelGPUStorage;
 
+    // ModelsInfo
+    std::unique_ptr<gpu::Buffer> modelInfoBuffer;
+    std::unique_ptr<gpu::Storage> modelInfoGPUStorage;
+
     // Textures
     std::unique_ptr<gpu::Buffer> textureBuffer;
     std::unique_ptr<gpu::Storage> textureGPUStorage;
