@@ -179,7 +179,7 @@ Model::Model(std::string modelPath)
         << "\tEmpty Leaf: " << gaps << gaps << emptyLeaf  << "\n\n";
 
     info.identifiersCount = meshData.identifiers.size();
-    info.verticesCount = meshData.vertices.size();
+    info.lightSourcesCount = meshData.lightSourcesCount;
     info.nodesCount = bvh.getNodes().size();
 }
 
@@ -191,12 +191,12 @@ bool Model::inAABB(const AABB &box) const {
 
 void Model::Info::serialize(gpu::Buffer &buffer) const {
     buffer.push(static_cast<u32>(identifiersCount));
-    buffer.push(static_cast<u32>(verticesCount));
+    buffer.push(static_cast<u32>(lightSourcesCount));
     buffer.push(static_cast<u32>(nodesCount));
 
     std::cout << "Wrote nodesCount: " << nodesCount << std::endl;
-    std::cout << "Wrote verticesCount: " << verticesCount << std::endl;
-    std::cout << "Wrote identifiersCount: " << nodesCount << std::endl;
+    std::cout << "Wrote lightSourcesCount: " << lightSourcesCount << std::endl;
+    std::cout << "Wrote identifiersCount: " << identifiersCount << std::endl;
 }
 
 void Model::serialize(gpu::Buffer &buffer) const {

@@ -461,7 +461,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         vec3 contribution = (brdf_total * NoL) / max(pdf_used, MIN_DENOMINATOR);
 
         // Emission (add before rayColor is updated)
-        if (info.mat.emissionStrength > 0.0)
+        if (prevSpecular && info.mat.emissionStrength > 0.0)
             incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
 
         prevSpecular = (spec == 1 || trans == 1);

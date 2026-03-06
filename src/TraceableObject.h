@@ -132,7 +132,7 @@ struct Model : public TraceableObject {
     BVHTree bvh;
 
     struct Info : gpu::Serializable {
-        i32 identifiersCount, verticesCount, nodesCount;
+        u32 nodesCount, identifiersCount, lightSourcesCount;
         virtual void serialize(gpu::Buffer &buffer) const override;
     } info;
 
