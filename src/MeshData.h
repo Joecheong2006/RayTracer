@@ -34,7 +34,7 @@ struct MeshData {
 
     std::vector<Texture> textures;
 
-    i32 lightSourceCount = 0;
+    i32 lightSourcesCount = 0;
 
     static MeshData LoadMeshData(std::string modelPath);
 };
