@@ -102,13 +102,13 @@ uint hashSeed(uint pixelX, uint pixelY, uint frameIndex, uint sampleIndex) {
     return pcg(h);
 }
 
-float rand(inout SeedType seed) {
+uint rand(inout SeedType seed) {
     seed = pcg(uint(seed));
-    return float(seed) / 4294967296.0;
+    return seed;
 }
 
 float randFloat(inout SeedType seed) {
-    return rand(seed);
+    return float(rand(seed)) / 4294967296.0;
 }
 
 vec3 reflect(in vec3 v, in vec3 n) {
@@ -256,7 +256,10 @@ vec3 rayAt(in Ray r, float t) {
     return r.origin + t * r.direction;
 }
 
+// Implemented from RayScene
 void hit(in Ray r, inout HitInfo track);
+vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area);
+bool checkHitted(in Ray r, inout HitInfo track);
 
 vec3 refract(in vec3 uv, in vec3 n, float etai_over_etat) {
     float cos_theta = min(dot(-uv, n), 1.0);
@@ -308,6 +311,9 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
 vec3 traceColor(in Ray r, inout SeedType seed) {
     vec3 incomingLight = vec3(0.0);
     vec3 rayColor = vec3(1.0);
+    vec3 directLight = vec3(0.0);
+
+    bool prevSpecular = true; // top of function, before loop
 
     int tests = 0;
     for (int i = 0; i <= camera.bounces; ++i) {
@@ -372,8 +378,45 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float VoH = clamp(dot(V, H), 0.0, 1.0);
         float LoV = clamp(dot(L, V), 0.0, 1.0);
 
+        // // Direct light sampling
+        {
+            float area;
+            vec3 p = sampleRandomPointFromLightSouces(seed, area);
+            Ray sr;
+            sr.origin = info.point + N * 0.001;
+            vec3 toLight = p - sr.origin;
+            sr.direction = normalize(toLight);
+            HitInfo s_info;
+            float distToLight = length(p - sr.origin);
+            s_info.t = 1e20;
+            hit(sr, s_info);
+            if (s_info.mat.emissionStrength > 0 && s_info.t <= distToLight + 0.01) {
+                float cosTheta     = max(dot(N, sr.direction), 0.0);                // surface facing light
+                float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));    // light facing surface
+                float pdf          = 1.0 / area;
+                float Gfactor      = cosThetaL / dot(toLight, toLight);
+                vec3 Ld = sr.direction;
+                vec3 Hd = normalize(V + Ld);
+                float NoLd = max(dot(N, Ld), 0.0);
+                float NoHd = clamp(dot(N, Hd), 0.0, 1.0);
+                float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
+                float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
+
+                vec3 brdf_direct = shadeDiffuse(info, NoLd, NoV, VoHd)
+                                 + shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
+                                 + shadeSubsurface(info, NoLd, NoV, LoVd);
+
+                directLight = brdf_direct
+                            * s_info.mat.emissionColor * s_info.mat.emissionStrength
+                            * cosTheta
+                            * Gfactor
+                            / pdf;
+                incomingLight += rayColor * directLight;
+            }
+        }
+
         // Continue path
-        r.origin = info.point + L * 0.001;
+        r.origin = info.point + N * 0.001;
         r.direction = L;
 
         if (trans == 1) {
@@ -421,7 +464,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         if (info.mat.emissionStrength > 0.0)
             incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
 
+        prevSpecular = (spec == 1 || trans == 1);
         rayColor *= contribution;
+
         if (dot(rayColor, vec3(1)) < 1e-6) break;
     }
 

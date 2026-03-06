@@ -7,6 +7,7 @@
 #include <string> // std::string
 #include <vector> // std::vector
 #include <memory> // std::unique_ptr
+#include <unordered_set> // std::unordered_set
 
 #include "gpu/Buffer.h"
 #include "gpu/Storage.h"
@@ -45,7 +46,10 @@ private:
     std::unique_ptr<gpu::Buffer> textureBuffer;
     std::unique_ptr<gpu::Storage> textureGPUStorage;
 
+    std::unordered_set<i32> lightSourcesMark;
+
     i32 m_textureTotalSize = 0;
+    i32 lightSourcesCount = 0;
 
 public:
     explicit RayScene() = default;

@@ -48,6 +48,7 @@ void RayScene::bindShader(gl::ShaderProgram &shader) const {
     textureGPUStorage->bindToUnit(5);
     shader.setUniform1i("texturesBuffer", 5);
 
+    shader.setUniform1i("lightSourcesCount", lightSourcesCount);
 }
 
 void RayScene::submit() {
@@ -58,14 +59,32 @@ void RayScene::submit() {
     }
     primitiveGPUStorage->upload(*primitiveBuffer);
 
-    for (const auto &model : m_modelObjects) {
-        model->serialize(*modelBuffer);
+    for (const auto &key : lightSourcesMark) {
+        m_modelObjects[key]->info.serialize(*modelInfoBuffer);
+
+        // Serializa an extra model location for
+        // this specific gpu::Floatbuffer/TBO impl
+        modelInfoBuffer->push(static_cast<int>(modelBuffer->size() / sizeof(f32)));
+        std::cout << "Location: " << modelBuffer->size() / sizeof(f32) << std::endl;
+
+        // Serializa after model's info to get the correct location
+        m_modelObjects[key]->serialize(*modelBuffer);
+    }
+
+    for (i32 i = 0; i < m_modelObjects.size(); ++i) {
+        if (lightSourcesMark.find(i) == lightSourcesMark.end()) {
+            m_modelObjects[i]->info.serialize(*modelInfoBuffer);
+
+            // Serializa an extra model location for
+            // this specific gpu::Floatbuffer/TBO impl
+            modelInfoBuffer->push(static_cast<int>(modelBuffer->size() / sizeof(f32)));
+            std::cout << "Location: " << modelBuffer->size() / sizeof(f32) << std::endl;
+
+            // Serializa after model's info to get the correct location
+            m_modelObjects[i]->serialize(*modelBuffer);
+        }
     }
     modelGPUStorage->upload(*modelBuffer);
-
-    for (const auto &model : m_modelObjects) {
-        model->info.serialize(*modelInfoBuffer);
-    }
     modelInfoGPUStorage->upload(*modelInfoBuffer);
 
     for (const auto &model : m_modelObjects) {
@@ -100,6 +119,11 @@ void RayScene::addModel(const std::string &modelPath) {
 
         if (localModel.meshData.vertices.empty()) {
             return;
+        }
+
+        if (localModel.meshData.lightSourcesCount > 0) {
+            lightSourcesCount++;
+            lightSourcesMark.insert(static_cast<i32>(m_modelObjects.size()));
         }
 
         m_modelObjects.push_back(std::make_unique<Model>(std::move(localModel)));
@@ -228,7 +252,8 @@ struct Identifier {
 };
 
 struct Model {
-    int identifiersCount, verticesCount, nodesCount;
+    int identifiersCount, lightSourcesCount, nodesCount;
+    int location;
 };
 
 uniform samplerBuffer objectsBuffer;
@@ -236,6 +261,8 @@ uniform samplerBuffer modelObjectsBuffer;
 uniform samplerBuffer modelInfoObjectsBuffer;
 uniform samplerBuffer texturesBuffer;
 uniform samplerBuffer materialsBuffer;
+
+uniform int lightSourcesCount;
 
 float srgb_to_linear_c(float c) {
     if (c <= 0.04045)
@@ -599,10 +626,11 @@ bool hitTriangle(in Triangle tri, in Ray r, float max, inout HitInfo info) {
 Model loadModel(samplerBuffer buffer, int objectIndex) {
     Model result;
 
-    objectIndex *= 3;
+    objectIndex *= 4;
     result.identifiersCount = samplerLoadFloatInt(buffer, objectIndex);
-    result.verticesCount = samplerLoadFloatInt(buffer, objectIndex);
+    result.lightSourcesCount = samplerLoadFloatInt(buffer, objectIndex);
     result.nodesCount = samplerLoadFloatInt(buffer, objectIndex);
+    result.location = samplerLoadFloatInt(buffer, objectIndex);
 
     return result;
 }
@@ -644,9 +672,8 @@ Identifier loadIdentifier(int index) {
 
 const int identifierFloatSize = 5;
 const int nodeFloatSize = 9;
-const int vertexFloatSize = 3 + 3 + 2;
 
-bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objectIndex, inout Triangle triangle) {
+bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int location, inout Triangle triangle) {
     int stack[32];
     int stackIndex = 0;
     stack[stackIndex++] = 0;
@@ -656,12 +683,12 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
 
     while (stackIndex > 0) {
         int nodeIndex = stack[--stackIndex];
-        BVHNode node = loadBVHNodeAt(modelObjectsBuffer, objectIndex + nodeIndex * nodeFloatSize);
+        BVHNode node = loadBVHNodeAt(modelObjectsBuffer, location + nodeIndex * nodeFloatSize);
 
         if (node.isLeaf) {
             for (int offset = node.leftIndex; offset < node.rightIndex; ++offset) {
                 // Looking for identifiers
-                int index = objectIndex + model.nodesCount * nodeFloatSize + offset * identifierFloatSize;
+                int index = location + model.nodesCount * nodeFloatSize + offset * identifierFloatSize;
 
                 Triangle tri;
 
@@ -670,7 +697,7 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
                 tri.hasTextures = iden.hasTextures;
 
                 loadTriangleByIndex(
-                        objectIndex + model.nodesCount * nodeFloatSize + model.identifiersCount * identifierFloatSize,
+                        location + model.nodesCount * nodeFloatSize + model.identifiersCount * identifierFloatSize,
                         iden.index, tri);
 
                 if (hitTriangle(tri, r, max, hInfo)) {
@@ -682,8 +709,8 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int objec
             continue;
         }
 
-        BVHNode leftNode = loadBVHNodeAt(modelObjectsBuffer, objectIndex + node.leftIndex * nodeFloatSize);
-        BVHNode rightNode = loadBVHNodeAt(modelObjectsBuffer, objectIndex + node.rightIndex * nodeFloatSize);
+        BVHNode leftNode = loadBVHNodeAt(modelObjectsBuffer, location + node.leftIndex * nodeFloatSize);
+        BVHNode rightNode = loadBVHNodeAt(modelObjectsBuffer, location + node.rightIndex * nodeFloatSize);
 
         float leftDst = RayBoundingBoxDst(r, leftNode.boundingBox, hInfo.t);
         float rightDst = RayBoundingBoxDst(r, rightNode.boundingBox, hInfo.t);
@@ -707,18 +734,13 @@ void hitModels(in Ray r, inout HitInfo track) {
     float closest = tmp.t;
     float startClosest = closest;
 
-    int modelObjectIndex = 0;
-
     Triangle tri;
     tri.hasTextures = false;
     for (int i = 0; i < modelsCount; ++i) {
         bool hitted = false;
 
         Model model = loadModel(modelInfoObjectsBuffer, i);
-        hitted = hitModel(model, r, closest, tmp, modelObjectIndex, tri);
-        modelObjectIndex += model.nodesCount * nodeFloatSize
-                        + model.identifiersCount * identifierFloatSize // For identifiers
-                        + model.verticesCount * vertexFloatSize; // For vertices and normals
+        hitted = hitModel(model, r, closest, tmp, model.location, tri);
 
         if (hitted) {
             closest = tmp.t;
@@ -863,6 +885,36 @@ void hit(in Ray r, inout HitInfo track) {
     }
 
     hitModels(r, track);
+}
+
+vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area) {
+    int randLightIndex = int(rand(seed) % uint(lightSourcesCount));
+    Model model = loadModel(modelInfoObjectsBuffer, randLightIndex);
+
+    int lightIdentifierLocation = model.location + model.nodesCount * nodeFloatSize
+        + (model.identifiersCount - model.lightSourcesCount - 1) * identifierFloatSize;
+
+    Identifier iden = loadIdentifier(lightIdentifierLocation + int(rand(seed) % uint(model.lightSourcesCount)));
+
+    Triangle tri;
+    tri.materialIndex = iden.materialIndex;
+    tri.hasTextures = iden.hasTextures;
+
+    loadTriangleByIndex(
+            model.location + model.nodesCount * nodeFloatSize + model.identifiersCount * identifierFloatSize,
+            iden.index, tri);
+
+    float r1 = randFloat(seed);
+    float r2 = randFloat(seed);
+
+    if (r1 + r2 > 1.0f) {
+        r1 = 1.0f - r1;
+        r2 = 1.0f - r2;
+    }
+
+    area = 0.5 * length(cross(tri.vertices[1] - tri.vertices[0], tri.vertices[2] - tri.vertices[0]));
+
+    return r1 * tri.vertices[0] + r2 * tri.vertices[1] + (1.0f - r1 - r2) * tri.vertices[2];
 }
     )";
 }
