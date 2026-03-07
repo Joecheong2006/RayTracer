@@ -444,14 +444,16 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
         }
     }
 
-    meshData.lightSourcesCount = lightData.identifiers.size();
+    if (lightData.identifiers.size() > 0) {
+        meshData.lightSourcesCount = lightData.identifiers.size();
 
-    for (auto &iden : lightData.identifiers) {
-        iden.index += meshData.vertices.size();
+        for (auto &iden : meshData.identifiers) {
+            iden.index += glm::ivec3(lightData.vertices.size());
+        }
+
+        meshData.vertices.insert(meshData.vertices.begin(), lightData.vertices.begin(), lightData.vertices.end());
+        meshData.identifiers.insert(meshData.identifiers.begin(), lightData.identifiers.begin(), lightData.identifiers.end());
     }
-
-    meshData.vertices.insert(meshData.vertices.end(), lightData.vertices.begin(), lightData.vertices.end());
-    meshData.identifiers.insert(meshData.identifiers.end(), lightData.identifiers.begin(), lightData.identifiers.end());
 
     meshData.materials.reserve(model.materials.size());
     for (const auto &material : model.materials) {

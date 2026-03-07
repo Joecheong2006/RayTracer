@@ -891,18 +891,12 @@ vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area) {
     int randLightIndex = int(rand(seed) % uint(lightSourcesCount));
     Model model = loadModel(modelInfoObjectsBuffer, randLightIndex);
 
-    int lightIdentifierLocation = model.location + model.nodesCount * nodeFloatSize
-        + (model.identifiersCount - model.lightSourcesCount - 1) * identifierFloatSize;
-
-    Identifier iden = loadIdentifier(lightIdentifierLocation + int(rand(seed) % uint(model.lightSourcesCount)));
+    ivec3 randTriangleIndex = ivec3(0, 1, 2) + ivec3(int(rand(seed) % uint(model.lightSourcesCount)));
 
     Triangle tri;
-    tri.materialIndex = iden.materialIndex;
-    tri.hasTextures = iden.hasTextures;
-
     loadTriangleByIndex(
             model.location + model.nodesCount * nodeFloatSize + model.identifiersCount * identifierFloatSize,
-            iden.index, tri);
+            randTriangleIndex, tri);
 
     float r1 = randFloat(seed);
     float r2 = randFloat(seed);
