@@ -176,12 +176,18 @@ inline static void process_node(const tinygltf::Model &model, int nodeIndex, con
         for (const tinygltf::Primitive &primitive : mesh.primitives) {
             ASSERT(primitive.mode == TINYGLTF_MODE_TRIANGLES);
             const auto &m = model.materials[primitive.material];
-            if (m.emissiveFactor[0] + m.emissiveFactor[1] + m.emissiveFactor[2] > 0) {
-                load_mesh_data_gltf(lightData, primitive, model, worldTransform);
+
+            auto extIt = m.extensions.find("KHR_materials_emissive_strength");
+            if (extIt != m.extensions.end()) {
+                const tinygltf::Value &ext = extIt->second;
+                auto sIt = ext.Get("emissiveStrength");
+                if (sIt.IsNumber() && sIt.GetNumberAsDouble() > 0 && m.emissiveFactor[0] + m.emissiveFactor[1] + m.emissiveFactor[2] > 0) {
+                    load_mesh_data_gltf(lightData, primitive, model, worldTransform);
+                    continue;
+                }
             }
-            else {
-                load_mesh_data_gltf(meshData, primitive, model, worldTransform);
-            }
+
+            load_mesh_data_gltf(meshData, primitive, model, worldTransform);
         }
     }
 
@@ -578,15 +584,6 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
         }
 
         std::cout << "\tChannels: " << texture.channels << std::endl;
-
-        stbi_write_jpg(
-            "output.jpg",
-            texture.width,
-            texture.height,
-            texture.channels,
-            texture.data.data(),
-            90  // quality (90 is good)
-        );
     }
 
     return meshData;
