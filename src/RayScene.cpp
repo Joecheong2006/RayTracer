@@ -907,6 +907,7 @@ vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area) {
     }
 
     area = 0.5 * length(cross(tri.vertices[1] - tri.vertices[0], tri.vertices[2] - tri.vertices[0]));
+    area *= lightSourcesCount + model.lightSourcesCount;
 
     return r1 * tri.vertices[0] + r2 * tri.vertices[1] + (1.0f - r1 - r2) * tri.vertices[2];
 }
