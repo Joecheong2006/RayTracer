@@ -313,8 +313,6 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
     vec3 rayColor = vec3(1.0);
     vec3 directLight = vec3(0.0);
 
-    bool prevSpecular = true; // camera ray always accepts emission
-
     int tests = 0;
     for (int i = 0; i <= camera.bounces; ++i) {
         HitInfo info;
@@ -466,11 +464,10 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         vec3 contribution = (brdf_total * NoL) / max(pdf_used, MIN_DENOMINATOR);
 
         // Emission (add before rayColor is updated)
-        if (prevSpecular && info.mat.emissionStrength > 0.0)
+        if (info.mat.emissionStrength > 0.0)
             incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
 
         rayColor *= contribution;
-        prevSpecular = (spec == 1 || trans == 1);
 
         if (dot(rayColor, vec3(1)) < 1e-6) break;
     }
