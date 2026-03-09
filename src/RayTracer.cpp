@@ -329,6 +329,12 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 
         tests += info.tests;
 
+        // Emission (add before rayColor is updated)
+        if (dot(info.mat.emissionColor, info.mat.emissionColor) > 0.0f && info.mat.emissionStrength > 0.0) {
+            incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
+            break;
+        }
+
         // Material mat = info.mat;
         // mat.triangleLocation = info.triangleLocation;
         // mat.uvLocation = info.uvLocation;
@@ -462,10 +468,6 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 
         // Final contribution
         vec3 contribution = (brdf_total * NoL) / max(pdf_used, MIN_DENOMINATOR);
-
-        // Emission (add before rayColor is updated)
-        if (info.mat.emissionStrength > 0.0)
-            incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
 
         rayColor *= contribution;
 
