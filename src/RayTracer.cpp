@@ -311,7 +311,6 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
 vec3 traceColor(in Ray r, inout SeedType seed) {
     vec3 incomingLight = vec3(0.0);
     vec3 rayColor = vec3(1.0);
-    vec3 directLight = vec3(0.0);
 
     int tests = 0;
     for (int i = 0; i <= camera.bounces; ++i) {
@@ -335,9 +334,6 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
             break;
         }
 
-        // Material mat = info.mat;
-        // mat.triangleLocation = info.triangleLocation;
-        // mat.uvLocation = info.uvLocation;
         vec3 N = normalize(info.normal);
         vec3 V = normalize(-r.direction);
 
@@ -382,45 +378,43 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float VoH = clamp(dot(V, H), 0.0, 1.0);
         float LoV = clamp(dot(L, V), 0.0, 1.0);
 
-        // // Direct light sampling
-        {
-            if (trans == 0) {
-                float area;
-                vec3 p = sampleRandomPointFromLightSouces(seed, area);
-                Ray sr;
-                sr.origin = info.point + N * 0.001;
-                vec3 toLight = p - sr.origin;
-                sr.direction = normalize(toLight);
-                float distToLight = length(p - sr.origin);
+        // Direct light sampling
+        if (trans == 0) {
+            float area;
+            vec3 p = sampleRandomPointFromLightSouces(seed, area);
+            Ray sr;
+            sr.origin = info.point + N * 0.001;
+            vec3 toLight = p - sr.origin;
+            sr.direction = normalize(toLight);
+            float distToLight = length(p - sr.origin);
 
-                HitInfo s_info;
-                s_info.t = 1e20;
-                hit(sr, s_info);
+            HitInfo s_info;
+            s_info.t = 1e20;
+            hit(sr, s_info);
 
-                if (s_info.mat.emissionStrength > 0 && s_info.t <= distToLight + 0.01) {
-                    float cosTheta     = max(dot(N, sr.direction), 0.0);                // surface facing light
-                    float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));    // light facing surface
-                    float pdf          = 1.0 / area;
-                    float Gfactor      = cosThetaL / dot(toLight, toLight);
+            if (s_info.mat.emissionStrength > 0 && s_info.t <= distToLight + 0.01) {
+                float cosTheta     = max(dot(N, sr.direction), 0.0);                // surface facing light
+                float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));    // light facing surface
+                float pdf          = 1.0 / area;
+                float Gfactor      = cosThetaL / dot(toLight, toLight);
 
-                    vec3 Ld = sr.direction;
-                    vec3 Hd = normalize(V + Ld);
-                    float NoLd = max(dot(N, Ld), 0.0);
-                    float NoHd = clamp(dot(N, Hd), 0.0, 1.0);
-                    float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
-                    float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
+                vec3 Ld = sr.direction;
+                vec3 Hd = normalize(V + Ld);
+                float NoLd = max(dot(N, Ld), 0.0);
+                float NoHd = clamp(dot(N, Hd), 0.0, 1.0);
+                float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
+                float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
 
-                    vec3 brdf_direct = diffuseProb  * shadeDiffuse(info, NoLd, NoV, VoHd)
-                                     + specularProb * shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
-                                     + subsurfaceProb * shadeSubsurface(info, NoLd, NoV, LoVd);
+                vec3 brdf_direct = diffuseProb  * shadeDiffuse(info, NoLd, NoV, VoHd)
+                                 + specularProb * shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
+                                 + subsurfaceProb * shadeSubsurface(info, NoLd, NoV, LoVd);
 
-                    directLight = brdf_direct
-                                * s_info.mat.emissionColor * s_info.mat.emissionStrength
-                                * cosTheta
-                                * Gfactor
-                                / pdf;
-                    incomingLight += rayColor * directLight;
-                }
+                vec3 directLight = brdf_direct
+                                 * s_info.mat.emissionColor * s_info.mat.emissionStrength
+                                 * cosTheta
+                                 * Gfactor
+                                 / pdf;
+                incomingLight += rayColor * directLight;
             }
         }
 
