@@ -888,6 +888,11 @@ void hit(in Ray r, inout HitInfo track) {
 }
 
 vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area) {
+    if (lightSourcesCount == 0) {
+        area = 0.0f;
+        return vec3(0.0f);
+    }
+
     int randLightIndex = int(rand(seed) % uint(lightSourcesCount));
     Model model = loadModel(modelInfoObjectsBuffer, randLightIndex);
 
