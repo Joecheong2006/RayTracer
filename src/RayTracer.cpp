@@ -465,7 +465,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 
         rayColor *= contribution;
 
-        if (dot(rayColor, vec3(1)) < 1e-6) break;
+        float rrProb = min(max(rayColor.r, max(rayColor.g, rayColor.b)), 0.95);
+        if (randFloat(seed) > rrProb) break;
+        rayColor /= rrProb;
     }
 
     return incomingLight;
