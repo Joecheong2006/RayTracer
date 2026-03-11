@@ -190,9 +190,9 @@ bool Model::inAABB(const AABB &box) const {
 }
 
 void Model::Info::serialize(gpu::Buffer &buffer) const {
-    buffer.push(static_cast<u32>(identifiersCount));
-    buffer.push(static_cast<u32>(lightSourcesCount));
-    buffer.push(static_cast<u32>(nodesCount));
+    buffer.push(static_cast<i32>(identifiersCount));
+    buffer.push(static_cast<i32>(lightSourcesCount));
+    buffer.push(static_cast<i32>(nodesCount));
 
     std::cout << "Wrote nodesCount: " << nodesCount << std::endl;
     std::cout << "Wrote lightSourcesCount: " << lightSourcesCount << std::endl;
