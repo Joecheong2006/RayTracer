@@ -539,7 +539,7 @@ void main() {
             r.origin = cameraCenter;
             r.direction = uv + ((j + randFloat(seed)) * rssq) * rImgSize.x * camera.right + ((i + randFloat(seed)) * rssq) * rImgSize.y * camera.up;
             r.direction = normalize(r.direction - cameraCenter);
-            color += nraceColor(r, seed);
+            color += traceColor(r, seed);
         }
     }
 
