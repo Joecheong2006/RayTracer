@@ -673,6 +673,10 @@ Identifier loadIdentifier(int index) {
 const int identifierFloatSize = 5;
 const int nodeFloatSize = 9;
 
+float triArea(in Triangle tri) {
+    return 0.5 * length(cross(tri.vertices[1] - tri.vertices[0], tri.vertices[2] - tri.vertices[0]));
+}
+
 bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int location, inout Triangle triangle) {
     int stack[32];
     int stackIndex = 0;
@@ -704,6 +708,8 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int locat
                     max = hInfo.t;
                     hInfo.materialIndex = tri.materialIndex;
                     triangle = tri;
+                    hInfo.area = triArea(tri);
+                    hInfo.area *= float(lightSourcesCount) * float(model.lightSourcesCount);
                 }
             }
             continue;
@@ -911,8 +917,8 @@ vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area) {
         r2 = 1.0f - r2;
     }
 
-    area = 0.5 * length(cross(tri.vertices[1] - tri.vertices[0], tri.vertices[2] - tri.vertices[0]));
-    area *= lightSourcesCount * model.lightSourcesCount;
+    area = triArea(tri);
+    area *= float(lightSourcesCount) * float(model.lightSourcesCount);
 
     return r1 * tri.vertices[0] + r2 * tri.vertices[1] + (1.0f - r1 - r2) * tri.vertices[2];
 }
