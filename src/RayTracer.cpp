@@ -649,13 +649,13 @@ uint hashSeed(uint pixelX, uint pixelY, uint frameIndex, uint sampleIndex) {
     return pcg(h);
 }
 
-float rand(inout SeedType seed) {
+uint rand(inout SeedType seed) {
     seed = pcg(uint(seed));
-    return float(seed) / 4294967296.0;
+    return seed;
 }
 
 float randFloat(inout SeedType seed) {
-    return rand(seed);
+    return float(rand(seed)) / 4294967296.0;
 }
 
 vec3 reflect(in vec3 v, in vec3 n) {
@@ -741,6 +741,7 @@ vec3 rayAt(in Ray r, float t) {
 }
 
 void hit(in Ray r, inout HitInfo track);
+vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area);
 
 vec3 refract(in vec3 uv, in vec3 n, float etai_over_etat) {
     float cos_theta = min(dot(-uv, n), 1.0);
@@ -1009,9 +1010,12 @@ float shadeSubsurfaceSpectral(in HitInfo info, float spectral_albedo, float lamb
     return spectral_albedo * ss * INV_PI;
 }
 
+uniform float totalLightArea;
+
 float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
     float radiance = 0.0;
     float spectral_throughput = 1.0;
+    float prevBrdfPdf = 1.0f;
 
     for (int i = 0; i <= camera.bounces; ++i) {
         HitInfo info;
@@ -1033,6 +1037,23 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
 
         if (!info.front_face) {
             N = -N;
+        }
+
+        // Emission (add before rayColor is updated)
+        if (dot(info.mat.emissionColor, info.mat.emissionColor) > 0.0f && info.mat.emissionStrength > 0.0) {
+            if (i == 0) {
+                float energy = get_reflectance(lambda, info.mat.emissionColor);
+                radiance += energy * spectral_throughput * info.mat.emissionStrength;
+            }
+            else {
+                float pdf_nee = (1.0 / totalLightArea) * (info.t * info.t)
+                              / max(abs(dot(V, N)), MIN_DENOMINATOR);
+                float w_brdf = (prevBrdfPdf * prevBrdfPdf)
+                             / max(prevBrdfPdf * prevBrdfPdf + pdf_nee * pdf_nee, MIN_DENOMINATOR);
+                float energy = get_reflectance(lambda, info.mat.emissionColor);
+                radiance += energy * spectral_throughput * info.mat.emissionStrength;
+            }
+            break;
         }
 
         float transmissionProb = info.mat.transmission;
@@ -1078,10 +1099,67 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         float VoH = clamp(dot(V, H), 0.0, 1.0);
         float LoV = clamp(dot(L, V), 0.0, 1.0);
 
+        float spectral_albedo = get_reflectance(lambda, info.mat.albedo);
+
+        // Direct light sampling
+        if (trans == 0) {
+            float area;
+            vec3 p = sampleRandomPointFromLightSouces(seed, area);
+            if (area > 0) {
+                Ray sr;
+                sr.origin = info.point + N * 0.001;
+                vec3 toLight = p - sr.origin;
+                sr.direction = normalize(toLight);
+                float distToLight = length(p - sr.origin);
+
+                HitInfo s_info;
+                s_info.t = 1e20;
+                hit(sr, s_info);
+
+                if (s_info.mat.emissionStrength > 0 && s_info.t <= distToLight + 0.01) {
+                    float cosTheta     = max(dot(N, sr.direction), 0.0);                // surface facing light
+                    float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));    // light facing surface
+                    float pdf          = 1.0 / area;
+                    float Gfactor      = cosThetaL / dot(toLight, toLight);
+
+                    float pdf_nee = pdf / max(Gfactor, MIN_DENOMINATOR);
+
+                    vec3 Ld = sr.direction;
+                    vec3 Hd = normalize(V + Ld);
+                    float NoLd = max(dot(N, Ld), 0.0);
+                    float NoHd = clamp(dot(N, Hd), 0.0, 1.0);
+                    float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
+                    float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
+
+                    float p_surf = 1.0 - transmissionProb;
+                    p_surf = (p_surf < 1e-8) ? 0.0 : p_surf;
+                    float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
+
+                    float pdf_brdf_ld = diffuseProb * diffusePdf(NoLd)
+                                      + specularProb * specularPdf(NoHd, VoHd, info.mat.roughness)
+                                      + subsurfaceProb * (NoLd * INV_PI);
+                    pdf_brdf_ld *= surfaceNormalization;
+
+                    float w_nee = (pdf_nee * pdf_nee)
+                                / max(pdf_nee * pdf_nee + pdf_brdf_ld * pdf_brdf_ld, MIN_DENOMINATOR);
+
+                    float brdf_direct = diffuseProb  * shadeDiffuseSpectral(info, spectral_albedo, lambda, NoLd, NoV, VoHd)
+                        + specularProb * shadeSpecularSpectral(info, spectral_albedo, lambda, NoV, NoLd, NoHd, VoHd)
+                        + subsurfaceProb * shadeSubsurfaceSpectral(info, spectral_albedo, lambda, NoLd, NoV, LoVd);
+
+                    float energy = get_reflectance(lambda, s_info.mat.emissionColor);
+                    float directLight = brdf_direct
+                        * energy * s_info.mat.emissionStrength
+                        * cosTheta
+                        * Gfactor
+                        / pdf;
+                    radiance += spectral_throughput * directLight * w_nee;
+                }
+            }
+        }
+
         r.origin = info.point + L * 0.001;
         r.direction = L;
-
-        float spectral_albedo = get_reflectance(lambda, info.mat.albedo);
 
         if (trans == 1) {
             if (!info.front_face) {
@@ -1090,6 +1168,7 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
                 float transmittance = exp(-absorption * info.t); // Beer–Lambert
                 spectral_throughput *= transmittance;
             }
+            prevBrdfPdf = 1.0f;
             continue;
         }
 
@@ -1113,6 +1192,7 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         float pdf_diff = diffusePdf(NoL) * diffuseProb * diff * surfaceNormalization;
 
         float pdf_used = pdf_sss + pdf_spec + pdf_diff;
+        prevBrdfPdf = pdf_used;
 
         float denom = pdf_diff * pdf_diff + pdf_spec * pdf_spec + pdf_sss * pdf_sss;
         float rdenom = 1.0 / max(denom, MIN_DENOMINATOR);
@@ -1125,18 +1205,11 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         // Final contribution
         float contribution = (brdf_total_s * NoL) / max(pdf_used, MIN_DENOMINATOR);
 
-        // Emission (add before rayColor is updated)
-        if (info.mat.emissionStrength > 0.0) {
-            float energy = get_reflectance(lambda, info.mat.emissionColor);
-            radiance += energy * spectral_throughput * info.mat.emissionStrength;
-        }
-
         spectral_throughput *= contribution;
 
-        // Break if spectral throughput is too small
-        if (spectral_throughput < 1e-6) {
-            break;
-        }
+        float rrProb = min(spectral_throughput, 0.95);
+        if (randFloat(seed) > rrProb) break;
+        spectral_throughput /= rrProb;
     }
 
     return radiance;
