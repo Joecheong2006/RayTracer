@@ -478,7 +478,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float pdf_diff_full = diffusePdf(NoL) * diffuseProb * surfaceNormalization;
 
         float pdf_used = pdf_sss_full + pdf_spec_full + pdf_diff_full;
-        prevBrdfPdf = pdf_used;
+        prevBrdfPdf = pdf_sss_full * subsurface + pdf_spec_full * spec + pdf_diff_full * diff;
 
         float denom  = pdf_diff_full * pdf_diff_full + pdf_spec_full * pdf_spec_full + pdf_sss_full * pdf_sss_full;
         float rdenom = 1.0 / max(denom, MIN_DENOMINATOR);
@@ -1189,7 +1189,7 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         float pdf_diff_full = diffusePdf(NoL) * diffuseProb * surfaceNormalization;
 
         float pdf_used = pdf_sss_full + pdf_spec_full + pdf_diff_full;
-        prevBrdfPdf = pdf_used;
+        prevBrdfPdf = pdf_sss_full * subsurface + pdf_spec_full * spec + pdf_diff_full * diff;
 
         float denom  = pdf_diff_full * pdf_diff_full + pdf_spec_full * pdf_spec_full + pdf_sss_full * pdf_sss_full;
         float rdenom = 1.0 / max(denom, MIN_DENOMINATOR);
