@@ -50,6 +50,7 @@ private:
 
     i32 m_textureTotalSize = 0;
     i32 lightSourcesCount = 0;
+    f32 totalLightArea = 0.0f;
 
 public:
     explicit RayScene() = default;

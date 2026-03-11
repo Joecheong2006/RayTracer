@@ -308,9 +308,12 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
     return refract(-V, H, eta);
 }
 
+uniform float totalLightArea;
+
 vec3 traceColor(in Ray r, inout SeedType seed) {
     vec3 incomingLight = vec3(0.0);
     vec3 rayColor = vec3(1.0);
+    float prevBrdfPdf = 1.0f;
 
     int tests = 0;
     for (int i = 0; i <= camera.bounces; ++i) {
@@ -328,17 +331,26 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 
         tests += info.tests;
 
-        // Emission (add before rayColor is updated)
-        if (dot(info.mat.emissionColor, info.mat.emissionColor) > 0.0f && info.mat.emissionStrength > 0.0) {
-            incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
-            break;
-        }
-
         vec3 N = normalize(info.normal);
         vec3 V = normalize(-r.direction);
 
         if (!info.front_face) {
             N = -N;
+        }
+
+        // Emission (add before rayColor is updated)
+        if (dot(info.mat.emissionColor, info.mat.emissionColor) > 0.0f && info.mat.emissionStrength > 0.0) {
+            if (i == 0) {
+                incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
+            }
+            else {
+                float pdf_nee = (1.0 / totalLightArea) * (info.t * info.t)
+                              / max(abs(dot(V, N)), MIN_DENOMINATOR);
+                float w_brdf = (prevBrdfPdf * prevBrdfPdf)
+                             / max(prevBrdfPdf * prevBrdfPdf + pdf_nee * pdf_nee, MIN_DENOMINATOR);
+                incomingLight += rayColor * w_brdf * info.mat.emissionColor * info.mat.emissionStrength;
+            }
+            break;
         }
 
         float transmissionProb = info.mat.transmission;
@@ -399,12 +411,26 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                     float pdf          = 1.0 / area;
                     float Gfactor      = cosThetaL / dot(toLight, toLight);
 
+                    float pdf_nee = pdf / max(Gfactor, MIN_DENOMINATOR);
+
                     vec3 Ld = sr.direction;
                     vec3 Hd = normalize(V + Ld);
                     float NoLd = max(dot(N, Ld), 0.0);
                     float NoHd = clamp(dot(N, Hd), 0.0, 1.0);
                     float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
                     float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
+
+                    float p_surf = 1.0 - transmissionProb;
+                    p_surf = (p_surf < 1e-8) ? 0.0 : p_surf;
+                    float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
+
+                    float pdf_brdf_ld = diffuseProb * diffusePdf(NoLd)
+                                      + specularProb * specularPdf(NoHd, VoHd, info.mat.roughness)
+                                      + subsurfaceProb * (NoLd * INV_PI);
+                    pdf_brdf_ld *= surfaceNormalization;
+
+                    float w_nee = (pdf_nee * pdf_nee)
+                                / max(pdf_nee * pdf_nee + pdf_brdf_ld * pdf_brdf_ld, MIN_DENOMINATOR);
 
                     vec3 brdf_direct = diffuseProb  * shadeDiffuse(info, NoLd, NoV, VoHd)
                         + specularProb * shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
@@ -415,7 +441,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                         * cosTheta
                         * Gfactor
                         / pdf;
-                    incomingLight += rayColor * directLight;
+                    incomingLight += rayColor * directLight * w_nee;
                 }
             }
         }
@@ -430,6 +456,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
                 rayColor *= transmittance;
             }
+            prevBrdfPdf = 1.0f;
             continue;
         }
 
@@ -453,6 +480,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float pdf_diff = diffusePdf(NoL) * diffuseProb * diff * surfaceNormalization;
 
         float pdf_used = pdf_sss + pdf_spec + pdf_diff;
+        prevBrdfPdf = pdf_used;
 
         float denom = pdf_diff * pdf_diff + pdf_spec * pdf_spec + pdf_sss * pdf_sss;
         float rdenom = 1.0 / max(denom, MIN_DENOMINATOR);
@@ -511,7 +539,7 @@ void main() {
             r.origin = cameraCenter;
             r.direction = uv + ((j + randFloat(seed)) * rssq) * rImgSize.x * camera.right + ((i + randFloat(seed)) * rssq) * rImgSize.y * camera.up;
             r.direction = normalize(r.direction - cameraCenter);
-            color += traceColor(r, seed);
+            color += nraceColor(r, seed);
         }
     }
 

@@ -81,6 +81,9 @@ struct Triangle : public TraceableObject {
 
     virtual bool inAABB(const AABB &box) const override;
     virtual void serialize(gpu::Buffer &buffer) const override;
+    float area() const {
+        return 0.5f * glm::length(glm::cross(posB - posA, posC - posA));
+    }
 
     glm::vec3 posA, posB, posC;
     glm::vec3 normA, normB, normC;
