@@ -259,7 +259,6 @@ vec3 rayAt(in Ray r, float t) {
 // Implemented from RayScene
 void hit(in Ray r, inout HitInfo track);
 vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area);
-bool checkHitted(in Ray r, inout HitInfo track);
 
 vec3 refract(in vec3 uv, in vec3 n, float etai_over_etat) {
     float cos_theta = min(dot(-uv, n), 1.0);
