@@ -74,6 +74,7 @@ struct Material {
 struct HitInfo {
     vec3 point, normal, tangent, bitangent;
     float t;
+    float area;
     vec2 uv;
     int materialIndex;
     Material mat;
@@ -311,7 +312,6 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
     vec3 incomingLight = vec3(0.0);
     vec3 rayColor = vec3(1.0);
     float prevBrdfPdf = 1.0f;
-    float prevArea = 1.0;
 
     int tests = 0;
     for (int i = 0; i <= camera.bounces; ++i) {
@@ -342,9 +342,8 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
             }
             else {
-                float cosL = abs(dot(-normalize(r.direction), normalize(info.normal))); // raw normal, before flip
-                float pdf_nee = (1.0 / prevArea) * (info.t * info.t)
-                              / max(cosL, MIN_DENOMINATOR);
+                float pdf_nee = (1.0 / info.area) * (info.t * info.t)
+                              / max(abs(dot(V, N)), MIN_DENOMINATOR);
                 float w_brdf = (prevBrdfPdf * prevBrdfPdf)
                              / max(prevBrdfPdf * prevBrdfPdf + pdf_nee * pdf_nee, MIN_DENOMINATOR);
                 incomingLight += rayColor * w_brdf * info.mat.emissionColor * info.mat.emissionStrength;
@@ -403,7 +402,6 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 HitInfo s_info;
                 s_info.t = 1e20;
                 hit(sr, s_info);
-                prevArea = area;
 
                 if (s_info.mat.emissionStrength > 0 && s_info.t <= distToLight + 0.01) {
                     float cosTheta     = max(dot(N, sr.direction), 0.0);                // surface facing light
@@ -475,20 +473,20 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         p_surf = (p_surf < 1e-8) ? 0.0 : p_surf;
         float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
 
-        float pdf_sss = NoL * INV_PI * subsurfaceProb * subsurface * surfaceNormalization;
-        float pdf_spec = specularPdf(NoH, VoH, info.mat.roughness) * specularProb * spec * surfaceNormalization;
-        float pdf_diff = diffusePdf(NoL) * diffuseProb * diff * surfaceNormalization;
+        float pdf_sss_full  = NoL * INV_PI * subsurfaceProb * surfaceNormalization;
+        float pdf_spec_full = specularPdf(NoH, VoH, info.mat.roughness) * specularProb * surfaceNormalization;
+        float pdf_diff_full = diffusePdf(NoL) * diffuseProb * surfaceNormalization;
 
-        float pdf_used = pdf_sss + pdf_spec + pdf_diff;
+        float pdf_used = pdf_sss_full + pdf_spec_full + pdf_diff_full;
         prevBrdfPdf = pdf_used;
 
-        float denom = pdf_diff * pdf_diff + pdf_spec * pdf_spec + pdf_sss * pdf_sss;
+        float denom  = pdf_diff_full * pdf_diff_full + pdf_spec_full * pdf_spec_full + pdf_sss_full * pdf_sss_full;
         float rdenom = 1.0 / max(denom, MIN_DENOMINATOR);
 
         // Combine weighted BRDFs (all lobes)
-        vec3 brdf_total = ((pdf_spec * pdf_spec) * brdf_spec
-                        + (pdf_diff * pdf_diff) * brdf_diff
-                        + (pdf_sss * pdf_sss) * brdf_sss) * rdenom;
+        vec3 brdf_total = ((pdf_spec_full * pdf_spec_full) * brdf_spec
+                        +  (pdf_diff_full * pdf_diff_full) * brdf_diff
+                        +  (pdf_sss_full  * pdf_sss_full)  * brdf_sss) * rdenom;
 
         // Final contribution
         vec3 contribution = (brdf_total * NoL) / max(pdf_used, MIN_DENOMINATOR);
@@ -621,6 +619,7 @@ struct Material {
 struct HitInfo {
     vec3 point, normal, tangent, bitangent;
     float t;
+    float area;
     vec2 uv;
     int materialIndex;
     Material mat;
@@ -1010,13 +1009,10 @@ float shadeSubsurfaceSpectral(in HitInfo info, float spectral_albedo, float lamb
     return spectral_albedo * ss * INV_PI;
 }
 
-uniform float totalLightArea;
-
 float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
     float radiance = 0.0;
     float spectral_throughput = 1.0;
     float prevBrdfPdf = 1.0f;
-    float prevArea = 1.0;
 
     for (int i = 0; i <= camera.bounces; ++i) {
         HitInfo info;
@@ -1036,10 +1032,6 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         vec3 N = normalize(info.normal);
         vec3 V = normalize(-r.direction);
 
-        if (!info.front_face) {
-            N = -N;
-        }
-
         // Emission (add before rayColor is updated)
         if (dot(info.mat.emissionColor, info.mat.emissionColor) > 0.0f && info.mat.emissionStrength > 0.0) {
             if (i == 0) {
@@ -1047,7 +1039,7 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
                 radiance += energy * spectral_throughput * info.mat.emissionStrength;
             }
             else {
-                float pdf_nee = (1.0 / prevArea) * (info.t * info.t)
+                float pdf_nee = (1.0 / info.area) * (info.t * info.t)
                               / max(abs(dot(V, N)), MIN_DENOMINATOR);
                 float w_brdf = (prevBrdfPdf * prevBrdfPdf)
                              / max(prevBrdfPdf * prevBrdfPdf + pdf_nee * pdf_nee, MIN_DENOMINATOR);
@@ -1055,6 +1047,10 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
                 radiance += energy * spectral_throughput * info.mat.emissionStrength * w_brdf;
             }
             break;
+        }
+
+        if (!info.front_face) {
+            N = -N;
         }
 
         float transmissionProb = info.mat.transmission;
@@ -1116,7 +1112,6 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
                 HitInfo s_info;
                 s_info.t = 1e20;
                 hit(sr, s_info);
-                prevArea = area;
 
                 if (s_info.mat.emissionStrength > 0 && s_info.t <= distToLight + 0.01) {
                     float cosTheta     = max(dot(N, sr.direction), 0.0);                // surface facing light
@@ -1189,20 +1184,20 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         p_surf = (p_surf < 1e-8) ? 0.0 : p_surf;
         float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
 
-        float pdf_sss = NoL * INV_PI * subsurfaceProb * subsurface * surfaceNormalization;
-        float pdf_spec = specularPdf(NoH, VoH, info.mat.roughness) * specularProb * spec * surfaceNormalization;
-        float pdf_diff = diffusePdf(NoL) * diffuseProb * diff * surfaceNormalization;
+        float pdf_sss_full  = NoL * INV_PI * subsurfaceProb * surfaceNormalization;
+        float pdf_spec_full = specularPdf(NoH, VoH, info.mat.roughness) * specularProb * surfaceNormalization;
+        float pdf_diff_full = diffusePdf(NoL) * diffuseProb * surfaceNormalization;
 
-        float pdf_used = pdf_sss + pdf_spec + pdf_diff;
+        float pdf_used = pdf_sss_full + pdf_spec_full + pdf_diff_full;
         prevBrdfPdf = pdf_used;
 
-        float denom = pdf_diff * pdf_diff + pdf_spec * pdf_spec + pdf_sss * pdf_sss;
+        float denom  = pdf_diff_full * pdf_diff_full + pdf_spec_full * pdf_spec_full + pdf_sss_full * pdf_sss_full;
         float rdenom = 1.0 / max(denom, MIN_DENOMINATOR);
 
         // Combine weighted BRDFs (all lobes)
-        float brdf_total_s = ((pdf_spec * pdf_spec) * brdf_spec_s
-                        + (pdf_diff * pdf_diff) * brdf_diff_s
-                        + (pdf_sss * pdf_sss) * brdf_sss_s) * rdenom;
+        float brdf_total_s = ((pdf_spec_full * pdf_spec_full) * brdf_spec_s
+                        +  (pdf_diff_full * pdf_diff_full) * brdf_diff_s
+                        +  (pdf_sss_full  * pdf_sss_full)  * brdf_sss_s) * rdenom;
 
         // Final contribution
         float contribution = (brdf_total_s * NoL) / max(pdf_used, MIN_DENOMINATOR);
