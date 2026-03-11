@@ -307,12 +307,11 @@ vec3 sampleTransmission(in vec3 N, in vec3 V, bool front_face, in Material mat, 
     return refract(-V, H, eta);
 }
 
-uniform float totalLightArea;
-
 vec3 traceColor(in Ray r, inout SeedType seed) {
     vec3 incomingLight = vec3(0.0);
     vec3 rayColor = vec3(1.0);
     float prevBrdfPdf = 1.0f;
+    float prevArea = 1.0;
 
     int tests = 0;
     for (int i = 0; i <= camera.bounces; ++i) {
@@ -343,8 +342,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
             }
             else {
-                float pdf_nee = (1.0 / totalLightArea) * (info.t * info.t)
-                              / max(abs(dot(V, N)), MIN_DENOMINATOR);
+                float cosL = abs(dot(-normalize(r.direction), normalize(info.normal))); // raw normal, before flip
+                float pdf_nee = (1.0 / prevArea) * (info.t * info.t)
+                              / max(cosL, MIN_DENOMINATOR);
                 float w_brdf = (prevBrdfPdf * prevBrdfPdf)
                              / max(prevBrdfPdf * prevBrdfPdf + pdf_nee * pdf_nee, MIN_DENOMINATOR);
                 incomingLight += rayColor * w_brdf * info.mat.emissionColor * info.mat.emissionStrength;
@@ -403,6 +403,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 HitInfo s_info;
                 s_info.t = 1e20;
                 hit(sr, s_info);
+                prevArea = area;
 
                 if (s_info.mat.emissionStrength > 0 && s_info.t <= distToLight + 0.01) {
                     float cosTheta     = max(dot(N, sr.direction), 0.0);                // surface facing light
@@ -1015,6 +1016,7 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
     float radiance = 0.0;
     float spectral_throughput = 1.0;
     float prevBrdfPdf = 1.0f;
+    float prevArea = 1.0;
 
     for (int i = 0; i <= camera.bounces; ++i) {
         HitInfo info;
@@ -1045,12 +1047,12 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
                 radiance += energy * spectral_throughput * info.mat.emissionStrength;
             }
             else {
-                float pdf_nee = (1.0 / totalLightArea) * (info.t * info.t)
+                float pdf_nee = (1.0 / prevArea) * (info.t * info.t)
                               / max(abs(dot(V, N)), MIN_DENOMINATOR);
                 float w_brdf = (prevBrdfPdf * prevBrdfPdf)
                              / max(prevBrdfPdf * prevBrdfPdf + pdf_nee * pdf_nee, MIN_DENOMINATOR);
                 float energy = get_reflectance(lambda, info.mat.emissionColor);
-                radiance += energy * spectral_throughput * info.mat.emissionStrength;
+                radiance += energy * spectral_throughput * info.mat.emissionStrength * w_brdf;
             }
             break;
         }
@@ -1114,6 +1116,7 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
                 HitInfo s_info;
                 s_info.t = 1e20;
                 hit(sr, s_info);
+                prevArea = area;
 
                 if (s_info.mat.emissionStrength > 0 && s_info.t <= distToLight + 0.01) {
                     float cosTheta     = max(dot(N, sr.direction), 0.0);                // surface facing light

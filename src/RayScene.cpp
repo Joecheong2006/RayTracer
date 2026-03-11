@@ -49,7 +49,6 @@ void RayScene::bindShader(gl::ShaderProgram &shader) const {
     shader.setUniform1i("texturesBuffer", 5);
 
     shader.setUniform1i("lightSourcesCount", lightSourcesCount);
-    shader.setUniform1f("totalLightArea", totalLightArea);
 }
 
 void RayScene::submit() {
@@ -62,10 +61,6 @@ void RayScene::submit() {
 
     for (const auto &key : lightSourcesMark) {
         m_modelObjects[key]->info.serialize(*modelInfoBuffer);
-        for (int i = 0; i < m_modelObjects[key]->meshData.lightSourcesCount; ++i) {
-            const auto &tri = m_modelObjects[key]->getTriangleFromIdentifier(m_modelObjects[key]->meshData.identifiers[i]);
-            totalLightArea += tri.area();
-        }
 
         // Serializa an extra model location for
         // this specific gpu::Floatbuffer/TBO impl
