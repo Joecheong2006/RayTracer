@@ -710,9 +710,8 @@ float fresnelSchlickScalar(float cosTheta, float F0) {
 float NDF_GGX(float NoH, float roughness) {
     float a = roughness * roughness;
     float a2 = a * a;
-    float demon = NoH * NoH * (a2 - 1.0) + 1.0;
-    float demon2 = demon * demon;
-    return demon2 < MIN_DENOMINATOR ? 1.0 : a2 / demon2 * INV_PI;
+    float denom = NoH * NoH * (a2 - 1.0) + 1.0;
+    return a2 / max(denom * denom, 1e-16);
 }
 
 float geometrySchlickGGX(float NoV, float roughness) {
@@ -974,7 +973,6 @@ float diffusePdf(float NoL) {
 
 // === Specular ===
 float specularPdf(float NoH, float VoH, float roughness) {
-    float a = roughness * roughness;
     float D = NDF_GGX(NoH, roughness);
     return D * NoH / max(4.0 * VoH, MIN_DENOMINATOR);
 }
@@ -1116,7 +1114,7 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
 
                     vec3 Ld = sr.direction;
                     vec3 Hd = normalize(V + Ld);
-                    float NoLd = max(dot(N, Ld), 0.0);
+                    float NoLd = clamp(dot(N, Ld), 0.0, 1.0);
                     float NoHd = clamp(dot(N, Hd), 0.0, 1.0);
                     float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
                     float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
@@ -1184,13 +1182,8 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         float pdf_used = pdf_sss_full * subsurface + pdf_spec_full * spec + pdf_diff_full * diff;
         prevBrdfPdf = pdf_used;
 
-        float denom  = pdf_diff_full * pdf_diff_full + pdf_spec_full * pdf_spec_full + pdf_sss_full * pdf_sss_full;
-        float rdenom = 1.0 / max(denom, MIN_DENOMINATOR);
-
         // Combine weighted BRDFs (all lobes)
-        float brdf_total_s = ((pdf_spec_full * pdf_spec_full) * brdf_spec_s
-                        +  (pdf_diff_full * pdf_diff_full) * brdf_diff_s
-                        +  (pdf_sss_full  * pdf_sss_full)  * brdf_sss_s) * rdenom;
+        float brdf_total_s = (brdf_spec_s * spec + brdf_diff_s * diff +  brdf_sss_s * subsurface);
 
         // Final contribution
         float contribution = (brdf_total_s * NoL) / max(pdf_used, MIN_DENOMINATOR);
