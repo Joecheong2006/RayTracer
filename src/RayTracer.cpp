@@ -196,6 +196,7 @@ float NDF_GGX(float NoH, float roughness) {
 }
 
 float geometrySchlickGGX(float NoV, float roughness) {
+    float a = roughness * roughness;
     float k = a * 0.5;
     return NoV / max(NoV * (1.0 - k) + k, MIN_DENOMINATOR);
 }
@@ -208,7 +209,6 @@ float geometrySmith(float NoV, float NoL, float roughness) {
 
 // === Specular ===
 float specularPdf(float NoH, float VoH, float roughness) {
-    float a = roughness * roughness;
     float D = NDF_GGX(NoH, roughness);
     return D * NoH / max(4.0 * VoH, MIN_DENOMINATOR);
 }
