@@ -412,7 +412,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 
                     vec3 Ld = sr.direction;
                     vec3 Hd = normalize(V + Ld);
-                    float NoLd = max(dot(N, Ld), 0.0);
+                    float NoLd = clamp(dot(N, Ld), 0.0, 1.0);
                     float NoHd = clamp(dot(N, Hd), 0.0, 1.0);
                     float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
                     float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
