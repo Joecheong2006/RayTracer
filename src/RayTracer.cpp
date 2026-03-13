@@ -191,8 +191,7 @@ vec3 fresnelSchlick(float cosTheta, in vec3 F0) {
 float NDF_GGX(float NoH, float roughness) {
     float a = roughness * roughness;
     float a2 = a * a;
-    float demon = NoH * NoH * (a2 - 1.0) + 1.0;
-    float demon2 = demon * demon;
+    float denom = NoH * NoH * (a2 - 1.0) + 1.0;
     return a2 / max(denom * denom, 1e-16);
 }
 
