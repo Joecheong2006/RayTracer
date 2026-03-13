@@ -444,7 +444,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         }
 
         // Continue path
-        r.origin = info.point + N * 0.001;
+        r.origin = info.point + L * 0.001;
         r.direction = L;
 
         if (trans == 1) {
