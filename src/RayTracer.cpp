@@ -193,11 +193,10 @@ float NDF_GGX(float NoH, float roughness) {
     float a2 = a * a;
     float demon = NoH * NoH * (a2 - 1.0) + 1.0;
     float demon2 = demon * demon;
-    return demon2 < MIN_DENOMINATOR ? 1.0 : a2 / demon2 * INV_PI;
+    return a2 / max(denom * denom, 1e-16);
 }
 
 float geometrySchlickGGX(float NoV, float roughness) {
-    float a = roughness * roughness;
     float k = a * 0.5;
     return NoV / max(NoV * (1.0 - k) + k, MIN_DENOMINATOR);
 }
