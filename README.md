@@ -70,7 +70,7 @@ cmake --build . --config Release
 - [x] Static BVH acceleration structure
 - [x] Transmissive materials (glass, water)
 - [x] Texture mapping and UV coordinates
-- [ ] Next Event Estimation (NEE) for direct light sampling
+- [x] Next Event Estimation (NEE) for direct light sampling with MIS
 - [ ] Denoising filters
 - [ ] Dynamic BVH for animated scenes
 - [ ] Importance sampling for complex materials
