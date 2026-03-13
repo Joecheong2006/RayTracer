@@ -479,13 +479,8 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float pdf_used = pdf_sss_full * subsurface + pdf_spec_full * spec + pdf_diff_full * diff;
         prevBrdfPdf = pdf_used;
 
-        float denom  = pdf_diff_full * pdf_diff_full + pdf_spec_full * pdf_spec_full + pdf_sss_full * pdf_sss_full;
-        float rdenom = 1.0 / max(denom, MIN_DENOMINATOR);
-
-        // Combine weighted BRDFs (all lobes)
-        vec3 brdf_total = ((pdf_spec_full * pdf_spec_full) * brdf_spec
-                        +  (pdf_diff_full * pdf_diff_full) * brdf_diff
-                        +  (pdf_sss_full  * pdf_sss_full)  * brdf_sss) * rdenom;
+        // Single BRDFs with flags
+        vec3 brdf_total = (brdf_spec * spec + brdf_diff * diff +  brdf_sss * subsurface);
 
         // Final contribution
         vec3 contribution = (brdf_total * NoL) / max(pdf_used, MIN_DENOMINATOR);
