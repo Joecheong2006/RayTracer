@@ -747,6 +747,9 @@ void hitModels(in Ray r, inout HitInfo track) {
         bool hitted = false;
 
         Model model = loadModel(modelInfoObjectsBuffer, i);
+        // Skipped light identifiers session
+        // which is not useful for hitModel.
+        model.location += model.lightSourcesCount * identifierFloatSize;
         hitted = hitModel(model, r, closest, tmp, model.location, tri);
 
         if (hitted) {
@@ -903,12 +906,18 @@ vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area) {
     int randLightIndex = int(rand(seed) % uint(lightSourcesCount));
     Model model = loadModel(modelInfoObjectsBuffer, randLightIndex);
 
-    ivec3 randTriangleIndex = ivec3(0, 1, 2) + ivec3(int(rand(seed) % uint(model.lightSourcesCount)));
+    int randomIdentifierIndex = model.location
+            + int(rand(seed) % uint(model.lightSourcesCount)) * identifierFloatSize;
+
+    Identifier iden = loadIdentifier(randomIdentifierIndex);
 
     Triangle tri;
     loadTriangleByIndex(
-            model.location + model.nodesCount * nodeFloatSize + model.identifiersCount * identifierFloatSize,
-            randTriangleIndex, tri);
+            model.location
+            + model.lightSourcesCount * identifierFloatSize
+            + model.nodesCount * nodeFloatSize
+            + model.identifiersCount * identifierFloatSize,
+            iden.index, tri);
 
     float r1 = randFloat(seed);
     float r2 = randFloat(seed);

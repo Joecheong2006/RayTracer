@@ -211,9 +211,10 @@ float geometrySmith(float NoV, float NoL, float roughness) {
 }
 
 // === Specular ===
-float specularPdf(float NoH, float VoH, float roughness) {
+float specularPdf(float NoH, float NoV, float VoH, float roughness) {
     float D = NDF_GGX(NoH, roughness);
-    return D * NoH / max(4.0 * VoH, MIN_DENOMINATOR);
+    float G1 = geometrySchlickGGX(NoV, roughness);
+    return D * G1 / max(4.0 * NoV, MIN_DENOMINATOR);
 }
 
 vec3 shadeSpecular(in HitInfo info, float NoV, float NoL, float NoH, float VoH) {
@@ -411,8 +412,8 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 s_info.t = 1e20;
                 hit(sr, s_info);
 
-                if (s_info.mat.emissionStrength > 0 && s_info.t <= distToLight + 0.01) {
-                    float cosTheta     = max(dot(N, sr.direction), 0.0);                // surface facing light
+                if (s_info.mat.emissionStrength > 0 && abs(distToLight - s_info.t) <= 0.001) {
+                    float cosTheta     = max(dot(N, sr.direction), 0.01);                // surface facing light
                     float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));    // light facing surface
                     float pdf          = 1.0 / area;
                     float Gfactor      = cosThetaL / dot(toLight, toLight);
@@ -431,7 +432,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                     float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
 
                     float pdf_brdf_ld = diffuseProb * diffusePdf(NoLd)
-                                      + specularProb * specularPdf(NoHd, VoHd, info.mat.roughness)
+                                      + specularProb * specularPdf(NoHd, NoV, VoHd, info.mat.roughness)
                                       + subsurfaceProb * (NoLd * INV_PI);
                     pdf_brdf_ld *= surfaceNormalization;
 
@@ -483,7 +484,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
 
         float pdf_sss_full  = NoL * INV_PI * subsurfaceProb * surfaceNormalization;
-        float pdf_spec_full = specularPdf(NoH, VoH, info.mat.roughness) * specularProb * surfaceNormalization;
+        float pdf_spec_full = specularPdf(NoH, NoV, VoH, info.mat.roughness) * specularProb * surfaceNormalization;
         float pdf_diff_full = diffusePdf(NoL) * diffuseProb * surfaceNormalization;
 
         float pdf_used = pdf_sss_full * subsurface + pdf_spec_full * spec + pdf_diff_full * diff;

@@ -26,6 +26,8 @@ struct MeshData {
     std::vector<Identifier> identifiers;
     std::vector<Material> materials;
 
+    std::vector<Identifier> lightIdentifiers;
+
     struct Texture : public gpu::Serializable {
         i32 width, height, channels, channelSize, wrapS, wrapT;
         std::vector<f32> data;

@@ -442,6 +442,7 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
     }
 
     if (lightData.identifiers.size() > 0) {
+        meshData.lightIdentifiers = lightData.identifiers;
         meshData.lightSourcesCount = lightData.identifiers.size();
 
         for (auto &iden : meshData.identifiers) {

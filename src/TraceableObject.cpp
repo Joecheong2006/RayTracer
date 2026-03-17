@@ -200,6 +200,10 @@ void Model::Info::serialize(gpu::Buffer &buffer) const {
 }
 
 void Model::serialize(gpu::Buffer &buffer) const {
+    for (const auto &iden : meshData.lightIdentifiers) {
+        iden.serialize(buffer);
+    }
+
     const auto &nodes = bvh.getNodes();
     for (const auto &node : nodes) {
         buffer.push(node.box.min);
