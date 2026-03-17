@@ -396,7 +396,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float LoV = clamp(dot(L, V), 0.0, 1.0);
 
         // Direct light sampling
-#define ENABLE_NEE
+#if ENABLE_NEE
         if (trans == 0) {
             float area;
             vec3 p = sampleRandomPointFromLightSouces(seed, area);
