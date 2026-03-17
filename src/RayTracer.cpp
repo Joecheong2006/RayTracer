@@ -19,6 +19,10 @@ void main() {
 
 static const char *RGBRayTracerFragShaderSource = R"(
 #version 330 core
+
+// Flags
+#define ENABLE_NEE 1
+
 out vec4 fragColor;
 
 #define SeedType uint
@@ -331,6 +335,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 
         // Emission (add before rayColor is updated)
         if (dot(info.mat.emissionColor, info.mat.emissionColor) > 0.0f && info.mat.emissionStrength > 0.0) {
+#if ENABLE_NEE
             if (i == 0) {
                 incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
             }
@@ -341,6 +346,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                              / max(prevBrdfPdf * prevBrdfPdf + pdf_nee * pdf_nee, MIN_DENOMINATOR);
                 incomingLight += rayColor * w_brdf * info.mat.emissionColor * info.mat.emissionStrength;
             }
+#else
+             incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
+#endif
             break;
         }
 
@@ -388,6 +396,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         float LoV = clamp(dot(L, V), 0.0, 1.0);
 
         // Direct light sampling
+#define ENABLE_NEE
         if (trans == 0) {
             float area;
             vec3 p = sampleRandomPointFromLightSouces(seed, area);
@@ -442,6 +451,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 }
             }
         }
+#endif
 
         // Continue path
         r.origin = info.point + L * 0.001;
@@ -556,12 +566,15 @@ void main() {
 
 static const char *SpectralRayTracerFragShaderSource = R"(
 #version 330 core
+
+// Flags
+#define ENABLE_NEE 1
+#define HERO_WAVELENGTH_ENABLE 0
+
 out vec4 fragColor;
 
 #define SeedType uint
 #define MIN_DENOMINATOR 1e-8
-
-#define HERO_WAVELENGTH_ENABLE 0
 
 const float PI = 3.1415926;
 const float INV_PI = 1.0 / PI;
@@ -1025,8 +1038,9 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
 
         // Emission (add before rayColor is updated)
         if (dot(info.mat.emissionColor, info.mat.emissionColor) > 0.0f && info.mat.emissionStrength > 0.0) {
+            float energy = get_reflectance(lambda, info.mat.emissionColor);
+#if ENABLE_NEE
             if (i == 0) {
-                float energy = get_reflectance(lambda, info.mat.emissionColor);
                 radiance += energy * spectral_throughput * info.mat.emissionStrength;
             }
             else {
@@ -1037,6 +1051,9 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
                 float energy = get_reflectance(lambda, info.mat.emissionColor);
                 radiance += energy * spectral_throughput * info.mat.emissionStrength * w_brdf;
             }
+#else
+            radiance += energy * spectral_throughput * info.mat.emissionStrength;
+#endif
             break;
         }
 
@@ -1092,6 +1109,7 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         float spectral_albedo = get_reflectance(lambda, info.mat.albedo);
 
         // Direct light sampling
+#if ENABLE_NEE
         if (trans == 0) {
             float area;
             vec3 p = sampleRandomPointFromLightSouces(seed, area);
@@ -1147,6 +1165,7 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
                 }
             }
         }
+#endif
 
         r.origin = info.point + L * 0.001;
         r.direction = L;
