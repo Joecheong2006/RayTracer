@@ -433,15 +433,12 @@ MeshData MeshData::LoadMeshData(std::string modelPath) {
     }
 
     std::cout << "Load " << modelPath << " successfully!\n";
-    MeshData meshData, lightData;
+    MeshData meshData{}, lightData{};
 
     int sceneIndex = model.defaultScene > -1 ? model.defaultScene : 0;
     const tinygltf::Scene &scene = model.scenes[sceneIndex];
-    for (int nodeIndex : scene.nodes) {
-        glm::mat4 transform = glm::mat4(1.0);
-        for (int nodeIndex : scene.nodes) {
-            process_node(model, nodeIndex, transform, meshData, lightData);
-        }
+    for (int rootIndex : scene.nodes) {
+        process_node(model, rootIndex, glm::mat4(1.0f), meshData, lightData);
     }
 
     if (lightData.identifiers.size() > 0) {
