@@ -84,8 +84,7 @@ struct HitInfo {
 
 uniform sampler2D previousFrame;
 
-uniform int objectCount;
-uniform int modelsCount;
+uniform int lightSourcesCount;
 uniform uint frameCount;
 uniform vec3 skyColor;
 
@@ -330,10 +329,6 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         vec3 N = normalize(info.normal);
         vec3 V = normalize(-r.direction);
 
-        if (!info.front_face) {
-            N = -N;
-        }
-
         // Emission (add before rayColor is updated)
         if (dot(info.mat.emissionColor, info.mat.emissionColor) > 0.0f && info.mat.emissionStrength > 0.0) {
             if (i == 0) {
@@ -348,6 +343,12 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
             }
             break;
         }
+
+        if (!info.front_face) {
+            N = -N;
+        }
+
+        info.mat.roughness = max(info.mat.roughness, 0.001);
 
         float transmissionProb = info.mat.transmission;
         float subsurfaceProb = info.mat.subsurface * (1.0 - transmissionProb);
@@ -622,8 +623,7 @@ struct HitInfo {
 
 uniform sampler2D previousFrame;
 
-uniform int objectCount;
-uniform int modelsCount;
+uniform int lightSourcesCount;
 uniform uint frameCount;
 uniform vec3 skyColor;
 
@@ -1043,6 +1043,8 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
         if (!info.front_face) {
             N = -N;
         }
+
+        info.mat.roughness = max(info.mat.roughness, 0.001);
 
         float transmissionProb = info.mat.transmission;
         float subsurfaceProb = info.mat.subsurface * (1.0 - transmissionProb);

@@ -262,7 +262,8 @@ uniform samplerBuffer modelInfoObjectsBuffer;
 uniform samplerBuffer texturesBuffer;
 uniform samplerBuffer materialsBuffer;
 
-uniform int lightSourcesCount;
+uniform int objectCount;
+uniform int modelsCount;
 
 float srgb_to_linear_c(float c) {
     if (c <= 0.04045)
