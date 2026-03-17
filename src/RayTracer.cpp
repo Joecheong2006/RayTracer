@@ -408,47 +408,50 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 sr.direction = normalize(toLight);
                 float distToLight = length(p - sr.origin);
 
-                HitInfo s_info;
-                s_info.t = 1e20;
-                hit(sr, s_info);
+                float cosTheta = dot(N, sr.direction);                // surface facing light
 
-                if (s_info.mat.emissionStrength > 0 && abs(distToLight - s_info.t) <= 0.001) {
-                    float cosTheta     = max(dot(N, sr.direction), 0.01);                // surface facing light
-                    float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));    // light facing surface
-                    float pdf          = 1.0 / area;
-                    float Gfactor      = cosThetaL / dot(toLight, toLight);
+                if (cosTheta > 0) {
+                    HitInfo s_info;
+                    s_info.t = 1e20;
+                    hit(sr, s_info);
 
-                    float pdf_nee = pdf / max(Gfactor, MIN_DENOMINATOR);
+                    if (s_info.mat.emissionStrength > 0 && abs(distToLight - s_info.t) <= 0.001) {
+                        float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));    // light facing surface
+                        float pdf          = 1.0 / area;
+                        float Gfactor      = cosThetaL / dot(toLight, toLight);
 
-                    vec3 Ld = sr.direction;
-                    vec3 Hd = normalize(V + Ld);
-                    float NoLd = clamp(dot(N, Ld), 0.0, 1.0);
-                    float NoHd = clamp(dot(N, Hd), 0.0, 1.0);
-                    float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
-                    float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
+                        float pdf_nee = pdf / max(Gfactor, MIN_DENOMINATOR);
 
-                    float p_surf = 1.0 - transmissionProb;
-                    p_surf = (p_surf < 1e-8) ? 0.0 : p_surf;
-                    float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
+                        vec3 Ld = sr.direction;
+                        vec3 Hd = normalize(V + Ld);
+                        float NoLd = clamp(dot(N, Ld), 0.0, 1.0);
+                        float NoHd = clamp(dot(N, Hd), 0.0, 1.0);
+                        float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
+                        float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
 
-                    float pdf_brdf_ld = diffuseProb * diffusePdf(NoLd)
-                                      + specularProb * specularPdf(NoHd, NoV, VoHd, info.mat.roughness)
-                                      + subsurfaceProb * (NoLd * INV_PI);
-                    pdf_brdf_ld *= surfaceNormalization;
+                        float p_surf = 1.0 - transmissionProb;
+                        p_surf = (p_surf < 1e-8) ? 0.0 : p_surf;
+                        float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
 
-                    float w_nee = (pdf_nee * pdf_nee)
-                                / max(pdf_nee * pdf_nee + pdf_brdf_ld * pdf_brdf_ld, MIN_DENOMINATOR);
+                        float pdf_brdf_ld = diffuseProb * diffusePdf(NoLd)
+                            + specularProb * specularPdf(NoHd, NoV, VoHd, info.mat.roughness)
+                            + subsurfaceProb * (NoLd * INV_PI);
+                        pdf_brdf_ld *= surfaceNormalization;
 
-                    vec3 brdf_direct = diffuseProb  * shadeDiffuse(info, NoLd, NoV, VoHd)
-                        + specularProb * shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
-                        + subsurfaceProb * shadeSubsurface(info, NoLd, NoV, LoVd);
+                        float w_nee = (pdf_nee * pdf_nee)
+                            / max(pdf_nee * pdf_nee + pdf_brdf_ld * pdf_brdf_ld, MIN_DENOMINATOR);
 
-                    vec3 directLight = brdf_direct
-                        * s_info.mat.emissionColor * s_info.mat.emissionStrength
-                        * cosTheta
-                        * Gfactor
-                        / pdf;
-                    incomingLight += rayColor * directLight * w_nee;
+                        vec3 brdf_direct = diffuseProb  * shadeDiffuse(info, NoLd, NoV, VoHd)
+                            + specularProb * shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
+                            + subsurfaceProb * shadeSubsurface(info, NoLd, NoV, LoVd);
+
+                        vec3 directLight = brdf_direct
+                            * s_info.mat.emissionColor * s_info.mat.emissionStrength
+                            * cosTheta
+                            * Gfactor
+                            / pdf;
+                        incomingLight += rayColor * directLight * w_nee;
+                    }
                 }
             }
         }
