@@ -341,8 +341,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
             }
             else {
+                float cosTheta = max(dot(V, N), 0);
                 float pdf_nee = (1.0 / info.area) * (info.t * info.t)
-                              / max(abs(dot(V, N)), MIN_DENOMINATOR);
+                              / max(cosTheta, MIN_DENOMINATOR);
                 float w_brdf = (prevBrdfPdf * prevBrdfPdf)
                              / max(prevBrdfPdf * prevBrdfPdf + pdf_nee * pdf_nee, MIN_DENOMINATOR);
                 incomingLight += rayColor * w_brdf * info.mat.emissionColor * info.mat.emissionStrength;
@@ -405,10 +406,10 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 Ray sr;
                 sr.origin = info.point + N * 0.001;
                 vec3 toLight = p - sr.origin;
-                sr.direction = normalize(toLight);
-                float distToLight = length(p - sr.origin);
+                float distToLight = length(toLight);
+                sr.direction = toLight / distToLight;
 
-                float cosTheta = dot(N, sr.direction);                // surface facing light
+                float cosTheta = dot(N, sr.direction); // surface facing light
 
                 if (cosTheta > 0) {
                     HitInfo s_info;
@@ -416,7 +417,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                     hit(sr, s_info);
 
                     if (s_info.mat.emissionStrength > 0 && abs(distToLight - s_info.t) <= 0.001) {
-                        float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));    // light facing surface
+                        float cosThetaL    = max(dot(-sr.direction, normalize(s_info.normal)), 0);
                         float pdf          = 1.0 / area;
                         float Gfactor      = cosThetaL / dot(toLight, toLight);
 
