@@ -231,13 +231,13 @@ vec3 shadeDiffuse(in HitInfo info, float NoL, float NoV, float VoH) {
     vec3 F = fresnelSchlick(VoH, F0);
     vec3 kd = (vec3(1.0) - F) * (1.0 - info.mat.metallic);
 
-    float FD90 = 0.5 + 2.0 * dot(F0, vec3(1.0)); // can tweak this
+    float FD90 = 0.5 + 2.0 * info.mat.roughness * VoH * VoH;
     float FL = fresnelSchlick(NoL, vec3(1.0)).x;
     float FV = fresnelSchlick(NoV, vec3(1.0)).x;
 
     float fresnelDiffuse = (1.0 + (FD90 - 1.0) * pow(1.0 - NoL, 5.0)) *
                            (1.0 + (FD90 - 1.0) * pow(1.0 - NoV, 5.0));
-    return kd * info.mat.albedo * INV_PI;
+    return kd * info.mat.albedo * INV_PI * fresnelDiffuse;
 }
 
 float diffusePdf(float NoL) {
