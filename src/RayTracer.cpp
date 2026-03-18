@@ -139,33 +139,46 @@ vec3 sampleHemisphereCosine(in vec3 N, inout SeedType seed) {
     return T * local.x + B * local.y + N * local.z;
 }
 
-vec3 sampleGGXVNDF_H(in vec3 N, in vec3 V, float roughness, inout SeedType seed) {
-    // Transform view to local space
+vec3 sampleGGXVNDF_H(vec3 N, vec3 V, float roughness, inout SeedType seed) {
     float a = roughness * roughness;
-
     float r1 = randFloat(seed);
     float r2 = randFloat(seed);
-
-    float phi = 2.0 * PI * r1;
-    float d = max(1.0 + (a * a - 1.0) * r2, MIN_DENOMINATOR);
-    float cosTheta = sqrt((1.0 - r2) / d);
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
 
     vec3 T = normalize(cross(N, perpendicular(N)));
     vec3 B = normalize(cross(N, T));
     mat3 TBN = mat3(T, B, N);
-    vec3 Vlocal = transpose(TBN) * V;
 
-    vec3 Hlocal = vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-    vec3 H = TBN * Hlocal;
-    return H;
+    // Transform V to local space
+    vec3 Vh = normalize(vec3(a * dot(V, T), a * dot(V, B), dot(V, N)));
+
+    // Build orthonormal basis around Vh
+    vec3 T1 = (Vh.z < 0.9999) ? normalize(cross(vec3(0, 0, 1), Vh)) : vec3(1, 0, 0);
+    vec3 T2 = cross(Vh, T1);
+
+    // Sample point on projected hemisphere
+    float r = sqrt(r1);
+    float phi = 2.0 * PI * r2;
+    float t1 = r * cos(phi);
+    float t2 = r * sin(phi);
+    float s = 0.5 * (1.0 + Vh.z);
+    t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+
+    vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1*t1 - t2*t2)) * Vh;
+
+    // Transform Nh back from the stretched hemisphere
+    vec3 Hh = normalize(vec3(a * Nh.x, a * Nh.y, max(0.0, Nh.z)));
+
+    // Transform to world
+    return normalize(TBN * Hh);
 }
 
 vec3 sampleGGXVNDF(in vec3 N, in vec3 V, float roughness, inout SeedType seed) {
     vec3 H = sampleGGXVNDF_H(N, V, roughness, seed);
-
     vec3 L = reflect(-V, H);
-    return dot(N, L) > 0.0 ? L : vec3(0.0); // Ensure valid bounce
+    if (dot(N, L) <= 0.0) {
+        return sampleHemisphereCosine(N, seed);
+    }
+    return L;
 }
 
 vec3 computeF0(in HitInfo info) {
@@ -417,7 +430,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                     hit(sr, s_info);
 
                     if (s_info.mat.emissionStrength > 0 && abs(distToLight - s_info.t) <= 0.001) {
-                        float cosThetaL    = max(dot(-sr.direction, normalize(s_info.normal)), 0);
+-                       float cosThetaL    = max(dot(-sr.direction, normalize(s_info.normal)), 0);
                         float pdf          = 1.0 / area;
                         float Gfactor      = cosThetaL / dot(toLight, toLight);
 
@@ -430,21 +443,17 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                         float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
                         float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
 
-                        float p_surf = 1.0 - transmissionProb;
-                        p_surf = (p_surf < 1e-8) ? 0.0 : p_surf;
-                        float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
-
                         float pdf_brdf_ld = diffuseProb * diffusePdf(NoLd)
                             + specularProb * specularPdf(NoHd, NoV, VoHd, info.mat.roughness)
                             + subsurfaceProb * (NoLd * INV_PI);
-                        pdf_brdf_ld *= surfaceNormalization;
 
                         float w_nee = (pdf_nee * pdf_nee)
                             / max(pdf_nee * pdf_nee + pdf_brdf_ld * pdf_brdf_ld, MIN_DENOMINATOR);
 
-                        vec3 brdf_direct = diffuseProb  * shadeDiffuse(info, NoLd, NoV, VoHd)
-                            + specularProb * shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
-                            + subsurfaceProb * shadeSubsurface(info, NoLd, NoV, LoVd);
+                        vec3 brdf_direct =
+                              shadeDiffuse(info, NoLd, NoV, VoHd)
+                            + shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
+                            + shadeSubsurface(info, NoLd, NoV, LoVd);
 
                         vec3 directLight = brdf_direct
                             * s_info.mat.emissionColor * s_info.mat.emissionStrength
@@ -487,12 +496,19 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         p_surf = (p_surf < 1e-8) ? 0.0 : p_surf;
         float surfaceNormalization = (p_surf > 0.0) ? 1.0 / p_surf : 1.0;
 
-        float pdf_sss_full  = NoL * INV_PI * subsurfaceProb * surfaceNormalization;
-        float pdf_spec_full = specularPdf(NoH, NoV, VoH, info.mat.roughness) * specularProb * surfaceNormalization;
-        float pdf_diff_full = diffusePdf(NoL) * diffuseProb * surfaceNormalization;
+        // For prevBrdfPdf — use single lobe pdf WITHOUT lobe probability
+        float pdf_diff_raw = diffusePdf(NoL) * surfaceNormalization;
+        float pdf_spec_raw = specularPdf(NoH, NoV, VoH, info.mat.roughness) * surfaceNormalization;
+        float pdf_sss_raw  = NoL * INV_PI * surfaceNormalization;
 
-        float pdf_used = pdf_sss_full * subsurface + pdf_spec_full * spec + pdf_diff_full * diff;
-        prevBrdfPdf = pdf_used;
+        // Keep pdf_used with lobe probs for contribution:
+        float pdf_used = pdf_diff_raw * diffuseProb * diff
+                       + pdf_spec_raw * specularProb * spec
+                       + pdf_sss_raw  * subsurfaceProb * subsurface;
+
+        prevBrdfPdf = pdf_diff_raw * diffuseProb
+                       + pdf_spec_raw * specularProb
+                       + pdf_sss_raw  * subsurfaceProb;
 
         // Single BRDFs with flags
         vec3 brdf_total = (brdf_spec * spec + brdf_diff * diff +  brdf_sss * subsurface);
