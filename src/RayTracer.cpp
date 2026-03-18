@@ -358,7 +358,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
             N = -N;
         }
 
-        info.mat.roughness = max(info.mat.roughness, 0.001);
+        info.mat.roughness = max(info.mat.roughness, 0.0005);
 
         float transmissionProb = info.mat.transmission;
         float subsurfaceProb = info.mat.subsurface * (1.0 - transmissionProb);
