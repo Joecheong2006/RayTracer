@@ -354,7 +354,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
             }
             else {
-                float cosTheta = max(dot(V, N), 0);
+                float cosTheta = abs(dot(V, N));
                 float pdf_nee = (1.0 / info.area) * (info.t * info.t)
                               / max(cosTheta, MIN_DENOMINATOR);
                 float w_brdf = (prevBrdfPdf * prevBrdfPdf)
@@ -430,7 +430,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                     hit(sr, s_info);
 
                     if (s_info.mat.emissionStrength > 0 && abs(distToLight - s_info.t) <= 0.001) {
--                       float cosThetaL    = max(dot(-sr.direction, normalize(s_info.normal)), 0);
+                        float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));
                         float pdf          = 1.0 / area;
                         float Gfactor      = cosThetaL / dot(toLight, toLight);
 
