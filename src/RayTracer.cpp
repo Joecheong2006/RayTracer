@@ -468,10 +468,11 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 #endif
 
         // Continue path
-        r.origin = info.point + L * 0.001;
+        r.origin = info.point + N * 0.001;
         r.direction = L;
 
         if (trans == 1) {
+            r.origin = info.point + L * 0.001;
             if (!info.front_face) {
                 vec3 albedo = max(info.mat.albedo, vec3(MIN_DENOMINATOR));
                 vec3 transmittance = exp(info.t * log(albedo)); // Beer–Lambert
