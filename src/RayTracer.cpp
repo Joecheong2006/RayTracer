@@ -166,7 +166,7 @@ vec3 sampleGGXVNDF_H(vec3 N, vec3 V, float roughness, inout SeedType seed) {
     vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1*t1 - t2*t2)) * Vh;
 
     // Transform Nh back from the stretched hemisphere
-    vec3 Hh = normalize(vec3(a * Nh.x, a * Nh.y, max(0.0, Nh.z)));
+    vec3 Hh = normalize(a * Nh.x * T1 + a * Nh.y * T2 + Nh.z * Vh);
 
     // Transform to world
     return normalize(TBN * Hh);
@@ -176,7 +176,7 @@ vec3 sampleGGXVNDF(in vec3 N, in vec3 V, float roughness, inout SeedType seed) {
     vec3 H = sampleGGXVNDF_H(N, V, roughness, seed);
     vec3 L = reflect(-V, H);
     if (dot(N, L) <= 0.0) {
-        return sampleHemisphereCosine(N, seed);
+        return vec3(0);
     }
     return L;
 }
@@ -227,7 +227,7 @@ float geometrySmith(float NoV, float NoL, float roughness) {
 float specularPdf(float NoH, float NoV, float VoH, float roughness) {
     float D = NDF_GGX(NoH, roughness);
     float G1 = geometrySchlickGGX(NoV, roughness);
-    return D * G1 / max(4.0 * NoV, MIN_DENOMINATOR);
+    return D * G1 * NoH / max(4.0 * NoV, MIN_DENOMINATOR);
 }
 
 vec3 shadeSpecular(in HitInfo info, float NoV, float NoL, float NoH, float VoH) {
