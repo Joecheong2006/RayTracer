@@ -710,7 +710,7 @@ bool hitModel(in Model model, in Ray r, float max, inout HitInfo info, int locat
                     hInfo.materialIndex = tri.materialIndex;
                     triangle = tri;
                     hInfo.area = triArea(tri);
-                    hInfo.area *= float(lightSourcesCount) * float(model.lightSourcesCount);
+                    hInfo.modelLightCounts = model.lightSourcesCount;
                 }
             }
             continue;
@@ -928,7 +928,6 @@ vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area) {
     }
 
     area = triArea(tri);
-    area *= float(lightSourcesCount) * float(model.lightSourcesCount);
 
     return r1 * tri.vertices[0] + r2 * tri.vertices[1] + (1.0f - r1 - r2) * tri.vertices[2];
 }

@@ -79,6 +79,7 @@ struct HitInfo {
     vec3 point, normal, tangent, bitangent;
     float t;
     float area;
+    int modelLightCounts;
     vec2 uv;
     int materialIndex;
     Material mat;
@@ -347,6 +348,10 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
         vec3 N = normalize(info.normal);
         vec3 V = normalize(-r.direction);
 
+        if (!info.front_face) {
+            N = -N;
+        }
+
         // Emission (add before rayColor is updated)
         if (dot(info.mat.emissionColor, info.mat.emissionColor) > 0.0f && info.mat.emissionStrength > 0.0) {
 #if ENABLE_NEE
@@ -354,8 +359,13 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                 incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
             }
             else {
-                float cosTheta = abs(dot(V, N));
-                float pdf_nee = (1.0 / info.area) * (info.t * info.t)
+                float pdf_area =
+                    1.0 / info.area
+                  / lightSourcesCount
+                  / info.modelLightCounts;
+
+                float cosTheta = max(dot(V, N), 0);
+                float pdf_nee = pdf_area * (info.t * info.t)
                               / max(cosTheta, MIN_DENOMINATOR);
                 float w_brdf = (prevBrdfPdf * prevBrdfPdf)
                              / max(prevBrdfPdf * prevBrdfPdf + pdf_nee * pdf_nee, MIN_DENOMINATOR);
@@ -365,10 +375,6 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
              incomingLight += rayColor * info.mat.emissionColor * info.mat.emissionStrength;
 #endif
             break;
-        }
-
-        if (!info.front_face) {
-            N = -N;
         }
 
         info.mat.roughness = max(info.mat.roughness, 0.0005);
@@ -430,11 +436,15 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                     hit(sr, s_info);
 
                     if (s_info.mat.emissionStrength > 0 && abs(distToLight - s_info.t) <= 0.001) {
-                        float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));
-                        float pdf          = 1.0 / area;
+                        if (!s_info.front_face) {
+                            s_info.normal = -s_info.normal;
+                        }
+
+                        float cosThetaL    = max(dot(-sr.direction, normalize(s_info.normal)), 0);
+                        float pdf_area     = 1.0 / area / lightSourcesCount / s_info.modelLightCounts;
                         float Gfactor      = cosThetaL / dot(toLight, toLight);
 
-                        float pdf_nee = pdf / max(Gfactor, MIN_DENOMINATOR);
+                        float pdf_nee = pdf_area / max(Gfactor, MIN_DENOMINATOR);
 
                         vec3 Ld = sr.direction;
                         vec3 Hd = normalize(V + Ld);
@@ -444,9 +454,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                         float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
 
                         float pdf_brdf_ld =
-                              diffusePdf(NoLd)
-                            + specularPdf(NoHd, NoV, VoHd, info.mat.roughness)
-                            + (NoLd * INV_PI);
+                              diffuseProb * diffusePdf(NoLd)
+                            + specularProb * specularPdf(NoHd, NoV, VoHd, info.mat.roughness)
+                            + subsurfaceProb * (NoLd * INV_PI);
 
                         float w_nee = (pdf_nee * pdf_nee)
                             / max(pdf_nee * pdf_nee + pdf_brdf_ld * pdf_brdf_ld, MIN_DENOMINATOR);
@@ -460,7 +470,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                             * s_info.mat.emissionColor * s_info.mat.emissionStrength
                             * cosTheta
                             * Gfactor
-                            / pdf;
+                            / pdf_area;
                         incomingLight += rayColor * directLight * w_nee;
                     }
                 }
