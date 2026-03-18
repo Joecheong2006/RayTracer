@@ -443,9 +443,10 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                         float VoHd = clamp(dot(V, Hd), 0.0, 1.0);
                         float LoVd = clamp(dot(Ld, V), 0.0, 1.0);
 
-                        float pdf_brdf_ld = diffuseProb * diffusePdf(NoLd)
-                            + specularProb * specularPdf(NoHd, NoV, VoHd, info.mat.roughness)
-                            + subsurfaceProb * (NoLd * INV_PI);
+                        float pdf_brdf_ld =
+                              diffusePdf(NoLd)
+                            + specularPdf(NoHd, NoV, VoHd, info.mat.roughness)
+                            + (NoLd * INV_PI);
 
                         float w_nee = (pdf_nee * pdf_nee)
                             / max(pdf_nee * pdf_nee + pdf_brdf_ld * pdf_brdf_ld, MIN_DENOMINATOR);
