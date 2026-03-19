@@ -435,11 +435,13 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                     s_info.t = 1e20;
                     hit(sr, s_info);
 
-                    if (s_info.mat.emissionStrength > 0 && abs(distToLight - s_info.t) <= 0.001) {
+                    if (s_info.mat.emissionStrength > 0 && s_info.t >= distToLight - 1e-4) {
                         if (!s_info.front_face) {
                             s_info.normal = -s_info.normal;
                         }
+                        s_info.normal = normalize(s_info.normal);
 
+                        float cosThetaL    = max(dot(-sr.direction, s_info.normal), 0);
                         float pdf_area     = 1.0 / area / lightSourcesCount / lightTriangleCount;
                         float Gfactor      = cosThetaL / dot(toLight, toLight);
 
@@ -461,9 +463,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                             / max(pdf_nee * pdf_nee + pdf_brdf_ld * pdf_brdf_ld, MIN_DENOMINATOR);
 
                         vec3 brdf_direct =
-                              shadeDiffuse(info, NoLd, NoV, VoHd)
-                            + shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
-                            + shadeSubsurface(info, NoLd, NoV, LoVd);
+                              diffuseProb * shadeDiffuse(info, NoLd, NoV, VoHd)
+                            + specularProb * shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
+                            + subsurfaceProb * shadeSubsurface(info, NoLd, NoV, LoVd);
 
                         vec3 directLight = brdf_direct
                             * s_info.mat.emissionColor * s_info.mat.emissionStrength
