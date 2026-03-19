@@ -227,7 +227,8 @@ float geometrySmith(float NoV, float NoL, float roughness) {
 // === Specular ===
 float specularPdf(float NoH, float NoV, float VoH, float roughness) {
     float D = NDF_GGX(NoH, roughness);
-    return D * NoH / max(4.0 * VoH, MIN_DENOMINATOR);
+    float G1 = geometrySchlickGGX(NoV, roughness);
+    return D * G1 * NoH / max(4.0 * NoV, MIN_DENOMINATOR);
 }
 
 vec3 shadeSpecular(in HitInfo info, float NoV, float NoL, float NoH, float VoH) {
