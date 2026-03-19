@@ -274,7 +274,7 @@ vec3 rayAt(in Ray r, float t) {
 
 // Implemented from RayScene
 void hit(in Ray r, inout HitInfo track);
-vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area);
+vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area, out float lightTriangleCount);
 
 vec3 refract(in vec3 uv, in vec3 n, float etai_over_etat) {
     float cos_theta = min(dot(-uv, n), 1.0);
@@ -419,7 +419,8 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
 #if ENABLE_NEE
         if (trans == 0) {
             float area;
-            vec3 p = sampleRandomPointFromLightSouces(seed, area);
+            float lightTriangleCount;
+            vec3 p = sampleRandomPointFromLightSouces(seed, area, lightTriangleCount);
             if (area > 0) {
                 Ray sr;
                 sr.origin = info.point + N * 0.001;
@@ -439,8 +440,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                             s_info.normal = -s_info.normal;
                         }
 
-                        float cosThetaL    = max(dot(-sr.direction, normalize(s_info.normal)), 0);
-                        float pdf_area     = 1.0 / area / lightSourcesCount / s_info.modelLightCounts;
+                        float pdf_area     = 1.0 / area / lightSourcesCount / lightTriangleCount;
                         float Gfactor      = cosThetaL / dot(toLight, toLight);
 
                         float pdf_nee = pdf_area / max(Gfactor, MIN_DENOMINATOR);
