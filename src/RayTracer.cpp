@@ -21,7 +21,7 @@ static const char *RGBRayTracerFragShaderSource = R"(
 #version 330 core
 
 // Flags
-#define ENABLE_NEE 1
+#define ENABLE_NEE 0
 
 out vec4 fragColor;
 
@@ -464,9 +464,9 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                             / max(pdf_nee * pdf_nee + pdf_brdf_ld * pdf_brdf_ld, MIN_DENOMINATOR);
 
                         vec3 brdf_direct =
-                              diffuseProb * shadeDiffuse(info, NoLd, NoV, VoHd)
-                            + specularProb * shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
-                            + subsurfaceProb * shadeSubsurface(info, NoLd, NoV, LoVd);
+                              shadeDiffuse(info, NoLd, NoV, VoHd)
+                            + shadeSpecular(info, NoV, NoLd, NoHd, VoHd)
+                            + shadeSubsurface(info, NoLd, NoV, LoVd);
 
                         vec3 directLight = brdf_direct
                             * s_info.mat.emissionColor * s_info.mat.emissionStrength
@@ -520,7 +520,7 @@ vec3 traceColor(in Ray r, inout SeedType seed) {
                        + pdf_spec_raw * specularProb * spec
                        + pdf_sss_raw  * subsurfaceProb * subsurface;
 
-        prevBrdfPdf = pdf_diff_raw * diffuseProb
+        prevBrdfPdf =    pdf_diff_raw * diffuseProb
                        + pdf_spec_raw * specularProb
                        + pdf_sss_raw  * subsurfaceProb;
 
@@ -662,6 +662,7 @@ struct HitInfo {
     vec3 point, normal, tangent, bitangent;
     float t;
     float area;
+    int modelLightCounts;
     vec2 uv;
     int materialIndex;
     Material mat;
@@ -780,7 +781,7 @@ vec3 rayAt(in Ray r, float t) {
 }
 
 void hit(in Ray r, inout HitInfo track);
-vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area);
+vec3 sampleRandomPointFromLightSouces(inout SeedType seed, out float area, out float lightTriangleCount);
 
 vec3 refract(in vec3 uv, in vec3 n, float etai_over_etat) {
     float cos_theta = min(dot(-uv, n), 1.0);
@@ -1079,7 +1080,11 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
                 radiance += energy * spectral_throughput * info.mat.emissionStrength;
             }
             else {
-                float pdf_nee = (1.0 / info.area) * (info.t * info.t)
+                float pdf_area =
+                    1.0 / info.area
+                  / lightSourcesCount
+                  / info.modelLightCounts;
+                float pdf_nee = pdf_area * (info.t * info.t)
                               / max(abs(dot(V, N)), MIN_DENOMINATOR);
                 float w_brdf = (prevBrdfPdf * prevBrdfPdf)
                              / max(prevBrdfPdf * prevBrdfPdf + pdf_nee * pdf_nee, MIN_DENOMINATOR);
@@ -1147,7 +1152,8 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
 #if ENABLE_NEE
         if (trans == 0) {
             float area;
-            vec3 p = sampleRandomPointFromLightSouces(seed, area);
+            float lightTriangleCount;
+            vec3 p = sampleRandomPointFromLightSouces(seed, area, lightTriangleCount);
             if (area > 0) {
                 Ray sr;
                 sr.origin = info.point + N * 0.001;
@@ -1162,7 +1168,7 @@ float traceColorWavelength(in Ray r, in float lambda, in SeedType seed) {
                 if (s_info.mat.emissionStrength > 0 && s_info.t <= distToLight + 0.01) {
                     float cosTheta     = max(dot(N, sr.direction), 0.0);                // surface facing light
                     float cosThetaL    = abs(dot(-sr.direction, normalize(s_info.normal)));    // light facing surface
-                    float pdf          = 1.0 / area;
+                    float pdf          = 1.0 / area / lightSourcesCount / lightTriangleCount;
                     float Gfactor      = cosThetaL / dot(toLight, toLight);
 
                     float pdf_nee = pdf / max(Gfactor, MIN_DENOMINATOR);
