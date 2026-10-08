@@ -53,8 +53,11 @@ cmake --build . --config Release
 
 ## Gallery
 
-## Prism Test1
-![Prism Test1](screenshots/prism_test1.png)
+## Lego Bulldozer
+![Lego Bulldozer](screenshots/Lego_856_Bulldozer.png)
+
+## Wooden Staircase
+![Wooden Staircase](screenshots/The_Wooden_Staircase_BS.png)
 
 ## Transmissive Dragon2 with Dispersion
 ![Transmissive Dragon2](screenshots/spectral_transmissive_dragon2.png)
