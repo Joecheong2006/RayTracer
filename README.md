@@ -57,7 +57,7 @@ cmake --build . --config Release
 ![Lego Bulldozer](screenshots/Lego_856_Bulldozer.png)
 
 ## Wooden Staircase
-![Wooden Staircase](screenshots/The_Wooden_Staircase_BS.png)
+<img src="screenshots/The_Wooden_Staircase_BS.png" alt="Wooden Staircase" width="60%">
 
 ## Transmissive Dragon2 with Dispersion
 ![Transmissive Dragon2](screenshots/spectral_transmissive_dragon2.png)
